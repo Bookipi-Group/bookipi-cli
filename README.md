@@ -62,27 +62,48 @@ your admin.
 
 ## 3. Set up your project folder
 
-Every Bookipi workspace lives in its own folder. This keeps your credentials and
-account-specific data scoped — no env-var juggling, no shared global state.
+Every Bookipi workspace lives in its own **local folder**. This keeps your
+credentials and account-specific data scoped — no env-var juggling, no
+shared global state.
 
-1. In Cowork, click **New Project** and name it something like `bookipi`. Cowork
-   creates the folder for you. In Claude Code there's no button — just start
-   `claude` inside any folder you want to use as the workspace.
-2. In the chat, say: **Set up Bookipi in this folder.**
-   Claude opens a browser to log in, then saves your credentials inside the
-   folder (under `.bookipi/`, auto-gitignored). Confirm with: **Who am I logged
-   in as?**
+> ⚠️ **Cowork changed how projects are stored.** New projects are now
+> **cloud-based by default** — they do _not_ create a local folder unless you
+> ask for one. A cloud-only project runs in a temporary space that's wiped
+> between chats, so your Bookipi login **won't survive** to the next session.
+> To stay logged in, you **must** attach a local folder when you create the
+> project (below).
+
+1. In Cowork, click **New Project**, give it a name like `bookipi-testing`,
+   then click **Use a folder** and pick (or create) a folder on your computer.
+   This is the important step — without it, the project is cloud-only and your
+   login won't persist.
+   **In Claude Code** there's no button — just start `claude` inside any
+   folder you want to use as the workspace.
+2. In the chat, say:
+
+   > _Set up Bookipi in this folder._
+
+Claude opens a browser for staging login, then saves your credentials
+inside the folder (under `.bookipi/`, auto-gitignored). Confirm with:
+
+> _Who am I logged in as?_
 
 Every session you open in that project is auto-logged-in. To work with a
-different Bookipi account, create a different folder and repeat — each folder is
-its own workspace.
+different Bookipi account, create a different folder and repeat — each
+folder is its own workspace.
 
-**Claude Code only:** the folder is recommended, not required. If you skip it and
-just say "log me in to Bookipi", credentials are saved globally (`~/.bookipi/`)
-and work from any directory on your machine — fine for a single account. Use
-per-folder workspaces when you want to work with multiple accounts side by side.
-(In Cowork the project folder is the only way to keep credentials between
-sessions, so there it's not optional.)
+**If you skip the folder in Cowork** (a cloud-only project), you'll be asked to
+log in again every new chat — there's nowhere persistent to keep the
+credentials. Attaching a folder is the only way to stay logged in between
+sessions. _(A no-folder, zero-setup alternative — the **Bookipi connector**,
+which stores the login on your Claude account — is in the works; ask if you want
+early access.)_
+
+**Claude Code only:** the folder is recommended, not required. If you skip
+it and just say _"log me in to Bookipi"_, credentials are saved globally
+(`~/.bookipi/`) and work from any directory on your machine — fine for a
+single account. Use per-folder workspaces when you want to test multiple
+accounts side by side.
 
 ## 4. Try things
 
