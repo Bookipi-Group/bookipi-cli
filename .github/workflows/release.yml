@@ -1,0 +1,46 @@
+name: release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke-test:
+    name: Smoke-test .skill bundle
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.12'
+
+      - name: Download bookipi-cli.skill from the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # On a release event, test that release; on manual runs, test the latest.
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if [ -z "$TAG" ]; then
+            TAG=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName -q .tagName)
+          fi
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern bookipi-cli.skill
+
+      - name: Unpack the skill bundle
+        run: |
+          unzip -q bookipi-cli.skill -d skill
+          test -f skill/bookipi-cli/SKILL.md
+          test -f skill/bookipi-cli/bin/bookipi.js
+
+      - name: CLI runs and version matches the release tag
+        run: |
+          VERSION=$(node skill/bookipi-cli/bin/bookipi.js --version)
+          echo "CLI reports: $VERSION  (release: $TAG)"
+          test "v$VERSION" = "$TAG"
+
+      - name: CLI help works
+        run: node skill/bookipi-cli/bin/bookipi.js --help > /dev/null
