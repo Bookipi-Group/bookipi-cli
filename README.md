@@ -1,16 +1,30 @@
 # Bookipi CLI
 
-**Bookipi CLI** brings your Bookipi account to Claude: invoices, payments,
-expenses, customers, contracts, reports, and daily automations — all through
-conversation.
+**Bookipi CLI** turns your back office — invoices, payments, customers,
+expenses, proposals, contracts, and reports — into clean `--json` commands you
+can run directly or drive through Claude in plain English.
 
-You don't run commands. You talk to Claude in Cowork, Claude Desktop, or
-Claude Code, and Claude does the work. This guide shows you how to set that up.
+Full overview and docs: [Bookipi CLI](https://bookipi.com/cli/)
 
-The skill bundle is self-contained (it includes the Bookipi CLI), so no separate
-installation is required.
+## Two ways to use it
 
-## 1. Install the skill
+- **Talk to Claude** — install the skill and ask in plain English inside
+  Cowork, Claude Desktop, or Claude Code. Claude runs Bookipi CLI for you; no
+  commands to memorize. Setup is below.
+- **Build on the CLI** — clone it, run `bookipi init`, and pipe `--json`
+  output into your own agents, automations, and products. See
+  [Building on the CLI](#building-on-the-cli).
+
+Either way it's the same tool underneath. Everything that sends, charges, or
+records stops for your confirmation first.
+
+## Talk to Claude
+
+The skill bundle is self-contained (it includes the Bookipi CLI), so no
+separate installation is required. You don't run commands — you talk to Claude
+and Claude does the work. This guide shows you how to set that up.
+
+### 1. Install the skill
 
 1. Download the latest `bookipi-cli.skill` from
    [Releases](https://github.com/Bookipi-Group/bookipi-agent-cli-release/releases).
@@ -26,7 +40,7 @@ terminal use, unzip the `.skill` file into `~/.claude/skills/` (it's a zip —
 you'll end up with `~/.claude/skills/bookipi-cli/`). Claude Code runs the CLI
 on your own machine, so you'll also need Node 22.12 or newer installed.
 
-## 2. Allow network access (only on your own Claude subscription, one-time)
+### 2. Allow network access (only on your own Claude subscription, one-time)
 
 You can skip this entirely if:
 
@@ -60,7 +74,7 @@ logos/QR codes in invoice previews.
 the very first request. That message includes the same list above; forward it to
 your admin.
 
-## 3. Set up your project folder
+### 3. Set up your project folder
 
 Every Bookipi workspace lives in its own **local folder**. This keeps your
 credentials and account-specific data scoped — no env-var juggling, no
@@ -105,9 +119,9 @@ it and just say _"log me in to Bookipi"_, credentials are saved globally
 single account. Use per-folder workspaces when you want to test multiple
 accounts side by side.
 
-## 4. Try things
+### 4. Try things
 
-### Reading
+#### Reading
 
 - "Who owes me money?"
 - "Pull up Wayne Construction."
@@ -125,7 +139,7 @@ accounts side by side.
 - "Who's my biggest customer this quarter?"
 - "What products are selling well?"
 
-### Creating
+#### Creating
 
 - "Add a new customer: Acme Corp, billing@acme.com."
 - "Add 'logo design' to my items list at $200."
@@ -134,7 +148,7 @@ accounts side by side.
 - "Draft a proposal for the Stark deal — kitchen renovation, $40,000."
 - "Turn that accepted proposal into a contract."
 
-### Sending
+#### Sending
 
 - "Send invoice INV-650 to alice@acme.com."
 - "Send the proposal to John."
@@ -142,19 +156,19 @@ accounts side by side.
 - "Email Maria — tell her I'll be late to the call."
 - "Send reminders to all my overdue invoices."
 
-### Receipts & expenses (drag an image/PDF into chat)
+#### Receipts & expenses (drag an image/PDF into chat)
 
 - (drop in a receipt photo) "Log this as an expense."
 - "What expense categories do I have?"
 - "Show my expenses this month."
 
-### Reports & insights
+#### Reports & insights
 
 - "Build me a dashboard for last quarter." (opens an HTML report)
 - "Give me insights on my business this month."
 - "What should I focus on this week?"
 
-### Acting / changing things
+#### Acting / changing things
 
 - "Mark the Stark deal as won."
 - "Mark INV-650 as paid."
@@ -166,6 +180,38 @@ accounts side by side.
 
 Everything that sends, charges, or records stops for your confirmation first.
 
+## Building on the CLI
+
+Bookipi CLI is also a standalone, JSON-first command-line tool you can build on
+directly — for AI agents, automations, integrations, and your own products. The
+bundled CLI runs on Node 22+ with no build step.
+
+```
+git clone https://github.com/Bookipi-Group/bookipi-agent-cli-release
+bookipi init                                   # creates a workspace + browser OAuth sign-in (~5s)
+bookipi invoice list --status overdue --json   # structured output your code can act on
+```
+
+For headless or CI use, skip the browser sign-in and set a token instead:
+
+```
+export BOOKIPI_TOKEN=...
+```
+
+Add `--json` to any command for machine-readable output. A typical example:
+
+```
+$ bookipi invoice list --status overdue --json
+[
+  { "number": "INV-650", "customer": "Acme Corp", "amount": 5000, "currency": "USD", "status": "overdue", "days_late": 12 },
+  { "number": "INV-661", "customer": "Stark Ind.", "amount": 12000, "status": "overdue", "days_late": 4 }
+]
+```
+
+### Commands
+
+A small, predictable, `--json`-first surface your code can call reliably.
+
 ## Found a bug? Stuck?
 
 Open an issue on
@@ -176,3 +222,7 @@ Open an issue on
 - What you expected
 
 The more detail, the faster we can help.
+
+## License
+
+Copyright © Bookipi. All rights reserved.
