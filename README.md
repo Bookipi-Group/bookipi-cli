@@ -1,5 +1,7 @@
 # Bookipi CLI
 
+[![release](https://img.shields.io/github/v/release/Bookipi-Group/bookipi-agent-cli-release?label=release)](https://github.com/Bookipi-Group/bookipi-agent-cli-release/releases/latest)
+
 **Bookipi CLI** turns your back office — invoices, payments, customers,
 expenses, proposals, contracts, and reports — into clean `--json` commands you
 can run directly or drive through Claude in plain English.
