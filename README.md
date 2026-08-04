@@ -226,6 +226,9 @@ Open an issue on
 
 The more detail, the faster we can help.
 
+**Security issues:** please don't open a public issue — see
+[SECURITY.md](SECURITY.md) for how to report privately.
+
 ## License
 
-Copyright © Bookipi. All rights reserved.
+Copyright © Bookipi. All rights reserved. See [LICENSE](LICENSE).
