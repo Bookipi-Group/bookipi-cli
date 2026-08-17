@@ -38,8 +38,10 @@ jobs:
 
       - name: CLI runs and version matches the release tag
         run: |
-          VERSION=$(node skill/bookipi-cli/bin/bookipi.js --version)
-          echo "CLI reports: $VERSION  (release: $TAG)"
+          # --version prints "0.33.1 (prod, build <sha> <date>)" — keep the semver.
+          RAW=$(node skill/bookipi-cli/bin/bookipi.js --version)
+          VERSION=${RAW%% *}
+          echo "CLI reports: $RAW  (release: $TAG)"
           test "v$VERSION" = "$TAG"
 
       - name: CLI help works
