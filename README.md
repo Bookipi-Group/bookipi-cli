@@ -66,6 +66,7 @@ domains**, and add:
 *.bookipi.com
 *.bookipay.com
 *.s3.amazonaws.com
+*.amplitude.com
 ```
 
 The first three are Bookipi servers (invoices, login, meetings, contracts, PDF
