@@ -1,0 +1,97 @@
+<h2 class="sr-only">Bookipi quick actions in a 3 by 3 grid: account and company switching, invoices, payments, reminders, insights, customers, expenses, daily &amp; automations (set up recurring daily checks), and reports. Tap a chip to run it.</h2>
+<style>
+.bk-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;padding:.5rem 0}
+.bk-card{background:var(--color-background-secondary);border-radius:var(--border-radius-lg);padding:16px}
+.bk-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.bk-ic{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px}
+.bk-title{font-size:16px;font-weight:500}
+.bk-chip{display:flex;align-items:center;justify-content:space-between;width:100%;text-align:left;background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:9px 12px;font-size:14px;margin-bottom:8px;cursor:pointer}
+.bk-chip:hover{border-color:var(--color-border-secondary);background:var(--color-background-secondary)}
+.bk-chip i{font-size:15px;color:var(--color-text-secondary)}
+/* Cards with many chips park the extras behind an in-card "See more" toggle
+   (client-side only — it never fires a prompt). Mark overflow chips with
+   .bk-extra and append a .bk-more button. */
+.bk-extra{display:none}
+.bk-open .bk-extra{display:flex}
+.bk-more{justify-content:center;gap:6px;color:var(--color-text-secondary);background:transparent;border-style:dashed;margin-bottom:0}
+.bk-more i{transition:transform .15s ease}
+.bk-open .bk-more i{transform:rotate(180deg)}
+</style>
+<div class="bk-grid">
+
+  <div class="bk-card">
+    <div class="bk-head"><span class="bk-ic" style="background:var(--color-background-tertiary);color:var(--color-text-primary)"><i class="ti ti-building-store" aria-hidden="true"></i></span><span class="bk-title">Account</span></div>
+    <button class="bk-chip" onclick="sendPrompt('Switch my active company')">Switch company <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip" onclick="sendPrompt('Show my companies')">Show my companies <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip" onclick="sendPrompt('Who am I signed in as?')">Who am I? <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip bk-extra" onclick="sendPrompt('Log out of Bookipi')">Log out <i class="ti ti-logout" aria-hidden="true"></i></button>
+    <button class="bk-chip bk-more" aria-expanded="false" onclick="var c=this.closest('.bk-card');c.classList.toggle('bk-open');var open=c.classList.contains('bk-open');this.setAttribute('aria-expanded',open);this.firstChild.textContent=open?'See less ':'See more '">See more <i class="ti ti-chevron-down" aria-hidden="true"></i></button>
+  </div>
+
+  <div class="bk-card">
+    <div class="bk-head"><span class="bk-ic" style="background:var(--color-background-info);color:var(--color-text-info)"><i class="ti ti-file-invoice" aria-hidden="true"></i></span><span class="bk-title">Invoices</span></div>
+    <button class="bk-chip" onclick="sendPrompt('Create an invoice')">Create an invoice <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip" onclick="sendPrompt('Show unpaid invoices')">Show unpaid invoices <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip" onclick="sendPrompt('Mark an invoice as paid and send the receipt')">Mark paid / send receipt <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+  </div>
+
+  <div class="bk-card">
+    <div class="bk-head"><span class="bk-ic" style="background:var(--color-background-success);color:var(--color-text-success)"><i class="ti ti-credit-card" aria-hidden="true"></i></span><span class="bk-title">Payments</span></div>
+    <button class="bk-chip" onclick="sendPrompt('Create a payment link')">Create a payment link <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip" onclick="sendPrompt('Send a payment link to a customer')">Send a payment link <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip" onclick="sendPrompt('Has my payment link been paid?')">Check if it's paid <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip bk-extra" onclick="sendPrompt('Reconcile my bank statement')">Reconcile bank statement <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip bk-more" aria-expanded="false" onclick="var c=this.closest('.bk-card');c.classList.toggle('bk-open');var open=c.classList.contains('bk-open');this.setAttribute('aria-expanded',open);this.firstChild.textContent=open?'See less ':'See more '">See more <i class="ti ti-chevron-down" aria-hidden="true"></i></button>
+  </div>
+
+  <div class="bk-card">
+    <div class="bk-head"><span class="bk-ic" style="background:var(--color-background-warning);color:var(--color-text-warning)"><i class="ti ti-bell" aria-hidden="true"></i></span><span class="bk-title">Reminders</span></div>
+    <button class="bk-chip" onclick="sendPrompt('Who owes me money?')">Who owes me money? <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip" onclick="sendPrompt('Send reminders to everyone overdue')">Chase the overdue <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip" onclick="sendPrompt('Run my collections')">Run collections (staged) <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+  </div>
+
+  <div class="bk-card">
+    <div class="bk-head"><span class="bk-ic" style="background:var(--color-background-info);color:var(--color-text-info)"><i class="ti ti-bulb" aria-hidden="true"></i></span><span class="bk-title">Insights</span></div>
+    <button class="bk-chip" onclick="sendPrompt('Give me the insights on my business')">Business insights <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip" onclick="sendPrompt('What should I chase today?')">What to chase today <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip" onclick="sendPrompt('Who might stop buying?')">Who's at risk? <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+  </div>
+
+  <div class="bk-card">
+    <div class="bk-head"><span class="bk-ic" style="background:var(--color-background-info);color:var(--color-text-info)"><i class="ti ti-users" aria-hidden="true"></i></span><span class="bk-title">Customers</span></div>
+    <button class="bk-chip" onclick="sendPrompt('Tell me about a customer')">Tell me about a customer <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip" onclick="sendPrompt('Show me a customer’s payment history')">Payment history <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip" onclick="sendPrompt('Follow up with a customer')">Follow up / email <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip bk-extra" onclick="sendPrompt('Add a customer')">Add a customer <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip bk-more" aria-expanded="false" onclick="var c=this.closest('.bk-card');c.classList.toggle('bk-open');var open=c.classList.contains('bk-open');this.setAttribute('aria-expanded',open);this.firstChild.textContent=open?'See less ':'See more '">See more <i class="ti ti-chevron-down" aria-hidden="true"></i></button>
+  </div>
+
+  <div class="bk-card">
+    <div class="bk-head"><span class="bk-ic" style="background:var(--color-background-success);color:var(--color-text-success)"><i class="ti ti-receipt" aria-hidden="true"></i></span><span class="bk-title">Expenses</span></div>
+    <button class="bk-chip" onclick="sendPrompt('Log a receipt as an expense')">Log a receipt <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip" onclick="sendPrompt('Show my expenses this month')">Show my expenses <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip" onclick="sendPrompt('Show my expense categories')">Expense categories <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+  </div>
+
+  <div class="bk-card">
+    <div class="bk-head"><span class="bk-ic" style="background:var(--color-background-tertiary);color:var(--color-text-primary)"><i class="ti ti-sunrise" aria-hidden="true"></i></span><span class="bk-title">Daily &amp; automations</span></div>
+    <button class="bk-chip" onclick="sendPrompt('What is on today?')">What's on today? <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip" onclick="sendPrompt('Run my day — brief me and prepare today\u2019s actions')">Run my day <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip" onclick="sendPrompt('Set up my AI employee — run my morning brief with prepared actions every morning')">Hire your AI employee <i class="ti ti-calendar-time" aria-hidden="true"></i></button>
+    <button class="bk-chip bk-extra" onclick="sendPrompt('What did you do this week?')">What did you do this week? <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip bk-extra" onclick="sendPrompt('Show my scheduled automations')">Manage automations <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip bk-more" aria-expanded="false" onclick="var c=this.closest('.bk-card');c.classList.toggle('bk-open');var open=c.classList.contains('bk-open');this.setAttribute('aria-expanded',open);this.firstChild.textContent=open?'See less ':'See more '">See more <i class="ti ti-chevron-down" aria-hidden="true"></i></button>
+  </div>
+
+  <div class="bk-card">
+    <div class="bk-head"><span class="bk-ic" style="background:var(--color-background-info);color:var(--color-text-info)"><i class="ti ti-chart-bar" aria-hidden="true"></i></span><span class="bk-title">Reports</span></div>
+    <button class="bk-chip" onclick="sendPrompt('Give me a business dashboard')">Business dashboard <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip" onclick="sendPrompt('Send me the weekly digest')">Weekly digest <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip" onclick="sendPrompt('Show my top customers')">Top customers <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+  </div>
+
+</div>
+<div style="display:flex;justify-content:center;margin-top:6px">
+  <button class="bk-chip" style="width:auto;display:inline-flex;gap:10px" onclick="sendPrompt('What else can you do?')"><i class="ti ti-dots" aria-hidden="true"></i> What else can you do? <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+</div>

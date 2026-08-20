@@ -1,0 +1,83 @@
+<h2 class="sr-only">More Bookipi capabilities: deals, proposals, contracts, documents, billing options, items, meetings, and website. Tap a chip to run it, or go back to the main menu.</h2>
+<style>
+.bk-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;padding:.5rem 0}
+.bk-card{background:var(--color-background-secondary);border-radius:var(--border-radius-lg);padding:16px}
+.bk-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.bk-ic{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px}
+.bk-title{font-size:16px;font-weight:500}
+.bk-chip{display:flex;align-items:center;justify-content:space-between;width:100%;text-align:left;background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:9px 12px;font-size:14px;margin-bottom:8px;cursor:pointer}
+.bk-chip:hover{border-color:var(--color-border-secondary);background:var(--color-background-secondary)}
+.bk-chip i{font-size:15px;color:var(--color-text-secondary)}
+/* Cards with many chips park the extras behind an in-card "See more" toggle
+   (client-side only — it never fires a prompt). Mark overflow chips with
+   .bk-extra and append a .bk-more button; see the Website card. */
+.bk-extra{display:none}
+.bk-open .bk-extra{display:flex}
+.bk-more{justify-content:center;gap:6px;color:var(--color-text-secondary);background:transparent;border-style:dashed;margin-bottom:0}
+.bk-more i{transition:transform .15s ease}
+.bk-open .bk-more i{transform:rotate(180deg)}
+</style>
+<div class="bk-grid">
+
+  <div class="bk-card">
+    <div class="bk-head"><span class="bk-ic" style="background:var(--color-background-info);color:var(--color-text-info)"><i class="ti ti-target" aria-hidden="true"></i></span><span class="bk-title">Deals</span></div>
+    <button class="bk-chip" onclick="sendPrompt('Show me my deals')">Show my deals <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip" onclick="sendPrompt('What is in the pipeline?')">What's in the pipeline? <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip" onclick="sendPrompt('Win a deal end-to-end with a signed contract')">Win / close a deal <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+  </div>
+
+  <div class="bk-card">
+    <div class="bk-head"><span class="bk-ic" style="background:var(--color-background-info);color:var(--color-text-info)"><i class="ti ti-file-text" aria-hidden="true"></i></span><span class="bk-title">Proposals &amp; quotes</span></div>
+    <button class="bk-chip" onclick="sendPrompt('Draft a proposal')">Draft a proposal <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip" onclick="sendPrompt('Show stalled proposals')">Stalled proposals <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+  </div>
+
+  <div class="bk-card">
+    <div class="bk-head"><span class="bk-ic" style="background:var(--color-background-success);color:var(--color-text-success)"><i class="ti ti-file-check" aria-hidden="true"></i></span><span class="bk-title">Contracts &amp; eSign</span></div>
+    <button class="bk-chip" onclick="sendPrompt('Draft a contract')">Draft a contract <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip" onclick="sendPrompt('Upload a contract PDF to sign')">Upload a PDF to sign <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip" onclick="sendPrompt('Has the contract been signed?')">Check if signed <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+  </div>
+
+  <div class="bk-card">
+    <div class="bk-head"><span class="bk-ic" style="background:var(--color-background-tertiary);color:var(--color-text-primary)"><i class="ti ti-files" aria-hidden="true"></i></span><span class="bk-title">Documents</span></div>
+    <button class="bk-chip" onclick="sendPrompt('Create an estimate')">Create an estimate <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip" onclick="sendPrompt('Create a purchase order')">Create a purchase order <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip" onclick="sendPrompt('Duplicate an invoice')">Duplicate an invoice <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+  </div>
+
+  <div class="bk-card">
+    <div class="bk-head"><span class="bk-ic" style="background:var(--color-background-warning);color:var(--color-text-warning)"><i class="ti ti-repeat" aria-hidden="true"></i></span><span class="bk-title">Billing options</span></div>
+    <button class="bk-chip" onclick="sendPrompt('Set up a recurring invoice')">Recurring invoice <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip" onclick="sendPrompt('Request a deposit on an invoice')">Request a deposit <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+  </div>
+
+  <div class="bk-card">
+    <div class="bk-head"><span class="bk-ic" style="background:var(--color-background-success);color:var(--color-text-success)"><i class="ti ti-box" aria-hidden="true"></i></span><span class="bk-title">Items &amp; products</span></div>
+    <button class="bk-chip" onclick="sendPrompt('Show my items and products')">My items <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip" onclick="sendPrompt('Add a new item or product')">Add an item <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip" onclick="sendPrompt('Create an item from a product photo')">Add item from a photo <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+  </div>
+
+  <div class="bk-card">
+    <div class="bk-head"><span class="bk-ic" style="background:var(--color-background-info);color:var(--color-text-info)"><i class="ti ti-calendar" aria-hidden="true"></i></span><span class="bk-title">Meetings</span></div>
+    <button class="bk-chip" onclick="sendPrompt('What meetings do I have today?')">Today's meetings <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip" onclick="sendPrompt('Show my recent meetings with transcripts')">Meeting transcripts <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+  </div>
+
+  <div class="bk-card">
+    <div class="bk-head"><span class="bk-ic" style="background:var(--color-background-info);color:var(--color-text-info)"><i class="ti ti-world" aria-hidden="true"></i></span><span class="bk-title">Website</span></div>
+    <button class="bk-chip" onclick="sendPrompt('How is my website doing?')">How's my website? <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip" onclick="sendPrompt('Show me my website')">Show me my site <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip" onclick="sendPrompt('I want to make some edits to my website')">Edit my site with AI <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip bk-extra" onclick="sendPrompt('Add a new page to my website')">Add a page <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip bk-extra" onclick="sendPrompt('What does my website say?')">What does my site say? <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip bk-extra" onclick="sendPrompt('How many visitors did my website get, and any new inquiries?')">Visitors &amp; inquiries <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip bk-extra" onclick="sendPrompt('Open my website builder')">Open the builder <i class="ti ti-arrow-up-right" aria-hidden="true"></i></button>
+    <button class="bk-chip bk-more" aria-expanded="false" onclick="var c=this.closest('.bk-card');c.classList.toggle('bk-open');var open=c.classList.contains('bk-open');this.setAttribute('aria-expanded',open);this.firstChild.textContent=open?'See less ':'See more '">See more <i class="ti ti-chevron-down" aria-hidden="true"></i></button>
+  </div>
+
+</div>
+<div style="display:flex;justify-content:center;margin-top:6px">
+  <button class="bk-chip" style="width:auto;display:inline-flex;gap:10px" onclick="sendPrompt('Show the main menu')"><i class="ti ti-arrow-left" aria-hidden="true"></i> Back to main menu</button>
+</div>
