@@ -37,16 +37,28 @@ and Claude does the work. This guide shows you how to set that up.
 If double-click does nothing, drag the file into the Cowork window. If your
 browser stripped the `.skill` extension on download, rename it back.
 
-**Claude Code:** install it as a plugin instead — one command, and it updates
-itself when a new version ships:
+**Claude Code:** install it as a plugin instead — no download, and upgrading
+later is two commands rather than a re-download:
 
 ```
 /plugin marketplace add Bookipi-Group/bookipi-cli
 /plugin install bookipi@bookipi-plugins
 ```
 
-Claude fetches the CLI on first use, so there's nothing else to download. You
+Claude fetches the CLI on first use, so there's nothing else to install. You
 need Node 22.12 or newer on your machine.
+
+To upgrade later, refresh the marketplace **first** — `install` and `update`
+both read a local copy of this repo, so without the refresh they will happily
+keep serving the version you originally cloned:
+
+```
+/plugin marketplace update bookipi-plugins
+/plugin update bookipi@bookipi-plugins
+```
+
+Include the `@bookipi-plugins` part — `update bookipi` on its own reports
+"Plugin not found".
 
 A skill installed via Claude Desktop is also available in Claude Code sessions
 started from the desktop app, so you may already have it. To install by hand
