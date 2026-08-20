@@ -218,13 +218,30 @@ Run this setup silently at the start of every session.
 which bookipi 2>/dev/null || echo "not found"
 ```
 
-If not found, this skill ships with a self-contained CLI bundle at `bin/bookipi.js`. The skill directory itself may be mounted **read-only** in some sandboxes, so do NOT `chmod` the bundled file. Instead, create a small wrapper script in a writable directory that invokes the bundle via `node`.
+If found, you are done — skip to Step 2.
+
+If not found, **check whether a CLI bundle came with this skill** before assuming one did:
+
+```bash
+ls "<skill base dir>/bin/bookipi.js" 2>/dev/null || echo "no bundle"
+```
+
+There are two ways this skill gets installed and only one of them carries the binary:
+
+| Installed as | Has `bin/bookipi.js` | What to do |
+|---|---|---|
+| **`.skill` bundle** (Cowork, Claude Desktop, manual skill install) | yes | build the wrapper below |
+| **Claude Code plugin** (`/plugin marketplace add`) | **no** — markdown only | see *No CLI available* below |
+
+With a bundle present: the skill directory may be mounted **read-only** in some
+sandboxes, so do NOT `chmod` the bundled file. Create a small wrapper script in a
+writable directory that invokes the bundle via `node`.
 
 **Locating the bundle:** your harness announces the skill's location when this skill loads ("Base directory for this skill: …"). Use it directly — `BOOKIPI_BIN="<that base dir>/bin/bookipi.js"`. Only if you genuinely don't know the base dir, fall back to the search below — and note that on a real machine (Claude Code on macOS/Linux) `find ~` can grind through the whole home directory for minutes, so prefer the targeted skill paths first:
 
 ```bash
 # Fallback ONLY — prefer the announced skill base directory.
-BOOKIPI_BIN=$(find ~/.claude/skills /sessions /mnt -path "*/bookipi-cli/bin/bookipi.js" 2>/dev/null | head -1)
+BOOKIPI_BIN=$(find ~/.claude/skills ~/.claude/plugins /sessions /mnt -path "*/bookipi-cli/bin/bookipi.js" 2>/dev/null | head -1)
 
 # Pick a writable location for the wrapper. Use a TEMP dir so it NEVER pollutes
 # the user's home — it's recreated each session and the agent re-adds it to PATH
@@ -248,7 +265,29 @@ export PATH="$BOOKIPI_DIR:$PATH"
 echo "bookipi wrapper installed at $BOOKIPI_DIR/bookipi"
 ```
 
-Do NOT ask the user to mount the source repo or run `pnpm run build` — the bundled CLI is always present inside this skill.
+If the wrapper is set up, do NOT ask the user to mount the source repo or run
+`pnpm run build` — the bundled CLI is right there.
+
+#### No CLI available
+
+If `which bookipi` found nothing **and** there is no `bin/bookipi.js`, this is a
+plugin-only install. Do not keep hunting for the binary, and do not invent a
+path — there is nothing to find.
+
+What you can still do depends on what else the session has:
+
+- **An MCP connector is present** (you can see `search_tools` / `execute_tool`):
+  use it. Every read works. Say plainly that anything which sends, creates or
+  changes a record needs the CLI, and do not claim to have done it. See
+  [Which path are you on?](#which-path-are-you-on-check-this-first).
+- **Nothing else present**: say so in one line and stop. *"I can't reach your
+  Bookipi account from here yet — the Bookipi tool isn't installed in this
+  session."* Then, only if they ask how to fix it: the `bookipi-cli.skill`
+  bundle on the [releases page](https://github.com/Bookipi-Group/bookipi-cli/releases/latest)
+  is self-contained and includes the CLI.
+
+Never run a Bookipi command you have no binary for and report the output as
+though it succeeded, and never describe an action you could not perform.
 
 **🔴 This wrapper setup is internal plumbing — keep it INVISIBLE to the user.** Never tell them where the wrapper lives ("the CLI wrapper is at `/tmp/bookipi-bin/bookipi`…"), never surface a "wrapper installed at …" line, and **never offer to edit their shell PATH / `.zshrc` / rc files** — a tester was confused and mildly alarmed by exactly this (field report T-22). It's a small-business owner, not a developer: they only care that their request works. Set the wrapper up silently and move straight to the task. If a session needs `bookipi` on PATH across bash calls, use the export prefix below — silently, never as a message.
 
