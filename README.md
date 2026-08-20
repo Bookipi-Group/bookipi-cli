@@ -1,7 +1,7 @@
 # Bookipi CLI
 
-[![release](https://img.shields.io/github/v/release/Bookipi-Group/bookipi-agent-cli-release?label=release)](https://github.com/Bookipi-Group/bookipi-agent-cli-release/releases/latest)
-[![release status](https://github.com/Bookipi-Group/bookipi-agent-cli-release/actions/workflows/release.yml/badge.svg?event=release)](https://github.com/Bookipi-Group/bookipi-agent-cli-release/actions/workflows/release.yml)
+[![release](https://img.shields.io/github/v/release/Bookipi-Group/bookipi-cli?label=release)](https://github.com/Bookipi-Group/bookipi-cli/releases/latest)
+[![release status](https://github.com/Bookipi-Group/bookipi-cli/actions/workflows/release.yml/badge.svg?event=release)](https://github.com/Bookipi-Group/bookipi-cli/actions/workflows/release.yml)
 
 **Bookipi CLI** turns your back office — invoices, payments, customers,
 expenses, proposals, contracts, and reports — into clean `--json` commands you
@@ -30,18 +30,33 @@ and Claude does the work. This guide shows you how to set that up.
 ### 1. Install the skill
 
 1. Download the latest `bookipi-cli.skill` from
-   [Releases](https://github.com/Bookipi-Group/bookipi-agent-cli-release/releases).
+   [Releases](https://github.com/Bookipi-Group/bookipi-cli/releases).
 2. Double-click it. Cowork or Claude Desktop will prompt to install.
 3. Confirm. It now appears in your Skills list as `bookipi-cli`.
 
 If double-click does nothing, drag the file into the Cowork window. If your
 browser stripped the `.skill` extension on download, rename it back.
 
-**Claude Code (terminal):** a skill installed via Claude Desktop is also
-available in Claude Code sessions started from the desktop app. For standalone
-terminal use, unzip the `.skill` file into `~/.claude/skills/` (it's a zip —
-you'll end up with `~/.claude/skills/bookipi-cli/`). Claude Code runs the CLI
-on your own machine, so you'll also need Node 22.12 or newer installed.
+**Claude Code:** install it as a plugin instead — one command, and it updates
+itself when a new version ships:
+
+```
+/plugin marketplace add Bookipi-Group/bookipi-cli
+/plugin install bookipi@bookipi-plugins
+```
+
+Claude fetches the CLI on first use, so there's nothing else to download. You
+need Node 22.12 or newer on your machine.
+
+A skill installed via Claude Desktop is also available in Claude Code sessions
+started from the desktop app, so you may already have it. To install by hand
+instead, unzip the `.skill` file into `~/.claude/skills/` (it's a zip — you'll
+end up with `~/.claude/skills/bookipi-cli/`).
+
+**Other agents** — Codex, Cursor, GitHub Copilot, Antigravity, Windsurf — read
+skills from `.agents/skills/`, which this repo publishes alongside the Claude
+path. Copy `.agents/skills/bookipi-cli/` into your project or agent skills
+directory.
 
 ### 2. Allow network access (only on your own Claude subscription, one-time)
 
@@ -190,8 +205,15 @@ Bookipi CLI is also a standalone, JSON-first command-line tool you can build on
 directly — for AI agents, automations, integrations, and your own products. The
 bundled CLI runs on Node 22+ with no build step.
 
+Grab the bundled CLI from the latest release — this repo holds the skill and
+docs, not the CLI source, so cloning it won't give you a binary:
+
 ```
-git clone https://github.com/Bookipi-Group/bookipi-agent-cli-release
+curl -fsSL -o bookipi-cli.skill \
+  https://github.com/Bookipi-Group/bookipi-cli/releases/latest/download/bookipi-cli.skill
+unzip -q bookipi-cli.skill 'bookipi-cli/bin/*'
+alias bookipi='node "$PWD/bookipi-cli/bin/bookipi.js"'
+
 bookipi init                                   # creates a workspace + browser OAuth sign-in (~5s)
 bookipi invoice list --status overdue --json   # structured output your code can act on
 ```
@@ -219,7 +241,7 @@ A small, predictable, `--json`-first surface your code can call reliably.
 ## Found a bug? Stuck?
 
 Open an issue on
-[GitHub](https://github.com/Bookipi-Group/bookipi-agent-cli-release/issues) with:
+[GitHub](https://github.com/Bookipi-Group/bookipi-cli/issues) with:
 
 - What you typed
 - What Claude did
