@@ -106,7 +106,7 @@ The CLI emits errors in a consistent format on stderr — the agent should **pas
 
 | Category (`code`) | Markdown summary | Hint | Exit |
 |---|---|---|---|
-| `auth` | *Your Bookipi session expired (or you're not logged in).* | *Run `bookipi login --relay` to reconnect, then retry the command.* | 2 |
+| `auth` | *Your Bookipi session expired (or you're not logged in).* | *Re-run the login flow (`bookipi login --relay-start`, then `--relay-wait`), then retry the command.* | 2 |
 | `no-company` | *No company is set as your default.* | *Run `bookipi whoami` after logging in to refresh the default company.* | 2 |
 | `network` | *Couldn't reach Bookipi (network issue).* | *Check your connection and try again in a moment.* | 1 |
 | `timeout` | *Request timed out.* | *The service might be slow — try the command again.* | 1 |
@@ -120,7 +120,7 @@ The CLI emits errors in a consistent format on stderr — the agent should **pas
 
 ### How the agent should react
 
-1. **Auth errors** (`code: "auth"`) — silently re-trigger the login flow (`bookipi login --relay`), then re-run the original command. Don't abandon the user's task.
+1. **Auth errors** (`code: "auth"`) — silently re-trigger the login flow (`bookipi login --relay-start`, then `--relay-wait`), then re-run the original command. Don't abandon the user's task.
 2. **Handle-not-found / not-found** — run the suggested `list` command silently, then retry. If still missing, surface the issue plainly: *"I can't find that record — it might've been deleted."*
 3. **Network / timeout / rate-limit** — wait briefly and retry once. If it fails again, surface the hint to the user.
 4. **Validation** — these are user-input issues. Surface the message + hint plainly and ask for the right value via `AskUserQuestion` if possible.

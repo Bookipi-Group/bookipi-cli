@@ -443,11 +443,11 @@ bookipi whoami
 
 If authenticated, skip to Step 3. If `"Not logged in"`, use the **relay login flow** below.
 
-**For new project-folder workspaces in Cowork:** run `bookipi init --no-login` against the **mounted project folder** (verify `pwd` is under `/sessions/<id>/mnt/<folder>` first; pass that path explicitly if not) to set up the folder structure (fast, no OAuth, exits immediately), then use the relay login flow below. **Do NOT use `bookipi init` (without `--no-login`) in Cowork** — its inline login flow has the same cross-shell survivability issue and Claude can't reliably detect its completion. Always separate folder setup from authentication in Cowork.
+**For new project-folder workspaces in Cowork:** run `bookipi init` against the **mounted project folder** (verify `pwd` is under `/sessions/<id>/mnt/<folder>` first; pass that path explicitly if not). With no TTY it now sets up the folder AND registers the relay session in one short call, returning `{url, sessionId, next, action}` — share the url, then run `next` from inside that folder. It no longer blocks on the login, so the old advice to pass `--no-login` and authenticate separately is obsolete (`--no-login` still exists if you want folder setup with no session at all).
 
 **After onboarding completes (init + login + default company), resume the user's original request.** If they asked for something before the auth detour ("bookipi menu", "who owes me money?"), fulfill it now, unprompted — don't end on a bare "you're all set". If there was no pending request, render the main-menu launcher as the natural "here's what you can do" moment.
 
-**Use the split relay flow in EVERY agent environment — Claude Code, Cowork, and Claude Desktop alike.** Two short, blocking bash calls drive the auth dance. The bookipi process never has to stay alive between calls — the relay server holds the session state, so it fits any harness with short tool calls. Do NOT drop to `bookipi login --manual` just because you're not in Cowork: manual makes the user copy-paste a redirect URL by hand and is strictly worse. Manual is the last resort, only when the relay flags don't exist (very old CLI) or the relay server itself is unreachable.
+**Use the split relay flow in EVERY agent environment — Claude Code, Cowork, and Claude Desktop alike.** Two short, blocking bash calls drive the auth dance. The bookipi process never has to stay alive between calls — the relay server holds the session state, so it fits any harness with short tool calls. There is no other login path to fall back to — the manual and localhost-callback flows were removed, so if the relay is unreachable, say so rather than reaching for a flag that no longer exists.
 
 #### The flow
 
@@ -509,13 +509,18 @@ cd <project-folder>
 bookipi login --relay-wait <sessionId>   # run_in_background: true
 ```
 
-The background task re-invokes you when it exits: `{"success":true}` → confirm
-and continue (Step 4); `{"status":"pending"}` (90s passed) → launch another
-background `--relay-wait` and yield again — repeat up to ~4 times before
-asking the user if they hit a problem.
+A background task cannot be killed by the bash timeout, so give it the whole
+session in one call with `--wait-seconds 290`:
+
+```bash
+bookipi login --relay-wait <sessionId> --wait-seconds 290   # run_in_background: true
+```
+
+The task re-invokes you when it exits: `{"success":true}` → do what its
+`action` says (Step 4). `{"status":"pending"}` → run the command in `next`.
 
 **In Cowork (no background shell; mid-turn text renders fine there):** share
-the link, then poll in a loop in the SAME turn:
+the link, then poll in the SAME turn:
 
 ```bash
 export PATH="/tmp/bookipi-bin:$PATH"
@@ -523,24 +528,32 @@ cd <project-folder>
 bookipi login --relay-wait <sessionId>
 ```
 
-`--relay-wait` polls internally for up to ~90s and returns only when there's
-something to report — so you loop just a few times, not thirty. Outputs:
+In the foreground, do NOT pass `--wait-seconds` — the default ~110s is chosen
+to return inside a 2-minute tool budget. A call killed by the timeout prints
+nothing at all: no `next`, no `action`, nothing to act on. Waiting longer than
+the budget is only safe when the call cannot be killed. Outputs:
 
 | Output | Exit | Meaning | Next step |
 |---|---|---|---|
-| `{"success":true}` | 0 | User authorized, token saved | Done — go to Step 4 |
-| `{"status":"pending"}` | 0 | 90s passed, still not authorized | **Call `--relay-wait` again right away** (don't stop, don't ask the user) |
-| `{"error":"Session expired. …"}` | 3 | 5-min relay timeout hit | Go back to Step 1 |
+| `{"success":true, "email", "company", "action"}` | 0 | Authorized, token saved | Do what `action` says — go to Step 4 |
+| `{"status":"pending", "next", "action"}` | 0 | The wait was capped before the user authorized | Run the command in `next` right away (don't stop, don't ask the user) |
+| `{"error":"Session expired. …"}` | 3 | The 5-minute session ran out | Go back to Step 1 |
 | `{"error":"Unknown session. …"}` | 3 | sessionId doesn't match storage (rare) | Go back to Step 1 |
 
-**Keep calling `--relay-wait` back-to-back until `{"success":true}` or an
-error** — up to ~4 calls (~5–6 minutes) total. Only after that many `pending`
-results should you check in with the user ("still waiting on the browser
-login — did you finish authorizing?"). The whole point: the user should never
-have to tell you "it's done."
+Every one of those carries an `action` or `next` field saying what to do — read
+it and follow it. It is there because this decision happens after the command
+has exited, and relying on this document alone made the follow-through fire
+only sometimes.
+
+A `pending` result is not a reason to ask the user anything: the command detects
+authorization on its own, so run `next` and keep going. The session expires
+after 5 minutes — roughly three foreground waits — and past that you get
+`Session expired`, which is the cue to restart at Step 1, not to interrogate
+the user.
 
 (`bookipi login --relay-resume <sessionId>` still exists — a single ~2s poll —
-if you need finer-grained control, but prefer `--relay-wait` so you loop less.)
+if you need finer-grained control, but prefer `--relay-wait` so you do not loop
+at all.)
 
 **Step 4 — Confirm:**
 
@@ -585,49 +598,27 @@ The relay's session state lives on the bkpi.co server, not in a local process. T
 
 | Approach | Local process lifetime | Fragility in agent environments |
 |---|---|---|
-| `bookipi login --relay` (single command) | ~5 minutes (in-process polling) | Killed by sandbox or bash-tool timeout (Claude Code's default is 2 min) |
-| `bookipi login --relay > file &` (background) | ~5 minutes (orphaned) | Reaped by sandbox |
+| a single blocking login command | ~5 minutes (in-process polling) | Killed by sandbox or bash-tool timeout — and it printed the URL then blocked, so the user never saw the link |
+| the same, backgrounded with `&` | ~5 minutes (orphaned) | Reaped by sandbox |
 | `nohup` / `setsid` / `disown` variants | ~5 minutes (detached) | Sandbox still kills, or `setsid` triggers SIGTERM |
 | **`--relay-start` + repeated `--relay-resume`** | **~2 seconds per call** | **Each call fits comfortably in any tool budget. No detachment, no background process, no fragility.** |
 
-**Important: use the split flow (`--relay-start` / `--relay-resume`), NOT `bookipi login --relay`.** The latter is the legacy single-command path, kept around for humans in a direct terminal. Its in-process 5-minute poll hangs or times out inside Cowork AND Claude Code bash tools alike.
+**Use the split flow: `--relay-start` then `--relay-wait`.** A bare `bookipi login` blocks and polls in-process, which is correct in a real terminal and wrong in a harness — so with no TTY it switches to `--relay-start` on its own. The `--relay` flag it used to need is gone.
 
 (Safety net: a bare `bookipi login` run without a TTY — i.e. from any agent bash tool — auto-switches to `--relay-start` behavior: it prints `{url, sessionId, next}` immediately and exits instead of blocking. If you see that JSON, you're already at Step 2 below: share the url, then poll. `--relay` bypasses this guard, which is one more reason never to use it.)
 
 #### If polling keeps returning pending for too long
 
-If you've called `--relay-wait` ~4 times (~5–6 minutes) and still only see `{"status":"pending"}`, ask the user if they completed the browser authorization. If they say yes but you keep getting `pending`, the auth flow probably failed on their end. Restart with a fresh `--relay-start`.
+Once you have seen `pending` about three times (~5 minutes), the session is at or near expiry — expect `Session expired` next. At that point ask whether the browser authorization completed; if they say yes and it still failed, the auth flow broke on their end. Restart with a fresh `--relay-start`.
 
 If `--relay-resume` returns an "expired" or "Unknown session" error, that's the cue to restart with `--relay-start`. Don't try to recover the same session — start a new one.
 
-#### Manual flow (last-resort fallback)
-
-If for some reason `--relay-start` / `--relay-resume` fails (e.g., the user's CLI is older and doesn't have these flags yet), fall back to the manual flow:
-
-```bash
-bookipi login --manual                                  # prints {"url":"..."}
-# user authorizes, copies redirect URL from address bar
-bookipi login --exchange "<paste-the-redirect-url>"     # prints {"success":true}
-```
-
-This involves the user copy-pasting a URL, which has more friction. Prefer the split relay flow whenever it's available.
-
 #### Important guardrails
 
-- Use `--relay-start` and `--relay-resume` in every agent environment (Claude Code included). **Do not** use the legacy `bookipi login --relay` (single command) — it will hang or time out. **Do not** use `--manual` while the relay flags exist — it forces the user to copy-paste a redirect URL by hand.
+- Use `--relay-start` then `--relay-wait` in every agent environment (Claude Code included). These are the only login flags that exist — the localhost-callback, `--manual`/`--exchange` and legacy `--relay` flows were removed. A bare `bookipi login` with no TTY does `--relay-start` for you.
 - Don't introduce shell `&`, `nohup`, `setsid`, `disown`, `run_in_background`, or any other detachment / streaming trick. Each call is short and synchronous.
 - Don't poll the relay's HTTP endpoint directly. The CLI handles that.
 - If polling stalls or errors, restart with `--relay-start`. Don't try to surgically recover.
-
-**Fallback — manual flow:** if relay times out or the background process can't survive in your sandbox, switch to the manual flow which is fully synchronous and doesn't depend on a long-running process:
-
-```bash
-bookipi login --manual    # prints { "url": "..." } — share with user
-# user pastes the redirect URL back:
-bookipi login --exchange "<full-redirect-url-from-user>"
-```
-
-Each command in the manual flow is a separate, short-lived process — no cross-shell survivability concern.
 
 ### Step 2.5: Load the assistant memory
 
@@ -661,8 +652,7 @@ Present a brief, actionable summary in **plain language** — highlight key numb
 ## Other Commands
 
 ```bash
-bookipi whoami                          # Check current user
-bookipi login --relay                   # Relay login (recommended in sandbox)
-bookipi login --manual                  # Generate auth URL (fallback)
-bookipi login --exchange <redirect_url> # Exchange auth code (manual flow step 2)
+bookipi whoami                           # Check current user
+bookipi login --relay-start              # Step 1: prints {url, sessionId}
+bookipi login --relay-wait <sessionId>   # Step 2: waits for authorization, saves the token
 ```
