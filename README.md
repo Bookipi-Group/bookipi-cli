@@ -65,7 +65,24 @@ started from the desktop app, so you may already have it. To install by hand
 instead, unzip the `.skill` file into `~/.claude/skills/` (it's a zip — you'll
 end up with `~/.claude/skills/bookipi-cli/`).
 
-**Other agents** — Codex, Cursor, GitHub Copilot, Antigravity, Windsurf — read
+**Codex:** add this repo as a marketplace and install from it — the plugin
+carries its own Codex manifest, so you get the Bookipi icon and starter prompts
+rather than a bare listing:
+
+```
+/plugin marketplace add Bookipi-Group/bookipi-cli
+/plugin install bookipi
+```
+
+**Gemini CLI:** install it as an extension:
+
+```
+gemini extensions install https://github.com/Bookipi-Group/bookipi-cli
+```
+
+Upgrade later with `gemini extensions update bookipi`.
+
+**Other agents** — Cursor, GitHub Copilot, Antigravity, Windsurf — read
 skills from `.agents/skills/`, which this repo publishes alongside the Claude
 path. Copy `.agents/skills/bookipi-cli/` into your project or agent skills
 directory.

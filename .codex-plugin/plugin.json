@@ -19,7 +19,7 @@
     "proposals",
     "esign"
   ],
-  "skills": "./.agents/skills/",
+  "skills": "./skills/",
   "interface": {
     "displayName": "Bookipi",
     "shortDescription": "Run your small business from chat",

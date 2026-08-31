@@ -18,6 +18,6 @@
     "esign"
   ],
   "skills": [
-    "./.claude/skills/bookipi-cli"
+    "./skills/bookipi-cli"
   ]
 }

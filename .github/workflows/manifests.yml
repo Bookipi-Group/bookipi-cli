@@ -1,0 +1,23 @@
+name: manifests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Skill copies and manifest versions agree
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Provider skill layouts match the canonical tree
+        run: scripts/sync-skills.sh --check
+
+      - name: Provider manifest versions agree
+        run: scripts/check-versions.sh
