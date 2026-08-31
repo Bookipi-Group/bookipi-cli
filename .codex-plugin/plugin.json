@@ -1,0 +1,45 @@
+{
+  "name": "bookipi",
+  "version": "0.36.0",
+  "description": "Run your business from chat — invoices, customers, expenses, deals, proposals, eSign contracts, meetings, reports and your website. Installs the Bookipi skill; pair it with the `bookipi` CLI or a Bookipi MCP connector.",
+  "author": {
+    "name": "Bookipi",
+    "email": "support@bookipi.com",
+    "url": "https://bookipi.com/"
+  },
+  "homepage": "https://bookipi.com/cli/",
+  "repository": "https://github.com/Bookipi-Group/bookipi-agent-cli-release",
+  "license": "MIT",
+  "keywords": [
+    "bookipi",
+    "invoicing",
+    "accounting",
+    "small-business",
+    "expenses",
+    "proposals",
+    "esign"
+  ],
+  "skills": "./.agents/skills/",
+  "interface": {
+    "displayName": "Bookipi",
+    "shortDescription": "Run your small business from chat",
+    "longDescription": "Run your business from chat. Invoices and the whole invoice document family (estimates, credit notes, delivery notes, purchase orders), customers and payment history, expenses and receipt scanning, deals, AI-written proposals, eSign contracts, recorded meetings with transcripts and AI summaries, reports and dashboards, and your Bookipi website. Installs the Bookipi skill — presentation rules, operation routing, and 21 flow playbooks (morning brief, collections run, win a deal, quick quote, stalled-deal recovery, website review). Sign in with your Bookipi account; no install and no API key. Add the `bookipi` CLI for writes.",
+    "developerName": "Bookipi",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "websiteURL": "https://bookipi.com/cli/",
+    "privacyPolicyURL": "https://bookipi.com/privacy-policy/",
+    "termsOfServiceURL": "https://bookipi.com/terms-of-service/",
+    "defaultPrompt": [
+      "Who owes me money?",
+      "Show me my morning brief.",
+      "Create an invoice for Acme — $5,000 consulting."
+    ],
+    "brandColor": "#1D65F3",
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/logo.png"
+  }
+}
