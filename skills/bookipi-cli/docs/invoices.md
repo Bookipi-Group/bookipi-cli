@@ -286,7 +286,7 @@ Works with any document type too (`--type estimate --recurring month`, etc.). Fo
 
 > ⚠️ **PDF (`--pdf` / the htmlToPdf service) is disabled in this skill for now — do not use it.** Use HTML rendering or the web link instead. (Re-enable the `--pdf` guidance here once the PDF service is back in scope.)
 
-Use `bookipi invoice preview <handle-or-id>` — it renders the invoice (same layout the web app uses) as a **self-contained HTML file** and prints a `file://` path.
+Use `bookipi invoice preview <handle-or-id>` — it renders the invoice (same layout the web app uses) as a **self-contained HTML file** and prints a `file://` path. Without `-o` it writes into the OS temp directory and sweeps its own earlier renders there after an hour, so a rendered invoice is not left sitting on disk indefinitely. A `--live` session is safe from that: re-rendering keeps the file's mtime fresh. Pass `-o <path>` when the file needs to outlive the hour.
 
 > ⚠️ **`file://` paths are not clickable in a chat/Cowork session** — the file lives on the CLI's host and chat clients block local-file links, so clicking does nothing. Only present a `file://` path as a clickable link when the CLI runs on the **user's own machine in a terminal**. In a hosted/chat context, render the HTML **inline** (visualization widget) instead, or — if the user just wants to *view* or *share* the invoice — give them the `invoice get` **web** link, which opens in the browser everywhere.
 
