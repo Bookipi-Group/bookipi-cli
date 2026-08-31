@@ -53,6 +53,15 @@ is charged twice (`Skills (2)`, ~517 tok instead of ~259 — check with
 manifests point at it. Keep them pointing at the same place. `.agents/skills/`
 is safe alongside it — Claude Code does not auto-discover that path.
 
+Codex is also safe, though for a different reason, and it is worth writing down
+because you cannot check it from disk — Codex resolves its skill registry at
+runtime and persists nothing. Its spec says a declared `skills` path is
+"supplemented on top of default component discovery", so `.codex-plugin`'s
+`skills: "./skills/"` plus the `.agents/skills/` copy looks like the same
+double-register trap. It is not: Codex de-duplicates by skill **name**. Verified
+by hand on the 0.37.0 listing (`Manage › bookipi` reads `Skills 1`). The only
+way to re-check is that screen.
+
 ## Install surfaces
 
 Only the Codex manifest has a branding block (icon, logo, `brandColor`).
