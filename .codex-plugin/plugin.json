@@ -8,7 +8,7 @@
     "url": "https://bookipi.com/"
   },
   "homepage": "https://bookipi.com/cli/",
-  "repository": "https://github.com/Bookipi-Group/bookipi-agent-cli-release",
+  "repository": "https://github.com/Bookipi-Group/bookipi-cli",
   "license": "MIT",
   "keywords": [
     "bookipi",

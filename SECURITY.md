@@ -27,5 +27,5 @@ address above.
 
 ## Supported versions
 
-Only the [latest release](https://github.com/Bookipi-Group/bookipi-agent-cli-release/releases/latest)
+Only the [latest release](https://github.com/Bookipi-Group/bookipi-cli/releases/latest)
 is supported. If you're on an older version, please update before reporting.
