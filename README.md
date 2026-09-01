@@ -145,7 +145,7 @@ shared global state.
 
    > _Set up Bookipi in this folder._
 
-Claude opens a browser for staging login, then saves your credentials
+Claude opens a browser to sign you in to Bookipi, then saves your credentials
 inside the folder (under `.bookipi/`, auto-gitignored). Confirm with:
 
 > _Who am I logged in as?_
@@ -265,7 +265,31 @@ $ bookipi invoice list --status overdue --json
 
 ### Commands
 
-A small, predictable, `--json`-first surface your code can call reliably.
+A small, predictable, `--json`-first surface your code can call reliably. Every
+command accepts `--json`; run `bookipi <group> --help` for the flags on any one
+of them.
+
+| Group | What it covers | Subcommands |
+| --- | --- | --- |
+| `invoice` | Invoices and the wider document family | `list` `get` `preview` `create` `create-from-proposal` `duplicate` `update` `delete` `send` `send-receipt` `mark-paid` `void` `remind` `collections` `attach-photo` |
+| `customer` | Customers, their payment history and email | `list` `get` `payments` `create` `update` `delete` `send-email` `emails` |
+| `item` | Products and services you bill for | `list` `create` `set-photo` |
+| `expense` | Expenses and receipt scanning (OCR) | `categories` `list` `upload` `scan` `create` `delete` |
+| `paylink` | BPay payment links | `create` `list` `get` `status` `send` |
+| `deal` | Pipeline deals | `list` `create` `update` |
+| `proposal` | AI-written proposals | `list` `generate` `update` `duplicate` `send` `delete` |
+| `contract` | eSign contracts | `list` `draft` `upload` `create-from-proposal` `finalize` `send` |
+| `report` | Reports, dashboards and insights | `summary` `customers` `items` `dashboard` `insights` `digest` `suggest` `open` |
+| `meeting` | Recorded meetings and bookings | `list` |
+| `calendar` | Calendar connection state | `status` |
+| `company` | The active company | `list` `set` |
+| `website` | The AI-built company website | `status` `content` `pages` `page` `create` `generate` `add-page` `update` `ask` `preview` `publish` `analytics` `open` |
+| — | Session and workspace | `login` `logout` `whoami` `init` `mcp` |
+
+Note the difference between the two paths: in chat, the skill stops and asks
+before anything sends, charges, or records. The CLI has no such prompt — a
+write subcommand executes as soon as you run it, which is what you want in a
+script and worth knowing before you wire one up.
 
 ## Found a bug? Stuck?
 
@@ -281,6 +305,44 @@ The more detail, the faster we can help.
 **Security issues:** please don't open a public issue — see
 [SECURITY.md](SECURITY.md) for how to report privately.
 
+## Privacy
+
+Bookipi CLI talks only to Bookipi's own services, on your behalf, using your own
+Bookipi account. Full policy: **[bookipi.com/privacy-policy](https://bookipi.com/privacy-policy/)**.
+
+**What it collects and where it goes**
+
+- **Your Bookipi business data** — invoices, customers, items, expenses, deals,
+  proposals, contracts, meetings, website content. Read from and written to
+  your Bookipi account over HTTPS. Nothing is stored anywhere else.
+- **Credentials** — an OAuth access token and refresh token, obtained by
+  browser sign-in. Stored **locally on your machine** in the workspace folder
+  (`.bookipi/`, auto-gitignored) or in `~/.bookipi/`. They are never sent
+  anywhere but Bookipi's auth service, and `bookipi logout` deletes them.
+- **Receipt and logo images** — uploaded to Bookipi's S3 storage so scanning and
+  invoice previews work.
+- **Usage analytics** — which command or tool ran, how long it took, whether it
+  failed, plus CLI version, OS and client platform, sent to Amplitude so we can
+  find broken flows. Identified by a one-way hash of your email and a hash of
+  the machine, never by either value itself. Command arguments, invoice
+  contents, customer records and credentials are not included. Turn it off with
+  `BOOKIPI_NO_ANALYTICS=1` or the cross-tool `DO_NOT_TRACK=1`.
+
+**What it does not do**
+
+It does not scan your filesystem — it reads the workspace folder and whatever
+file you point it at, such as a receipt image. It does not collect your
+conversations with Claude, and it does not share your data with third parties
+for advertising or model training.
+
+**Retention** — business data lives in your Bookipi account and follows
+Bookipi's retention policy; delete it there or ask support to delete the
+account. Local credentials live only on your machine until you log out.
+
+**Questions or a deletion request:** [support@bookipi.com](mailto:support@bookipi.com).
+
 ## License
 
-Copyright © Bookipi. All rights reserved. See [LICENSE](LICENSE).
+Copyright © Bookipi. All rights reserved — see [LICENSE](LICENSE). Use of
+Bookipi CLI is subject to Bookipi's
+[Terms of Service](https://bookipi.com/terms-of-service/).
