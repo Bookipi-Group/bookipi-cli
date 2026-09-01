@@ -528,6 +528,43 @@ cd <project-folder>
 bookipi login --relay-wait <sessionId>
 ```
 
+**In Codex — 🔴 run `bookipi init` FIRST, then poll in the foreground.** Codex
+runs tools under a `workspace-write` sandbox: the working directory is
+writable, the home directory is **not**. `--relay-start` has to save a pending
+session locally (it holds the PKCE verifier, which exists nowhere else), and a
+blocked credential write used to be swallowed — so `--relay-start` printed a
+normal-looking `{url, sessionId}` and the very next call died with
+`Unknown session`, which reads to the user as "login never detects me". The
+CLI now fails loudly at `--relay-start` instead, but the fix is the same:
+give it a writable config dir inside the workspace before you begin.
+
+```bash
+export PATH="/tmp/bookipi-bin:$PATH"
+cd <workspace-folder>          # Codex's own working directory is fine
+bookipi init --no-login        # creates ./.bookipi/ — found automatically
+bookipi login --relay-start
+```
+
+Then share the link and poll **in the foreground, in the same turn** — Codex
+has no background-task completion callback, so a backgrounded `--relay-wait`
+would finish with nobody listening and the login would silently never
+complete:
+
+```bash
+export PATH="/tmp/bookipi-bin:$PATH"
+cd <workspace-folder>
+bookipi login --relay-wait <sessionId>
+```
+
+Do **not** shorten the wait. `--wait-seconds 20` returns `pending` long before
+anyone can finish a browser login, and looks exactly like broken
+auto-detection (field report: Codex picked 20 on its own because this section
+did not exist). Take the default, and on `pending` run `next` immediately.
+
+If `--relay-start` reports "no writable credential directory", you skipped the
+`bookipi init` above — run it and start over rather than retrying the same
+command.
+
 In the foreground, do NOT pass `--wait-seconds` — the default ~110s is chosen
 to return inside a 2-minute tool budget. A call killed by the timeout prints
 nothing at all: no `next`, no `action`, nothing to act on. Waiting longer than
