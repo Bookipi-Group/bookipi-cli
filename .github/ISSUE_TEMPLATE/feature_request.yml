@@ -1,0 +1,31 @@
+name: Feature request
+description: Something you want Bookipi to be able to do
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to get done?
+      description: >
+        Describe the job, not the feature — "I chase overdue invoices every
+        Monday and want it to happen on its own" tells us more than "add a cron
+        flag".
+    validations:
+      required: true
+
+  - type: textarea
+    id: today
+    attributes:
+      label: How do you do it today?
+      description: In Bookipi, in another tool, or by hand.
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where would you use it?
+      options:
+        - In chat, through Claude or another agent
+        - On the command line
+        - Both
+    validations:
+      required: true

@@ -27,9 +27,24 @@ by version, so a mismatch ships a manifest claiming the wrong release.
 
 ### Maintained here (safe to edit)
 
-`README.md`, `SECURITY.md`, `LICENSE`, and `.github/workflows/release.yml`
-(the `.skill` bundle smoke test — distinct from the source repo's release
-pipeline of the same name).
+`README.md`, `SECURITY.md`, `LICENSE`, `CHANGELOG.md`,
+`.github/ISSUE_TEMPLATE/`, `.github/scripts/`, and both workflows:
+`release.yml` (the `.skill` bundle smoke test — distinct from the source
+repo's release pipeline of the same name) and `verify.yml`.
+
+`verify.yml` runs `.github/scripts/verify-manifests.mjs`, which catches what
+generation can get wrong silently: manifests disagreeing on the version, the
+version not matching the release tag, `skills/` and `.agents/skills/` drifting
+apart, a manifest naming a skills directory other than `./skills/` (the
+double-register trap below), a missing branding asset, or a staging URL in a
+public manifest. Run it before a release:
+
+```
+node .github/scripts/verify-manifests.mjs v0.37.1
+```
+
+`CHANGELOG.md` is written by hand here, one section per release. Nothing
+generates it — add the entry when the release ships.
 
 ## To change a skill or a manifest
 

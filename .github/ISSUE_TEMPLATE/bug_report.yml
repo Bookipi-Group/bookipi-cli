@@ -1,0 +1,67 @@
+name: Bug report
+description: Something Bookipi did wrong, in chat or on the command line
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please don't include invoice contents, customer
+        details, or anything from a `.bookipi/` folder — issues here are public.
+
+        Found a **security** problem? Don't file it here — see
+        [SECURITY.md](https://github.com/Bookipi-Group/bookipi-cli/blob/main/SECURITY.md).
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where did this happen?
+      options:
+        - Claude Code (plugin)
+        - Cowork or Claude Desktop (.skill bundle)
+        - Codex
+        - Gemini CLI
+        - Another agent, from .agents/skills/
+        - The bookipi CLI directly, in a terminal
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `bookipi --version`, or the release tag you installed.
+      placeholder: "0.37.1 (prod, build 1c8c92f 2026-09-01)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-you-did
+    attributes:
+      label: What you typed
+      description: The exact prompt you gave Claude, or the exact command you ran.
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: >
+        What Claude did or what the CLI printed. Paste the error if there was
+        one — redact anything account-specific first.
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-you-expected
+    attributes:
+      label: What you expected instead
+    validations:
+      required: true
+
+  - type: input
+    id: node
+    attributes:
+      label: Node version
+      description: Output of `node --version`. The CLI needs 22.12 or newer.
+      placeholder: "v22.12.0"

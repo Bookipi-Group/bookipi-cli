@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/Bookipi-Group/bookipi-cli/blob/main/SECURITY.md
+    about: Report privately to support@bookipi.com — never as a public issue.
+  - name: Account, billing or data question
+    url: mailto:support@bookipi.com
+    about: Anything specific to your Bookipi account. Please don't post account details here.
+  - name: Documentation
+    url: https://bookipi.com/cli/
+    about: Setup, the skill, and what Bookipi CLI can do.
