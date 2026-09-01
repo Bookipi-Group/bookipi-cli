@@ -7,7 +7,8 @@
  * quietly — a manifest left on the previous version, the two skill copies
  * drifting apart, a manifest naming a skills directory other than the one
  * Claude Code auto-discovers (which registers the skill twice and charges the
- * context budget twice), or a staging URL reaching a public manifest.
+ * context budget twice), a staging URL reaching a public manifest, or a
+ * declared MCP server that is not actually serving (checked on releases only).
  *
  * Run it locally the same way CI does:
  *
@@ -147,6 +148,36 @@ for (const f of MANIFESTS) {
   const body = readFileSync(join(root, f), "utf8");
   const leaked = body.match(/https?:\/\/[^"\s]*\b(dev|staging|bkpi\.co)\b[^"\s]*/);
   if (leaked) fail(`${f}: non-production URL ${leaked[0]}`);
+}
+
+// --- 7. A declared MCP server is https, and on a release, actually serving ---
+//
+// The plugin starts its MCP servers automatically when it is enabled, so a URL
+// that does not resolve is a failed connection in front of every user who
+// installs. Reachability is only checked on a release, where it is worth
+// failing the run over; on push and PR the shape is checked and nothing is
+// dialled.
+
+const servers = Object.entries(claude?.mcpServers ?? {});
+for (const [name, cfg] of servers) {
+  if (cfg.type !== "http" && cfg.type !== "sse") continue;
+  if (!cfg.url?.startsWith("https://")) {
+    fail(`.claude-plugin/plugin.json: mcpServers.${name} url must be https — got "${cfg.url}"`);
+  }
+}
+
+if (tag) {
+  for (const [name, cfg] of servers) {
+    if (cfg.type !== "http" && cfg.type !== "sse") continue;
+    if (!cfg.url) continue;
+    const health = new URL("/health", cfg.url).toString();
+    try {
+      const res = await fetch(health, { signal: AbortSignal.timeout(15000) });
+      if (!res.ok) fail(`mcpServers.${name}: ${health} returned ${res.status}`);
+    } catch (err) {
+      fail(`mcpServers.${name}: ${health} is unreachable — ${err.message}`);
+    }
+  }
 }
 
 // --- Report -----------------------------------------------------------------

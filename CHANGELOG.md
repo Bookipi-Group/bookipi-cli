@@ -14,13 +14,16 @@ refresh the marketplace first (`/plugin marketplace update bookipi-cli`).
 ### Changed
 - The plugin manifests declared `MIT` while `LICENSE` reserves all rights. They
   now say `Proprietary`, which is what the licence has always said.
-- The marketplace listing said installing the plugin connects the hosted MCP
-  server. It does not yet — no manifest declares `mcpServers` — so the
-  description now covers the CLI and the optional connector.
+- The skill's MCP path was teaching a dispatcher that 0.37.0 retired, and still
+  described the connector as read-only. It now calls the operation tools
+  directly, and writes are documented as available on both paths.
 - `LICENSE` points at the [Terms of Service](https://bookipi.com/terms-of-service/)
   rather than the separate website Terms & Conditions page.
 
 ### Added
+- The plugin declares the hosted connector: installing it in Claude Code now
+  connects `https://mcp.bookipi.com/mcp` as well as installing the skill. Sign
+  in happens in the browser over OAuth on first use.
 - A Privacy section in the README: what the CLI collects, where it goes, how
   long it lives, and how to switch analytics off
   (`BOOKIPI_NO_ANALYTICS=1` or `DO_NOT_TRACK=1`).

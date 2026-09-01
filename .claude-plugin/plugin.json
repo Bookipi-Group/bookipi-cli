@@ -1,7 +1,7 @@
 {
   "name": "bookipi",
   "version": "0.37.1",
-  "description": "Run your business from chat — invoices, customers, expenses, deals, proposals, eSign contracts, meetings, reports and your website. Installs the Bookipi skill; pair it with the `bookipi` CLI or a Bookipi MCP connector.",
+  "description": "Run your business from chat \u2014 invoices, customers, expenses, deals, proposals, eSign contracts, meetings, reports and your website. Installs the Bookipi skill; pair it with the `bookipi` CLI or a Bookipi MCP connector.",
   "author": {
     "name": "Bookipi",
     "url": "https://github.com/Bookipi-Group/bookipi-cli"
@@ -19,5 +19,11 @@
   ],
   "skills": [
     "./skills/bookipi-cli"
-  ]
+  ],
+  "mcpServers": {
+    "bookipi": {
+      "type": "http",
+      "url": "https://mcp.bookipi.com/mcp"
+    }
+  }
 }

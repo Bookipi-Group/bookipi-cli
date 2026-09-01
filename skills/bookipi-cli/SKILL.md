@@ -36,8 +36,8 @@ session and don't mix.
 | You have | Use | Then |
 |---|---|---|
 | **The `bookipi` CLI** — Claude Code, a terminal, Cowork with the binary | Shell out: `bookipi invoice list --json` | Do the Session Setup below. This is the full surface: every read **and** every write. |
-| **The Bookipi MCP connector, no CLI** — claude.ai, Claude Desktop, Cursor, VS Code | `search_tools` → `describe_tools` → `execute_tool` | **Skip Session Setup entirely.** No PATH wrapper, no `bookipi login`, no health check — auth belongs to the connector. On an auth error, tell the user to reconnect it and never mention a terminal command. |
-| **Both** | Reads through MCP, writes through the CLI | MCP is read-only today; see the caveat below. |
+| **The Bookipi MCP connector, no CLI** — claude.ai, Claude Desktop, Cursor, VS Code | Call the operation directly: `list_invoices`, `create_invoice`, `manage_customer`. Every operation is its own tool, so the tool list is the whole surface. | **Skip Session Setup entirely.** No PATH wrapper, no `bookipi login`, no health check — auth belongs to the connector. On an auth error, tell the user to reconnect it and never mention a terminal command. |
+| **Both** | Either — they cover the same operations | Pick one at the start of the session and stay on it, so handles and confirmations don't split across two surfaces. |
 
 ### What carries over on either path
 
@@ -64,21 +64,20 @@ for the *sequence*, then map each step:
 
 | Doc says | You call |
 |---|---|
-| `bookipi invoice list --json` | `execute_tool(name: "list_invoices")` |
-| `bookipi customer list --search "Wayne"` | `execute_tool(name: "list_customers", arguments: {search: "Wayne"})` |
+| `bookipi invoice list --json` | `list_invoices` |
+| `bookipi customer list --search "Wayne"` | `list_customers` with `search: "Wayne"` |
+| `bookipi invoice send @i1` | `send_invoice` |
 | `--company <id>` | the `company_id` argument |
 
 **Never tell the user something isn't supported because the CLI command in a doc
-isn't available to you.** Run `search_tools` with keywords from their question
-first — the operations are not listed up front, and a name you don't recognise
-usually exists under a different one. `search_tools` with no query returns the
-whole capability map.
+isn't available to you.** Read the tool list first — a verb the docs spell one
+way is often a tool under another (`mark-paid` lives in
+`manage_invoice_payment`, the document family in `create_invoice`).
 
-**The caveat that matters: the MCP connector is read-only.** It covers 17 read
-operations. Any flow step that sends, creates, updates or deletes needs the CLI.
-On the MCP path, do the reading and analysis, then tell the user plainly that
-the action itself needs the CLI — do not silently drop the step, and do not
-claim you performed it.
+Writes are on this path too, and each one is annotated, so the client prompts
+before anything that changes a record. Arguments are validated strictly: pass
+exactly the parameter names the tool declares, because a near-miss is rejected
+rather than ignored.
 
 ## You Are the Assistant
 
@@ -323,9 +322,8 @@ Notes that matter:
 **If the download is not possible** — no network, `curl`/`unzip` unavailable, or
 it fails — fall back to what the session already has:
 
-- **An MCP connector is present** (you can see `search_tools` / `execute_tool`):
-  use it. Every read works. Say plainly that anything which sends, creates or
-  changes a record needs the CLI, and do not claim to have done it. See
+- **An MCP connector is present** (you can see `list_invoices` /
+  `create_invoice`): use it. Reads and writes both work there. See
   [Which path are you on?](#which-path-are-you-on-check-this-first).
 - **Nothing else present**: say so in one line and stop. *"I can't reach your
   Bookipi account from here yet — the Bookipi tool isn't installed in this

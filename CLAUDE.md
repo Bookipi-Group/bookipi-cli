@@ -36,8 +36,10 @@ repo's release pipeline of the same name) and `verify.yml`.
 generation can get wrong silently: manifests disagreeing on the version, the
 version not matching the release tag, `skills/` and `.agents/skills/` drifting
 apart, a manifest naming a skills directory other than `./skills/` (the
-double-register trap below), a missing branding asset, or a staging URL in a
-public manifest. Run it before a release:
+double-register trap below), a missing branding asset, a staging URL in a
+public manifest, or a declared MCP server that is not serving — that last one
+is dialled on releases only, so a release cannot ship a connector URL that
+does not answer. Run it before a release:
 
 ```
 node .github/scripts/verify-manifests.mjs v0.37.1
