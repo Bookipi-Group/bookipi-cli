@@ -60,12 +60,6 @@ keep serving the version you originally cloned:
 Include the `@bookipi-cli` part — `update bookipi` on its own reports
 "Plugin not found".
 
-**Installed before this was renamed?** The marketplace used to be called
-`bookipi-plugins`. Claude Code keeps whatever name you registered it under, so
-your existing install keeps working unchanged — keep using
-`bookipi@bookipi-plugins` in both commands above. Nothing to migrate; only new
-installs get the new name.
-
 A skill installed via Claude Desktop is also available in Claude Code sessions
 started from the desktop app, so you may already have it. To install by hand
 instead, unzip the `.skill` file into `~/.claude/skills/` (it's a zip — you'll
