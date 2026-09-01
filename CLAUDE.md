@@ -47,7 +47,7 @@ Claude Code auto-discovers `./skills/` **on top of** the path
 `.claude-plugin/plugin.json` declares. If the manifest names a different
 directory than the one auto-discovery finds, the same skill registers twice and
 is charged twice (`Skills (2)`, ~517 tok instead of ~259 — check with
-`claude plugin details bookipi@bookipi-plugins`).
+`claude plugin details bookipi@bookipi-cli`).
 
 `skills/` is the shared directory: Gemini CLI only looks there, and both plugin
 manifests point at it. Keep them pointing at the same place. `.agents/skills/`
