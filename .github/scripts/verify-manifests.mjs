@@ -158,14 +158,22 @@ for (const f of MANIFESTS) {
 // failing the run over; on push and PR the shape is checked and nothing is
 // dialled.
 
-// Claude names the transport in `type` and the endpoint in `url`; Gemini picks
-// the transport by key — `httpUrl` for streamable HTTP, `url` for SSE — and has
-// no `type` at all. Both are normalised to a URL here.
+// Claude and Codex name the transport in `type` and the endpoint in `url`;
+// Gemini picks the transport by key — `httpUrl` for streamable HTTP, `url` for
+// SSE — and has no `type` at all. All three are normalised to a URL here.
 
 const remotes = [];
-for (const [name, cfg] of Object.entries(claude?.mcpServers ?? {})) {
-  if (cfg.type === "http" || cfg.type === "sse") {
-    remotes.push({ file: ".claude-plugin/plugin.json", name, url: cfg.url });
+for (const [file, manifest] of [
+  [".claude-plugin/plugin.json", claude],
+  [".codex-plugin/plugin.json", codex],
+]) {
+  // Codex also allows `"mcpServers": "./.mcp.json"`; only the inline object
+  // form is checkable from here.
+  if (typeof manifest?.mcpServers !== "object") continue;
+  for (const [name, cfg] of Object.entries(manifest.mcpServers)) {
+    if (cfg.type === "http" || cfg.type === "sse") {
+      remotes.push({ file, name, url: cfg.url });
+    }
   }
 }
 for (const [name, cfg] of Object.entries(gemini?.mcpServers ?? {})) {

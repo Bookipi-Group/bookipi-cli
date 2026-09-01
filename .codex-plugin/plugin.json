@@ -20,10 +20,16 @@
     "esign"
   ],
   "skills": "./skills/",
+  "mcpServers": {
+    "bookipi": {
+      "type": "http",
+      "url": "https://mcp.bookipi.com/mcp"
+    }
+  },
   "interface": {
     "displayName": "Bookipi",
     "shortDescription": "Run your small business from chat",
-    "longDescription": "Run your business from chat. Invoices and the whole invoice document family (estimates, credit notes, delivery notes, purchase orders), customers and payment history, expenses and receipt scanning, deals, AI-written proposals, eSign contracts, recorded meetings with transcripts and AI summaries, reports and dashboards, and your Bookipi website. Installs the Bookipi skill — presentation rules, operation routing, and 21 flow playbooks (morning brief, collections run, win a deal, quick quote, stalled-deal recovery, website review). Sign in with your Bookipi account; no install and no API key. Add the `bookipi` CLI for writes.",
+    "longDescription": "Run your business from chat. Invoices and the whole invoice document family (estimates, credit notes, delivery notes, purchase orders), customers and payment history, expenses and receipt scanning, deals, AI-written proposals, eSign contracts, recorded meetings with transcripts and AI summaries, reports and dashboards, and your Bookipi website. Installs the Bookipi skill — presentation rules, operation routing, and 21 flow playbooks (morning brief, collections run, win a deal, quick quote, stalled-deal recovery, website review) — and connects the hosted Bookipi connector for both reads and writes. Sign in with your Bookipi account in the browser; no API key to manage. The `bookipi` CLI is the other path to the same operations.",
     "developerName": "Bookipi",
     "category": "Productivity",
     "capabilities": [

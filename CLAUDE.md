@@ -81,6 +81,15 @@ way to re-check is that screen.
 
 ## Install surfaces
 
+All three manifests declare the hosted MCP connector at
+`https://mcp.bookipi.com/mcp`. Claude and Codex use the same shape
+(`mcpServers` → `{ "type": "http", "url": … }`); Gemini picks the transport by
+key instead, so it is `httpUrl` (its `url` would mean SSE). None of them needs
+an OAuth block — the server answers an unauthenticated call with a 401 naming
+its protected-resource metadata, and every client discovers the flow from
+there. Keep the endpoint identical across the three; `verify.yml` fails the
+build when they drift.
+
 Only the Codex manifest has a branding block (icon, logo, `brandColor`).
 Claude Code's plugin schema has no icon field, and neither does Gemini CLI's
 `gemini-extension.json` — so the logo is Codex-only by design, not an oversight.
