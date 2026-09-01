@@ -21,9 +21,10 @@ refresh the marketplace first (`/plugin marketplace update bookipi-cli`).
   rather than the separate website Terms & Conditions page.
 
 ### Added
-- The plugin declares the hosted connector: installing it in Claude Code now
-  connects `https://mcp.bookipi.com/mcp` as well as installing the skill. Sign
-  in happens in the browser over OAuth on first use.
+- The plugin declares the hosted connector: installing it in Claude Code
+  (`mcpServers`) or as a Gemini CLI extension (`httpUrl`) now connects
+  `https://mcp.bookipi.com/mcp` as well as installing the skill. Sign-in is the
+  browser OAuth flow, discovered from the server — no client ID to configure.
 - A Privacy section in the README: what the CLI collects, where it goes, how
   long it lives, and how to switch analytics off
   (`BOOKIPI_NO_ANALYTICS=1` or `DO_NOT_TRACK=1`).

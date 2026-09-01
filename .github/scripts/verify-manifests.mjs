@@ -158,24 +158,42 @@ for (const f of MANIFESTS) {
 // failing the run over; on push and PR the shape is checked and nothing is
 // dialled.
 
-const servers = Object.entries(claude?.mcpServers ?? {});
-for (const [name, cfg] of servers) {
-  if (cfg.type !== "http" && cfg.type !== "sse") continue;
-  if (!cfg.url?.startsWith("https://")) {
-    fail(`.claude-plugin/plugin.json: mcpServers.${name} url must be https — got "${cfg.url}"`);
+// Claude names the transport in `type` and the endpoint in `url`; Gemini picks
+// the transport by key — `httpUrl` for streamable HTTP, `url` for SSE — and has
+// no `type` at all. Both are normalised to a URL here.
+
+const remotes = [];
+for (const [name, cfg] of Object.entries(claude?.mcpServers ?? {})) {
+  if (cfg.type === "http" || cfg.type === "sse") {
+    remotes.push({ file: ".claude-plugin/plugin.json", name, url: cfg.url });
+  }
+}
+for (const [name, cfg] of Object.entries(gemini?.mcpServers ?? {})) {
+  const url = cfg.httpUrl ?? cfg.url;
+  if (url) remotes.push({ file: "gemini-extension.json", name, url });
+}
+
+for (const { file, name, url } of remotes) {
+  if (!url?.startsWith("https://")) {
+    fail(`${file}: mcpServers.${name} must be https — got "${url}"`);
   }
 }
 
+// The two manifests describe the same connector, so they must name the same
+// endpoint. Divergence means one was edited and the other forgotten.
+const endpoints = [...new Set(remotes.map((r) => r.url).filter(Boolean))];
+if (endpoints.length > 1) {
+  fail(`manifests declare different MCP endpoints: ${endpoints.join(", ")}`);
+}
+
 if (tag) {
-  for (const [name, cfg] of servers) {
-    if (cfg.type !== "http" && cfg.type !== "sse") continue;
-    if (!cfg.url) continue;
-    const health = new URL("/health", cfg.url).toString();
+  for (const url of endpoints) {
+    const health = new URL("/health", url).toString();
     try {
       const res = await fetch(health, { signal: AbortSignal.timeout(15000) });
-      if (!res.ok) fail(`mcpServers.${name}: ${health} returned ${res.status}`);
+      if (!res.ok) fail(`${health} returned ${res.status}`);
     } catch (err) {
-      fail(`mcpServers.${name}: ${health} is unreachable — ${err.message}`);
+      fail(`${health} is unreachable — ${err.message}`);
     }
   }
 }

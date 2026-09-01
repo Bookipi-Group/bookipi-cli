@@ -1,5 +1,10 @@
 {
   "name": "bookipi",
   "version": "0.37.1",
-  "description": "Run your business from chat — invoices, customers, expenses, deals, proposals, eSign contracts, meetings, reports and your website. Bundles the Bookipi skill; pair it with the `bookipi` CLI."
+  "description": "Run your business from chat — invoices, customers, expenses, deals, proposals, eSign contracts, meetings, reports and your website. Bundles the Bookipi skill and connects the hosted Bookipi connector; the `bookipi` CLI is the other path to the same operations.",
+  "mcpServers": {
+    "bookipi": {
+      "httpUrl": "https://mcp.bookipi.com/mcp"
+    }
+  }
 }
