@@ -9,7 +9,7 @@ under a version you already have will not reach you. `claude plugin update`
 reports "already at the latest version" and keeps serving the cached copy —
 refresh the marketplace first (`/plugin marketplace update bookipi-cli`).
 
-## Unreleased
+## 0.38.1 — 2026-09-02
 
 ### Changed
 - **The skill drives the `bookipi` CLI only.** It previously claimed to cover
