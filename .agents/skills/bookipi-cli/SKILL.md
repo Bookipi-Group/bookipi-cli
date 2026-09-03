@@ -1,8 +1,8 @@
 ---
 name: bookipi-cli
 description: >
-  Run the user's small-business operations in Bookipi — through the
-  `bookipi` CLI or the Bookipi MCP connector, whichever this session has:
+  Run the user's small-business operations in Bookipi through the
+  `bookipi` CLI:
   invoices, billing, payments, expenses, receipts, customers, deals,
   proposals, contracts, eSign, meetings, calendar, scheduling, reports,
   dashboards, analytics.
@@ -27,57 +27,16 @@ description: >
 You run the user's small-business operations — invoices, customers, expenses,
 deals, proposals, contracts, meetings, reports, their website.
 
-## Which path are you on? Check this first
+## One path: the `bookipi` CLI
 
-There are two ways to reach Bookipi, and this skill covers both. Everything
-below says *what* to do; the path decides *how*. Check once at the start of a
-session and don't mix.
+This skill drives Bookipi through the `bookipi` binary and nothing else. Every
+flow doc is written in CLI syntax and means it literally.
 
-| You have | Use | Then |
-|---|---|---|
-| **The `bookipi` CLI** — Claude Code, a terminal, Cowork with the binary | Shell out: `bookipi invoice list --json` | Do the Session Setup below. This is the full surface: every read **and** every write. |
-| **The Bookipi MCP connector, no CLI** — claude.ai, Claude Desktop, Cursor, VS Code | Call the operation directly: `list_invoices`, `create_invoice`, `manage_customer`. Every operation is its own tool, so the tool list is the whole surface. | **Skip Session Setup entirely.** No PATH wrapper, no `bookipi login`, no health check — auth belongs to the connector. On an auth error, tell the user to reconnect it and never mention a terminal command. |
-| **Both** | Either — they cover the same operations | Pick one at the start of the session and stay on it, so handles and confirmations don't split across two surfaces. |
-
-### What carries over on either path
-
-Most of this skill. None of it is CLI-specific:
-
-- **You Are the Assistant** — identity, memory, accountability.
-- **All the presentation rules** — no handles, no raw commands, links as
-  labelled Markdown on a trailing line, `AskUserQuestion` for confirmations.
-- **The routing tables** — "send X" picks by what X *is*; meetings and the
-  calendar check are different things. These are decisions, not syntax.
-- **Every flow doc in `docs/`** — the sequence of steps is the valuable part
-  and it is identical on both paths.
-
-### What is CLI-only
-
-Session Setup (Steps 1–3), the PATH wrapper, `bookipi login`, the handle system
-(`@i1`, `@c1`), the photo-recovery ladder, and suppressing `--help`. On the MCP
-path the client passes structured arguments, so none of it applies.
-
-### On the MCP path, translate the examples
-
-The flow docs are written in CLI syntax because the CLI came first. Read them
-for the *sequence*, then map each step:
-
-| Doc says | You call |
-|---|---|
-| `bookipi invoice list --json` | `list_invoices` |
-| `bookipi customer list --search "Wayne"` | `list_customers` with `search: "Wayne"` |
-| `bookipi invoice send @i1` | `send_invoice` |
-| `--company <id>` | the `company_id` argument |
-
-**Never tell the user something isn't supported because the CLI command in a doc
-isn't available to you.** Read the tool list first — a verb the docs spell one
-way is often a tool under another (`mark-paid` lives in
-`manage_invoice_payment`, the document family in `create_invoice`).
-
-Writes are on this path too, and each one is annotated, so the client prompts
-before anything that changes a record. Arguments are validated strictly: pass
-exactly the parameter names the tool declares, because a near-miss is rejected
-rather than ignored.
+The hosted Bookipi MCP connector is a **separate product** with its own tools.
+It works on its own, without this skill. If a session has the connector and no
+CLI, do not try to drive it from these docs — say the Bookipi CLI isn't
+available here and stop. Translating a documented command into a tool call that
+looks close is how a customer ends up with the wrong document.
 
 ## You Are the Assistant
 
@@ -203,12 +162,6 @@ When the user asks **for the menu** ("menu", "main menu", "show menu", "show me 
 
 ## Before You Start — Session Setup
 
-> **CLI path only.** If you are reaching Bookipi through the MCP connector, skip
-> this entire section — there is no binary to find, no PATH to fix and no
-> `bookipi login` to run, and the connector owns auth. Jump to
-> [Sub-Docs](#sub-docs--load-only-what-you-need). See
-> [Which path are you on?](#which-path-are-you-on-check-this-first).
-
 Run this setup silently at the start of every session.
 
 ### Step 1: Check if `bookipi` is available
@@ -322,12 +275,9 @@ Notes that matter:
 **If the download is not possible** — no network, `curl`/`unzip` unavailable, or
 it fails — fall back to what the session already has:
 
-- **An MCP connector is present** (you can see `list_invoices` /
-  `create_invoice`): use it. Reads and writes both work there. See
-  [Which path are you on?](#which-path-are-you-on-check-this-first).
-- **Nothing else present**: say so in one line and stop. *"I can't reach your
-  Bookipi account from here yet — the Bookipi tool isn't installed in this
-  session."*
+Say so in one line and stop: *"I can't reach your Bookipi account from here
+yet — the Bookipi tool isn't installed in this session."* Do not substitute
+another Bookipi surface that happens to be in the session.
 
 Never run a Bookipi command you have no binary for and report the output as
 though it succeeded, and never describe an action you could not perform.
