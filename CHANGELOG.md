@@ -12,26 +12,58 @@ refresh the marketplace first (`/plugin marketplace update bookipi-cli`).
 ## Unreleased
 
 ### Changed
-- The plugin manifests declared `MIT` while `LICENSE` reserves all rights. They
-  now say `Proprietary`, which is what the licence has always said.
-- The skill's MCP path was teaching a dispatcher that 0.37.0 retired, and still
-  described the connector as read-only. It now calls the operation tools
-  directly, and writes are documented as available on both paths.
-- `LICENSE` points at the [Terms of Service](https://bookipi.com/terms-of-service/)
-  rather than the separate website Terms & Conditions page.
+- **The skill drives the `bookipi` CLI only.** It previously claimed to cover
+  the hosted MCP connector as well, and that pairing had never been tested.
+  It does not hold: the flow docs document `invoice create --type estimate`,
+  `--recurring`, `--add-item` and `--status`, and none of them exist on the
+  connector's write surface — `create_invoice` has no document type at all. A
+  model following the documented translation would create a real invoice when
+  the user asked for a quote, and nothing would report an error. The two-path
+  routing, the CLI-to-tool translation table and the connector fallback are all
+  gone; when no CLI is reachable the skill now says so and stops.
+- **The plugin no longer declares the connector**, reversing the addition below.
+  A plugin install is the skill plus the CLI it fetches on first use. The hosted
+  connector at `https://mcp.bookipi.com/mcp` is unchanged and still serving —
+  it is now added deliberately by people who want it, rather than arriving with
+  a plugin install. If you installed 0.38.0, the declaration stays in your
+  config until you update; `claude mcp list` shows it as
+  `plugin:bookipi:bookipi`.
+
+## 0.38.0 — 2026-09-02
+
+### Fixed
+- **The hosted connector asked you to reconnect about 45 minutes after signing
+  in.** Renewal used the standard OIDC refresh grant, which Bookipi's auth
+  module implements for confidential clients only — a public client posting it
+  got `invalid_client`, so every renewal failed and the client discarded its
+  tokens. It now renews through the same endpoint the CLI has always used. The
+  45-minute access token was the real session length; the refresh token never
+  got a chance to be used.
+- The connector's refresh token expired at 30 days while the credentials it
+  wraps expire at 14, leaving a fortnight in which a client held a token it
+  believed was good and every renewal failed. It is now 14 days, matching.
 
 ### Added
-- All three manifests declare the hosted connector: Claude Code and Codex as
-  `mcpServers` with `type: http`, Gemini CLI as `httpUrl`. Installing the plugin
-  now connects `https://mcp.bookipi.com/mcp` as well as installing the skill.
-  Sign-in is the browser OAuth flow, discovered from the server — no client ID
-  to configure.
-- The Codex listing describes the connector, and no longer says writes need the
-  CLI — they run on either path.
+- All three manifests declared the hosted MCP connector, so installing the
+  plugin connected it. **Superseded** — see Unreleased.
+- The Codex listing describes the connector and no longer says writes need the
+  CLI.
 - A Privacy section in the README: what the CLI collects, where it goes, how
   long it lives, and how to switch analytics off
   (`BOOKIPI_NO_ANALYTICS=1` or `DO_NOT_TRACK=1`).
 - The README's Commands section now lists the actual command surface.
+- Issue templates, this changelog, and a CI guard covering version drift across
+  the manifests, a tag mismatch, the two skill copies diverging, and a declared
+  connector URL that is not answering.
+
+### Changed
+- The plugin manifests declared `MIT` while `LICENSE` reserves all rights. They
+  now say `Proprietary`, which is what the licence has always said.
+- The skill's MCP path was teaching a dispatcher that 0.37.0 retired and still
+  called the connector read-only, which ended in 0.36.0. Both corrected — and
+  then removed entirely in the next release, see Unreleased.
+- `LICENSE` points at the [Terms of Service](https://bookipi.com/terms-of-service/)
+  rather than the separate website Terms & Conditions page.
 
 ## 0.37.1 — 2026-09-01
 
