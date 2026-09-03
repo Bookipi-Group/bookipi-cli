@@ -6,14 +6,14 @@
   },
   "metadata": {
     "description": "Bookipi for AI agents — run a small business from chat",
-    "version": "0.38.1"
+    "version": "0.38.2"
   },
   "plugins": [
     {
       "name": "bookipi",
       "source": "./",
       "description": "Run your business from chat. Invoices and the whole invoice document family (estimates, credit notes, delivery notes, purchase orders), customers and payment history, expenses and receipt scanning, deals, AI-written proposals, eSign contracts, recorded meetings with transcripts and AI summaries, reports and dashboards, and your Bookipi website. Installs the Bookipi skill — presentation rules, operation routing, and 21 flow playbooks (morning brief, collections run, win a deal, quick quote, stalled-deal recovery, website review) — and drives them through the `bookipi` CLI, which it fetches on first use. Sign in with your Bookipi account in the browser; no API key to manage.",
-      "version": "0.38.1",
+      "version": "0.38.2",
       "author": {
         "name": "Bookipi"
       },
