@@ -58,8 +58,8 @@ The first time Claude uses a Bookipi tool, your browser opens to Bookipi's own
 sign-in page (`auth.bookipi.com`). Sign in with your Bookipi email, or with
 your Google or Apple account — which also works for creating a new account on
 the spot. There is no API key to copy and no software to install; the
-connector never sees your password. If your account has more than one company, tell Claude which one to
-work in — or just ask "what companies do I have?".
+connector never sees your password. If your account has more than one company,
+tell Claude which one to work in — or just ask "what companies do I have?".
 
 ## Writes ask first
 
