@@ -9,6 +9,9 @@ can run directly or drive through Claude in plain English.
 
 Full overview and docs: [Bookipi CLI](https://bookipi.com/cli/)
 
+Prefer zero setup? The **[Bookipi connector](docs/connector.md)** adds Bookipi
+to claude.ai, Claude Desktop, or any MCP client — nothing to install.
+
 ## Two ways to use it
 
 - **Talk to Claude** — install the skill and ask in plain English inside
@@ -157,9 +160,9 @@ folder is its own workspace.
 **If you skip the folder in Cowork** (a cloud-only project), you'll be asked to
 log in again every new chat — there's nowhere persistent to keep the
 credentials. Attaching a folder is the only way to stay logged in between
-sessions. _(A no-folder, zero-setup alternative — the **Bookipi connector**,
-which stores the login on your Claude account — is in the works; ask if you want
-early access.)_
+sessions. _(A no-folder, zero-setup alternative: the
+**[Bookipi connector](docs/connector.md)** stores the login on your Claude
+account instead.)_
 
 **Claude Code only:** the folder is recommended, not required. If you skip
 it and just say _"log me in to Bookipi"_, credentials are saved globally
