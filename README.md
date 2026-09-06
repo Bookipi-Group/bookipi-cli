@@ -330,6 +330,11 @@ Bookipi account. Full policy: **[bookipi.com/privacy-policy](https://bookipi.com
   the machine, never by either value itself. Command arguments, invoice
   contents, customer records and credentials are not included. Turn it off with
   `BOOKIPI_NO_ANALYTICS=1` or the cross-tool `DO_NOT_TRACK=1`.
+- **OpenTelemetry (optional, off by default)** — the CLI can export timing
+  traces and metrics over OTLP, but **only** to an endpoint you configure
+  yourself via the standard `OTEL_EXPORTER_OTLP_ENDPOINT` variable. Without it,
+  nothing is exported; with it, spans carry command names, durations and status
+  — never your business data. The same opt-outs above disable it too.
 
 **What it does not do**
 
