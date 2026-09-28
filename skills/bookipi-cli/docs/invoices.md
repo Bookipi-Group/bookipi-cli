@@ -24,7 +24,10 @@ bookipi invoice preview @i1 --stdout > invoice.html     # raw HTML to stdout (do
 # NOTE: --pdf (the htmlToPdf service) is intentionally NOT used by this skill for now — prefer HTML / the web link.
 
 # Create an invoice — --customer and --item accept IDs, handles, or names
-# If a name is given, the CLI searches existing records and creates if not found
+# If a name is given, the CLI searches existing records and creates if not found.
+# 🔴 ONE create with ALL --item flags — never create-then-update per line, and no
+# list/search first unless the name is uncertain (SKILL.md rule #8: one search
+# per entity, then ask). The create response is the confirmation — don't re-list.
 bookipi invoice create \
   --company <company_id> \
   --number INV-001 \

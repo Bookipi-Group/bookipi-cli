@@ -1,6 +1,6 @@
 # Meetings & Transcripts
 
-Read this for any request about **meetings, transcripts, AI summaries, or "what was said / decided / actioned"** in a meeting. For scheduling/calendar status questions, the pre-check in `SKILL.md` (rule #8) is enough.
+Read this for any request about **meetings, transcripts, AI summaries, or "what was said / decided / actioned"** in a meeting. For scheduling/calendar status questions, the pre-check in `SKILL.md` (rule #9) is enough.
 
 ## Pre-flight — do NOT gate meetings on Google Calendar
 
