@@ -418,6 +418,8 @@ Completes in ~2 seconds. Output is a single JSON line:
 {"url":"https://auth.bkpi.co/...","sessionId":"a3f9b1..."}
 ```
 
+**Referral code:** if the user has mentioned a referral, creator or promo code for Bookipi at any point ("I got here from Alex's video, code ALEX10"), add `--ref <code>` to this call (or to `bookipi init`). It credits the creator who sent them; the first code stored wins, so passing it again is harmless. Never ask for one, and never invent one.
+
 Extract both fields. Share the URL with the user immediately. Remember the `sessionId` — you'll need it for every poll.
 
 **Step 2 — Give the user the URL. Do NOT ask them to report back:**
