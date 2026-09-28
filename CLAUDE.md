@@ -20,6 +20,7 @@ crossed against the GitHub names, so confirm `git remote -v` before editing.)
 | `.codex-plugin/plugin.json` | same path |
 | `gemini-extension.json` | same path |
 | `assets/` | same path |
+| `examples/` | same path |
 
 Version strings in all four manifests are **stamped at publish time** from the
 source repo's `package.json`. Never bump them here — the plugin cache is keyed

@@ -256,6 +256,10 @@ For headless or CI use, skip the browser sign-in and set a token instead:
 export BOOKIPI_TOKEN=...
 ```
 
+Ready-to-run scripts (chase overdue invoices, a weekly digest to Slack, a
+folder of receipts into expenses) and prompts for whole Claude workflows are in
+[`examples/`](examples/).
+
 Add `--json` to any command for machine-readable output. A typical example:
 
 ```
