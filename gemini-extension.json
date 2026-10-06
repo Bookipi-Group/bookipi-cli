@@ -1,5 +1,5 @@
 {
   "name": "bookipi",
-  "version": "0.40.4",
+  "version": "0.40.5",
   "description": "Run your business from chat — invoices, customers, expenses, deals, proposals, eSign contracts, meetings, reports and your website. Bundles the Bookipi skill and the `bookipi` CLI it runs."
 }

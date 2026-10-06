@@ -18,8 +18,8 @@ tools.
    the CLI that ships in this repository:
 
    ```bash
-   git clone https://github.com/Bookipi-Group/bookipi-cli.git
-   export BOOKIPI="node $PWD/bookipi-cli/skills/bookipi-cli/bin/bookipi.js"
+   git clone https://github.com/Bookipi-Group/bookipi-cli.git ~/bookipi-cli
+   export BOOKIPI=~/bookipi-cli/skills/bookipi-cli/bin/bookipi.js
    ```
 
    The scripts call `$BOOKIPI`, or `bookipi` if that isn't set. You need Node

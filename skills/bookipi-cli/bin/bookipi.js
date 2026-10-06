@@ -8,36 +8,25 @@ import {
   CLI_VERSION,
   RECORD_SOURCE_APP,
   axios_default,
-  beginCommand,
   bookipiGraphql,
+  claimFirstRun,
   clearAllCredentials,
   clearPendingRelaySession,
-  cliCommandCounter,
-  commandCompleted,
-  commandFailed,
   config,
   coworkMountDirs,
-  flushOtel,
+  currentRequestAuth,
+  getAnalyticsUserId,
   getBookipiConfigDir,
   getCurrentCurrency,
   getDefaultCompany,
+  getInternalTesterEmail,
   getMeetAppTokenCached,
   getOidcTokens,
   getPendingRelaySession,
+  getReferral,
   getSignitTokenCached,
   getToken,
   graphqlRequest,
-  hashEmail,
-  httpRequestCounter,
-  initOtel,
-  installDetected,
-  invocationShape,
-  isInternalUser,
-  loginCompleted,
-  markMcpSurface,
-  mcpCapabilityProps,
-  mcpClientProps,
-  otelTracer,
   postToS3,
   refreshOidcToken,
   refreshOidcTokenWith,
@@ -53,17 +42,8 @@ import {
   savePendingRelaySession,
   saveSignitToken,
   saveToken,
-  shutdownOtel,
-  toolDurationHistogram,
-  track,
   uploadItemImage
-} from "./chunks/chunk-XR3KVXGD.js";
-import {
-  SpanStatusCode,
-  context,
-  init_esm,
-  trace
-} from "./chunks/chunk-PUH7ZX2U.js";
+} from "./chunks/chunk-MAJ7HXTK.js";
 import {
   __commonJS,
   __export,
@@ -3230,14 +3210,14 @@ Expecting one of '${allowedValues.join("', '")}'`);
        */
       helpInformation(contextOptions) {
         const helper = this.createHelp();
-        const context2 = this._getOutputContext(contextOptions);
+        const context = this._getOutputContext(contextOptions);
         helper.prepareContext({
-          error: context2.error,
-          helpWidth: context2.helpWidth,
-          outputHasColors: context2.hasColors
+          error: context.error,
+          helpWidth: context.helpWidth,
+          outputHasColors: context.hasColors
         });
         const text = helper.formatHelp(this, helper);
-        if (context2.hasColors) return text;
+        if (context.hasColors) return text;
         return this._outputConfiguration.stripColor(text);
       }
       /**
@@ -3405,15 +3385,15 @@ Expecting one of '${allowedValues.join("', '")}'`);
 Expecting one of '${allowedValues.join("', '")}'`);
         }
         const helpEvent = `${position}Help`;
-        this.on(helpEvent, (context2) => {
+        this.on(helpEvent, (context) => {
           let helpStr;
           if (typeof text === "function") {
-            helpStr = text({ error: context2.error, command: context2.command });
+            helpStr = text({ error: context.error, command: context.command });
           } else {
             helpStr = text;
           }
           if (helpStr) {
-            context2.write(`${helpStr}
+            context.write(`${helpStr}
 `);
           }
         });
@@ -5851,7 +5831,7 @@ var require_request = __commonJS({
           }
         }
       }
-      onRequestStart(abort, context2) {
+      onRequestStart(abort, context) {
         assert2(!this.aborted);
         assert2(!this.completed);
         this[kController] = new RequestController(abort);
@@ -5860,7 +5840,7 @@ var require_request = __commonJS({
           return;
         }
         this.abort = abort;
-        return this[kHandler].onRequestStart(this[kController], context2);
+        return this[kHandler].onRequestStart(this[kController], context);
       }
       onResponseStarted() {
         return this[kHandler].onResponseStarted?.();
@@ -7767,10 +7747,10 @@ var require_webidl = __commonJS({
         message
       });
     };
-    webidl.errors.invalidArgument = function(context2) {
+    webidl.errors.invalidArgument = function(context) {
       return webidl.errors.exception({
-        header: context2.prefix,
-        message: `"${context2.value}" is an invalid ${context2.type}.`
+        header: context.prefix,
+        message: `"${context.value}" is an invalid ${context.type}.`
       });
     };
     webidl.brandCheck = function(V, I) {
@@ -13934,8 +13914,8 @@ var require_dispatcher1_wrapper = __commonJS({
       constructor(handler) {
         this.#handler = handler;
       }
-      onRequestStart(controller, context2) {
-        this.#handler.onConnect?.((reason) => controller.abort(reason), context2);
+      onRequestStart(controller, context) {
+        this.#handler.onConnect?.((reason) => controller.abort(reason), context);
       }
       onRequestUpgrade(controller, statusCode, headers, socket) {
         const rawHeaders = controller?.rawHeaders ?? toRawHeaders(headers ?? {});
@@ -15296,10 +15276,10 @@ var require_retry_handler = __commonJS({
           shouldRetry.bind(this)
         );
       }
-      onRequestStart(controller, context2) {
+      onRequestStart(controller, context) {
         this.controllerProxy.target = controller;
         if (!this.headersSent) {
-          this.handler.onRequestStart?.(this.controllerProxy, context2);
+          this.handler.onRequestStart?.(this.controllerProxy, context);
         }
       }
       onRequestUpgrade(_controller, statusCode, headers, socket) {
@@ -16075,7 +16055,7 @@ var require_api_request = __commonJS({
           });
         }
       }
-      onRequestStart(controller, context2) {
+      onRequestStart(controller, context) {
         if (this.reason) {
           controller.abort(this.reason);
           return;
@@ -16083,10 +16063,10 @@ var require_api_request = __commonJS({
         assert2(this.callback);
         this.controller = controller;
         this.abort = (reason) => controller.abort(reason);
-        this.context = context2;
+        this.context = context;
       }
       onResponseStart(controller, statusCode, headers, statusText) {
-        const { callback, opaque, context: context2, responseHeaders, highWaterMark } = this;
+        const { callback, opaque, context, responseHeaders, highWaterMark } = this;
         const rawHeaders = controller?.rawHeaders;
         const responseHeaderData = responseHeaders === "raw" ? util2.parseRawHeaders(rawHeaders) : headers;
         if (statusCode < 200) {
@@ -16120,7 +16100,7 @@ var require_api_request = __commonJS({
               trailers: this.trailers,
               opaque,
               body: res,
-              context: context2
+              context
             });
           } catch (err2) {
             this.res = null;
@@ -16355,7 +16335,7 @@ var require_api_stream = __commonJS({
         }
         addSignal(this, signal);
       }
-      onRequestStart(controller, context2) {
+      onRequestStart(controller, context) {
         if (this.reason) {
           controller.abort(this.reason);
           return;
@@ -16363,10 +16343,10 @@ var require_api_stream = __commonJS({
         assert2(this.callback);
         this.controller = controller;
         this.abort = (reason) => controller.abort(reason);
-        this.context = context2;
+        this.context = context;
       }
       onResponseStart(controller, statusCode, headers, _statusMessage) {
-        const { factory, opaque, context: context2, responseHeaders } = this;
+        const { factory, opaque, context, responseHeaders } = this;
         const rawHeaders = controller?.rawHeaders;
         const responseHeaderData = responseHeaders === "raw" ? util2.parseRawHeaders(rawHeaders) : headers;
         if (statusCode < 200) {
@@ -16383,7 +16363,7 @@ var require_api_stream = __commonJS({
           statusCode,
           headers: responseHeaderData,
           opaque,
-          context: context2
+          context
         });
         if (!res || typeof res.write !== "function" || typeof res.end !== "function" || typeof res.on !== "function") {
           throw new InvalidReturnValueError("expected Writable");
@@ -16588,7 +16568,7 @@ var require_api_pipeline = __commonJS({
         this.res = null;
         addSignal(this, signal);
       }
-      onRequestStart(controller, context2) {
+      onRequestStart(controller, context) {
         const { res } = this;
         if (this.reason) {
           controller.abort(this.reason);
@@ -16596,10 +16576,10 @@ var require_api_pipeline = __commonJS({
         }
         assert2(!res, "pipeline cannot be retried");
         this.abort = (reason) => controller.abort(reason);
-        this.context = context2;
+        this.context = context;
       }
       onResponseStart(controller, statusCode, headers, _statusMessage) {
-        const { opaque, handler, context: context2 } = this;
+        const { opaque, handler, context } = this;
         if (statusCode < 200) {
           if (this.onInfo) {
             const rawHeaders = controller?.rawHeaders;
@@ -16619,7 +16599,7 @@ var require_api_pipeline = __commonJS({
             headers: responseHeaders,
             opaque,
             body: this.res,
-            context: context2
+            context
           });
         } catch (err2) {
           this.res.on("error", noop);
@@ -16706,14 +16686,14 @@ var require_api_upgrade = __commonJS({
         this.context = null;
         addSignal(this, signal);
       }
-      onRequestStart(controller, context2) {
+      onRequestStart(controller, context) {
         if (this.reason) {
           controller.abort(this.reason);
           return;
         }
         assert2(this.callback);
         this.abort = (reason) => controller.abort(reason);
-        this.context = context2;
+        this.context = context;
       }
       onResponseStart() {
         throw new SocketError("bad upgrade", null);
@@ -16725,7 +16705,7 @@ var require_api_upgrade = __commonJS({
           controller.abort(new SocketError("bad upgrade", socketInfo));
           return;
         }
-        const { callback, opaque, context: context2 } = this;
+        const { callback, opaque, context } = this;
         removeSignal(this);
         this.callback = null;
         const rawHeaders = controller?.rawHeaders;
@@ -16734,7 +16714,7 @@ var require_api_upgrade = __commonJS({
           headers: responseHeaders,
           socket,
           opaque,
-          context: context2
+          context
         });
       }
       onResponseError(_controller, err2) {
@@ -16804,20 +16784,20 @@ var require_api_connect = __commonJS({
         this.abort = null;
         addSignal(this, signal);
       }
-      onRequestStart(controller, context2) {
+      onRequestStart(controller, context) {
         if (this.reason) {
           controller.abort(this.reason);
           return;
         }
         assert2(this.callback);
         this.abort = (reason) => controller.abort(reason);
-        this.context = context2;
+        this.context = context;
       }
       onResponseStart() {
         throw new SocketError("bad connect", null);
       }
       onRequestUpgrade(controller, statusCode, headers, socket) {
-        const { callback, opaque, context: context2 } = this;
+        const { callback, opaque, context } = this;
         removeSignal(this);
         this.callback = null;
         let responseHeaders = headers;
@@ -16830,7 +16810,7 @@ var require_api_connect = __commonJS({
           headers: responseHeaders,
           socket,
           opaque,
-          context: context2
+          context
         });
       }
       onResponseError(_controller, err2) {
@@ -18232,8 +18212,8 @@ var require_snapshot_utils = __commonJS({
         match: new Set(matchHeaders.map((header) => caseSensitive ? header : header.toLowerCase()))
       };
     }
-    var crypto7 = runtimeFeatures.has("crypto") ? __require("node:crypto") : null;
-    var hashId = crypto7?.hash ? (value) => crypto7.hash("sha256", value, "base64url") : (value) => Buffer.from(value).toString("base64url");
+    var crypto8 = runtimeFeatures.has("crypto") ? __require("node:crypto") : null;
+    var hashId = crypto8?.hash ? (value) => crypto8.hash("sha256", value, "base64url") : (value) => Buffer.from(value).toString("base64url");
     function isUndiciHeaders(headers) {
       return Array.isArray(headers) && (headers.length & 1) === 0;
     }
@@ -18804,8 +18784,8 @@ var require_snapshot_agent = __commonJS({
         };
         const self = this;
         const recordingHandler = {
-          onRequestStart(controller, context2) {
-            return handler.onRequestStart(controller, { ...context2, history: this.history });
+          onRequestStart(controller, context) {
+            return handler.onRequestStart(controller, { ...context, history: this.history });
           },
           onRequestUpgrade(controller, statusCode, headers, socket) {
             return handler.onRequestUpgrade(controller, statusCode, headers, socket);
@@ -19156,8 +19136,8 @@ var require_redirect_handler = __commonJS({
         this.handler = handler;
         this.history = [];
       }
-      onRequestStart(controller, context2) {
-        this.handler.onRequestStart?.(controller, { ...context2, history: this.history });
+      onRequestStart(controller, context) {
+        this.handler.onRequestStart?.(controller, { ...context, history: this.history });
       }
       onRequestUpgrade(controller, statusCode, headers, socket) {
         this.handler.onRequestUpgrade?.(controller, statusCode, headers, socket);
@@ -19316,13 +19296,13 @@ var require_response_error = __commonJS({
       #checkContentType(contentType3) {
         return (this.#contentType ?? "").indexOf(contentType3) === 0;
       }
-      onRequestStart(controller, context2) {
+      onRequestStart(controller, context) {
         this.#statusCode = 0;
         this.#contentType = null;
         this.#decoder = null;
         this.#headers = null;
         this.#body = "";
-        return super.onRequestStart(controller, context2);
+        return super.onRequestStart(controller, context);
       }
       onResponseStart(controller, statusCode, headers, statusMessage) {
         this.#statusCode = statusCode;
@@ -19428,10 +19408,10 @@ var require_dump = __commonJS({
         this.aborted = true;
         this.reason = reason;
       }
-      onRequestStart(controller, context2) {
+      onRequestStart(controller, context) {
         controller.abort = this.#abort.bind(this);
         this.#controller = controller;
-        return super.onRequestStart(controller, context2);
+        return super.onRequestStart(controller, context);
       }
       onResponseStart(controller, statusCode, headers, statusMessage) {
         const contentLength = headers["content-length"];
@@ -21097,10 +21077,10 @@ var require_cache_handler = __commonJS({
         this.#cacheKey = cacheKey2;
         this.#handler = handler;
       }
-      onRequestStart(controller, context2) {
+      onRequestStart(controller, context) {
         this.#writeStream?.destroy();
         this.#writeStream = void 0;
-        this.#handler.onRequestStart?.(controller, context2);
+        this.#handler.onRequestStart?.(controller, context);
       }
       onRequestUpgrade(controller, statusCode, headers, socket) {
         this.#handler.onRequestUpgrade?.(controller, statusCode, headers, socket);
@@ -21725,9 +21705,9 @@ var require_cache_revalidation_handler = __commonJS({
         this.#handler = handler;
         this.#allowErrorStatusCodes = allowErrorStatusCodes;
       }
-      onRequestStart(_, context2) {
+      onRequestStart(_, context) {
         this.#successful = false;
-        this.#context = context2;
+        this.#context = context;
       }
       onRequestUpgrade(controller, statusCode, headers, socket) {
         this.#handler.onRequestUpgrade?.(controller, statusCode, headers, socket);
@@ -21965,7 +21945,7 @@ var require_cache2 = __commonJS({
       }
       return dispatch(opts, new CacheHandler(globalOpts, cacheKey2, handler));
     }
-    function sendCachedValue(handler, opts, result, age, context2, isStale2) {
+    function sendCachedValue(handler, opts, result, age, context, isStale2) {
       const stream = util2.isStream(result.body) ? result.body : Readable2.from(result.body ?? []);
       assert2(!stream.destroyed, "stream should not be destroyed");
       assert2(!stream.readableDidRead, "stream should not be readableDidRead");
@@ -22004,7 +21984,7 @@ var require_cache2 = __commonJS({
           handler.onResponseEnd?.(controller, {});
         }
       });
-      handler.onRequestStart?.(controller, context2);
+      handler.onRequestStart?.(controller, context);
       if (stream.destroyed) {
         return;
       }
@@ -22080,7 +22060,7 @@ var require_cache2 = __commonJS({
             headers
           },
           new CacheRevalidationHandler(
-            (success2, context2, statusCode, headers2) => {
+            (success2, context, statusCode, headers2) => {
               if (success2) {
                 if (statusCode === 304) {
                   if (revalidationResponseDisallowsCachedReuse(globalOpts.type, headers2)) {
@@ -22094,7 +22074,7 @@ var require_cache2 = __commonJS({
                     deleteCachedValue(globalOpts.store, cacheKey2);
                   }
                 }
-                sendCachedValue(handler, opts, result, age, context2, stale);
+                sendCachedValue(handler, opts, result, age, context, stale);
               } else if (util2.isStream(result.body)) {
                 result.body.on("error", nop).destroy();
               }
@@ -22553,9 +22533,9 @@ var require_deduplication_handler = __commonJS({
        * @param {import('../../types/dispatcher.d.ts').default.DispatchController} controller
        * @param {any} context
        */
-      onRequestStart(controller, context2) {
+      onRequestStart(controller, context) {
         this.#controller = controller;
-        this.#primaryHandler.onRequestStart?.(controller, context2);
+        this.#primaryHandler.onRequestStart?.(controller, context);
       }
       /**
        * @param {import('../../types/dispatcher.d.ts').default.DispatchController} controller
@@ -24924,10 +24904,10 @@ var require_subresource_integrity = __commonJS({
     var assert2 = __require("node:assert");
     var { runtimeFeatures } = require_runtime_features();
     var validSRIHashAlgorithmTokenSet = /* @__PURE__ */ new Map([["sha256", 0], ["sha384", 1], ["sha512", 2]]);
-    var crypto7;
+    var crypto8;
     if (runtimeFeatures.has("crypto")) {
-      crypto7 = __require("node:crypto");
-      const cryptoHashes = crypto7.getHashes();
+      crypto8 = __require("node:crypto");
+      const cryptoHashes = crypto8.getHashes();
       if (cryptoHashes.length === 0) {
         validSRIHashAlgorithmTokenSet.clear();
       }
@@ -25017,7 +24997,7 @@ var require_subresource_integrity = __commonJS({
       return result;
     }
     var applyAlgorithmToBytes = (algorithm, bytes) => {
-      return crypto7.hash(algorithm, bytes, "base64");
+      return crypto8.hash(algorithm, bytes, "base64");
     };
     function caseSensitiveMatch(actualValue, expectedValue) {
       let actualValueLength = actualValue.length;
@@ -28000,7 +27980,7 @@ var require_connection = __commonJS({
     var { WebsocketFrameSend } = require_frame();
     var assert2 = __require("node:assert");
     var { runtimeFeatures } = require_runtime_features();
-    var crypto7 = runtimeFeatures.has("crypto") ? __require("node:crypto") : null;
+    var crypto8 = runtimeFeatures.has("crypto") ? __require("node:crypto") : null;
     var warningEmitted = false;
     function establishWebSocketConnection(url2, protocols, client, handler, options) {
       const requestURL = url2;
@@ -28020,7 +28000,7 @@ var require_connection = __commonJS({
         const headersList = getHeadersList(new Headers2(options.headers));
         request.headersList = headersList;
       }
-      const keyValue = crypto7.randomBytes(16).toString("base64");
+      const keyValue = crypto8.randomBytes(16).toString("base64");
       request.headersList.append("sec-websocket-key", keyValue, true);
       request.headersList.append("sec-websocket-version", "13", true);
       for (const protocol of protocols) {
@@ -28060,7 +28040,7 @@ var require_connection = __commonJS({
             return;
           }
           const secWSAccept = response.headersList.get("Sec-WebSocket-Accept");
-          const digest = crypto7.hash("sha1", keyValue + uid, "base64");
+          const digest = crypto8.hash("sha1", keyValue + uid, "base64");
           if (secWSAccept !== digest) {
             failWebsocketConnection(handler, 1002, "Incorrect hash received in Sec-WebSocket-Accept header.");
             return;
@@ -32183,7 +32163,7 @@ var require_code2 = __commonJS({
       return allSchemaProperties(schemaMap).filter((p) => !(0, util_1.alwaysValidSchema)(it, schemaMap[p]));
     }
     exports.schemaProperties = schemaProperties;
-    function callValidateCode({ schemaCode, data, it: { gen, topSchemaRef, schemaPath, errorPath }, it }, func, context2, passSchema) {
+    function callValidateCode({ schemaCode, data, it: { gen, topSchemaRef, schemaPath, errorPath }, it }, func, context, passSchema) {
       const dataAndSchema = passSchema ? (0, codegen_1._)`${schemaCode}, ${data}, ${topSchemaRef}${schemaPath}` : data;
       const valCxt = [
         [names_1.default.instancePath, (0, codegen_1.strConcat)(names_1.default.instancePath, errorPath)],
@@ -32194,7 +32174,7 @@ var require_code2 = __commonJS({
       if (it.opts.dynamicRef)
         valCxt.push([names_1.default.dynamicAnchors, names_1.default.dynamicAnchors]);
       const args = (0, codegen_1._)`${dataAndSchema}, ${gen.object(...valCxt)}`;
-      return context2 !== codegen_1.nil ? (0, codegen_1._)`${func}.call(${context2}, ${args})` : (0, codegen_1._)`${func}(${args})`;
+      return context !== codegen_1.nil ? (0, codegen_1._)`${func}.call(${context}, ${args})` : (0, codegen_1._)`${func}(${args})`;
     }
     exports.callValidateCode = callValidateCode;
     var newRegExp = (0, codegen_1._)`new RegExp`;
@@ -37745,6 +37725,378 @@ function pickCompanyCurrencies(me) {
   return map2;
 }
 
+// src/core/analytics.ts
+import crypto4 from "node:crypto";
+import os from "node:os";
+
+// src/core/clientPlatform.ts
+function asDimension(value) {
+  return value.trim().slice(0, 60);
+}
+function normalizeName(raw) {
+  const s = raw.toLowerCase();
+  if (s.includes("claude-code") || s.includes("claudecode")) return "claude-code";
+  if (s.includes("claude") && s.includes("desktop")) return "claude-desktop";
+  if (s.includes("claude.ai") || s.includes("claude-ai") || s.includes("claudeai")) {
+    return "claude-ai";
+  }
+  if (s.includes("cowork")) return "claude-cowork";
+  if (s.includes("claude")) return "claude";
+  if (s.includes("cursor")) return "cursor";
+  if (s.includes("windsurf")) return "windsurf";
+  if (s.includes("cline")) return "cline";
+  if (s.includes("continue")) return "continue";
+  if (s.includes("copilot")) return "copilot";
+  if (s.includes("codex")) return "codex";
+  if (s.includes("gemini")) return "gemini";
+  if (s.includes("zed")) return "zed";
+  if (s.includes("witsy")) return "witsy";
+  if (s.includes("librechat")) return "librechat";
+  if (s.includes("openai")) return "openai";
+  if (s.includes("vscode") || s.includes("visual studio code")) return "vscode";
+  if (s.includes("jetbrains") || s.includes("intellij")) return "jetbrains";
+  if (s.includes("mcp-inspector") || s.includes("inspector")) return "mcp-inspector";
+  return "other";
+}
+function mcpClientProps(info) {
+  const name = typeof info?.name === "string" ? info.name : "";
+  const version2 = typeof info?.version === "string" ? info.version : void 0;
+  if (!name) return { client_platform: "unknown" };
+  return {
+    client_platform: normalizeName(name),
+    client_name: asDimension(name),
+    ...version2 ? { client_version: asDimension(version2) } : {}
+  };
+}
+function mcpCapabilityProps(caps) {
+  if (!caps) return {};
+  const offered = Object.keys(caps).filter((k) => caps[k] !== void 0 && caps[k] !== null).sort();
+  if (offered.length === 0) return {};
+  return { client_capabilities: asDimension(offered.join(",")) };
+}
+function detectCliPlatform(io = {
+  interactive: process.stdin.isTTY === true,
+  os: process.platform
+}) {
+  const env = process.env;
+  const forced = env["BOOKIPI_CLIENT_PLATFORM"];
+  if (forced && forced.trim()) {
+    return {
+      client_platform: normalizeName(forced),
+      client_name: asDimension(forced)
+    };
+  }
+  if (env["CLAUDE_CODE_IS_COWORK"] === "1") {
+    const host = env["CLAUDE_CODE_ENTRYPOINT"];
+    return {
+      client_platform: "claude-cowork",
+      client_name: "claude-cowork",
+      ...agentVersion(env["AI_AGENT"]) ?? (env["CLAUDE_AGENT_SDK_VERSION"] ? { client_version: asDimension(env["CLAUDE_AGENT_SDK_VERSION"]) } : {}),
+      ...host ? { client_host: asDimension(host) } : {}
+    };
+  }
+  if (env["CLAUDECODE"] === "1" || env["CLAUDE_CODE_ENTRYPOINT"]) {
+    const host = env["CLAUDE_CODE_ENTRYPOINT"];
+    return {
+      client_platform: "claude-code",
+      client_name: "claude-code",
+      ...agentVersion(env["AI_AGENT"]) ?? (env["CLAUDE_AGENT_SDK_VERSION"] ? { client_version: asDimension(env["CLAUDE_AGENT_SDK_VERSION"]) } : {}),
+      ...host ? { client_host: asDimension(host) } : {}
+    };
+  }
+  const aiAgent = env["AI_AGENT"];
+  if (aiAgent && aiAgent.trim()) {
+    const name = aiAgent.split("_")[0] ?? aiAgent;
+    return {
+      client_platform: normalizeName(name),
+      client_name: asDimension(name),
+      ...agentVersion(aiAgent) ?? {}
+    };
+  }
+  if (env["CURSOR_TRACE_ID"] || env["CURSOR_AGENT"]) {
+    return { client_platform: "cursor", client_name: "cursor" };
+  }
+  if (env["GEMINI_CLI"]) {
+    return { client_platform: "gemini", client_name: "gemini-cli" };
+  }
+  if (env["CODEX_SANDBOX"] || env["CODEX_HOME"]) {
+    return { client_platform: "codex", client_name: "codex" };
+  }
+  if (env["GITHUB_COPILOT_CLI"] || env["COPILOT_AGENT"]) {
+    return { client_platform: "copilot", client_name: "copilot" };
+  }
+  const term = env["TERM_PROGRAM"];
+  if (term && term.trim()) {
+    const normalized = normalizeName(term);
+    return {
+      // vscode/jetbrains are real answers; anything else is a terminal app, and
+      // which one it is belongs in client_name, not in the grouping dimension.
+      client_platform: normalized === "other" ? "terminal" : normalized,
+      client_name: asDimension(term)
+    };
+  }
+  if (env["CI"]) return { client_platform: "ci" };
+  if (io.interactive) {
+    if (io.os === "win32") {
+      return {
+        client_platform: "terminal",
+        // Windows Terminal exports WT_SESSION; the classic console host doesn't.
+        client_name: env["WT_SESSION"] ? "windows-terminal" : "windows-console"
+      };
+    }
+    const term2 = env["TERM"];
+    if (term2 && term2.trim() && term2 !== "dumb") {
+      return { client_platform: "terminal", client_name: asDimension(term2) };
+    }
+  }
+  return { client_platform: "unknown" };
+}
+function agentVersion(value) {
+  if (!value) return void 0;
+  const parts2 = value.split("_");
+  if (parts2.length < 2) return void 0;
+  const raw = parts2[1];
+  if (!raw || !/^[0-9]+(-[0-9]+)*$/.test(raw)) return void 0;
+  return { client_version: raw.replace(/-/g, ".") };
+}
+
+// src/core/analytics.ts
+var ANALYTICS_TIMEOUT_MS = 3e3;
+function hashEmail(email3) {
+  return crypto4.createHash("sha1").update(email3.trim().toLowerCase()).digest("hex");
+}
+function isInternalUser(email3) {
+  if (!email3) {
+    return false;
+  }
+  return /^(wrtdw\..*@inbox.testmail.app|[a-zA-Z0-9\.+-_]*@bookipi.com)$/.test(
+    email3.trim().toLowerCase()
+  );
+}
+var cachedDeviceId;
+function deviceId() {
+  if (cachedDeviceId) return cachedDeviceId;
+  let seed = "bookipi-cli";
+  try {
+    seed += `:${os.hostname()}:${os.userInfo().username}:${os.homedir()}`;
+  } catch {
+  }
+  cachedDeviceId = crypto4.createHash("sha256").update(seed).digest("hex").slice(0, 32);
+  return cachedDeviceId;
+}
+function analyticsOptedOut() {
+  for (const key2 of ["BOOKIPI_NO_ANALYTICS", "DO_NOT_TRACK"]) {
+    const raw = process.env[key2];
+    if (raw === void 0) continue;
+    const value = raw.trim().toLowerCase();
+    if (value === "" || value === "0" || value === "false") continue;
+    return true;
+  }
+  return false;
+}
+var surface = "cli";
+var mcpTransport;
+function markMcpSurface(transport) {
+  surface = "mcp";
+  if (transport) mcpTransport = transport;
+}
+function analyticsSourceApp() {
+  return process.env["BOOKIPI_SOURCE_APP"] || (surface === "mcp" ? "bookipi-cli-mcp" : "bookipi-cli");
+}
+function osName() {
+  switch (process.platform) {
+    case "darwin":
+      return "macOS";
+    case "win32":
+      return "Windows";
+    case "linux":
+      return "Linux";
+    default:
+      return process.platform;
+  }
+}
+async function track(event, properties = {}) {
+  if (analyticsOptedOut()) return;
+  const apiKey = config.AMPLITUDE_API_KEY;
+  if (!apiKey) return;
+  const userId = getAnalyticsUserId();
+  const cliPlatform = surface === "cli" ? detectCliPlatform() : {};
+  const clientPlatform = (typeof properties["client_platform"] === "string" ? properties["client_platform"] : void 0) ?? cliPlatform.client_platform ?? "unknown";
+  const referral = currentRequestAuth() ? null : getReferral();
+  const internalEmail = getInternalTesterEmail();
+  const internal = internalEmail ? { internal_tester: true, internal_tester_email: internalEmail } : {};
+  const payload = {
+    api_key: apiKey,
+    events: [
+      {
+        ...userId ? { user_id: userId } : {},
+        device_id: deviceId(),
+        event_type: event,
+        time: Date.now(),
+        // Amplitude dedupes identical insert_ids for 7 days, so a retried or
+        // double-sent event can't inflate the numbers.
+        insert_id: crypto4.randomUUID(),
+        // No `ip` field on the user's own machine (CLI, local stdio MCP), so
+        // Amplitude records the request's real source IP and geolocates from
+        // it. The old `0.0.0.0` scrub never stopped geolocation anyway (see
+        // docs/analytics.md).
+        //
+        // A HOSTED request is the exception: the POST leaves from the Railway
+        // container, so the source IP is the server's, not the caller's, and
+        // would stamp every connector user with the datacenter's location.
+        // `0.0.0.0` stays there until the caller's forwarded IP is threaded
+        // through the request context.
+        ...currentRequestAuth() ? { ip: "0.0.0.0" } : {},
+        app_version: CLI_VERSION,
+        // WHICH LLM PLATFORM, not which operating system.
+        //
+        // This was `process.platform`, so Amplitude's built-in Platform column —
+        // one of four it shows by default — read `darwin`. Three problems with
+        // that: it is a raw Node identifier rather than a name anyone would
+        // choose, the OS is the least decision-relevant thing about a call, and
+        // the column was spending the most prominent slot in the UI on it.
+        //
+        // `platform` is a free-form reserved field, and "which platform is this
+        // usage on" is exactly the question the connector work turns on, so the
+        // client platform goes here. It duplicates the `client_platform` event
+        // property deliberately: the property is what queries group by, and this
+        // is what makes Amplitude's default charts and tables legible without
+        // configuring anything.
+        //
+        // NOT the CLI/MCP surface, which was the other candidate. That is
+        // already in `source_app`, and the event NAMES already carry it — "CLI
+        // Command Completed" versus "MCP Tool Completed" — so putting it here
+        // would have been the third copy of a fact and the OS would still have
+        // had nowhere to go.
+        platform: clientPlatform,
+        // The OS moves to the reserved field that means it, and gets the name a
+        // person would use rather than Node's. Nothing is lost — an
+        // OS-specific bug is still segmentable, just not from the column that
+        // matters least.
+        os_name: osName(),
+        os_version: os.release(),
+        currency: getCurrentCurrency(),
+        // $setOnce, so the user keeps the FIRST code on every surface —
+        // affiliate payouts group users by this, not by one event's property.
+        // $set for the tester flag (like the backend's), $setOnce for the
+        // referral code (first touch). Amplitude rejects plain keys mixed with
+        // operators, so both go through operators.
+        ...referral || internalEmail ? {
+          user_properties: {
+            ...internalEmail ? { $set: internal } : {},
+            ...referral ? { $setOnce: { referral_code: referral } } : {}
+          }
+        } : {},
+        event_properties: {
+          // Which LLM platform is driving. ONLY on the CLI surface: there the
+          // environment belongs to the harness that invoked us, so inference is
+          // the only evidence available. On MCP the environment describes the
+          // container the server runs in — on the hosted transport, Railway —
+          // and would label every connector user with the deploy. The MCP path
+          // passes the client's own `initialize` clientInfo per session instead
+          // (server.ts), which is authoritative, so it arrives in `properties`.
+          ...cliPlatform,
+          ...mcpTransport ? { mcp_transport: mcpTransport } : {},
+          // How the caller authenticated, read from the per-request context so
+          // concurrent callers cannot be attributed to each other. Undefined on
+          // stdio and on the CLI, where there is no request context at all.
+          ...currentRequestAuth()?.authMode ? { auth_mode: currentRequestAuth()?.authMode } : {},
+          ...properties,
+          ...referral ? { referral_code: referral } : {},
+          ...internal,
+          // Ambient, and last so a call site cannot accidentally shadow them.
+          environment: BUILD_ENV,
+          source_app: analyticsSourceApp()
+        }
+      }
+    ]
+  };
+  const debug = process.env.BOOKIPI_DEBUG === "1";
+  try {
+    const res = await fetch(config.AMPLITUDE_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(ANALYTICS_TIMEOUT_MS)
+    });
+    if (debug) {
+      console.error(
+        `[analytics] ${event} \u2192 HTTP ${res.status} ${await res.text().catch(() => "")}`.trim()
+      );
+    }
+  } catch (err2) {
+    if (debug) {
+      console.error(
+        `[analytics] ${event} \u2192 FAILED: ${err2 instanceof Error ? err2.message : String(err2)}`
+      );
+    }
+  }
+}
+var inFlightCommand;
+var HANDLE = /^@[a-z]+\d+$/i;
+function commandShape(flagNames, values) {
+  const flags = [...new Set(flagNames)].sort().join(",");
+  const usesHandle = values.some(
+    (v) => typeof v === "string" && HANDLE.test(v.trim()) || Array.isArray(v) && v.some((x) => typeof x === "string" && HANDLE.test(x.trim()))
+  );
+  return {
+    ...flags ? { flags: flags.slice(0, 200) } : {},
+    ...usesHandle ? { uses_handle: true } : {}
+  };
+}
+function invocationShape(cmd) {
+  const flagNames = [];
+  const values = [...cmd.args];
+  for (let c = cmd; c; c = c.parent) {
+    for (const opt of c.options) {
+      const key2 = opt.attributeName();
+      if (c.getOptionValueSource(key2) !== "cli") continue;
+      flagNames.push(opt.long ? opt.long.replace(/^--/, "") : key2);
+      values.push(c.getOptionValue(key2));
+    }
+  }
+  return commandShape(flagNames, values);
+}
+function beginCommand(command, shape = {}) {
+  inFlightCommand = { command, startedAt: Date.now(), shape };
+}
+function endCommand() {
+  if (!inFlightCommand) return void 0;
+  const { command, startedAt, shape } = inFlightCommand;
+  inFlightCommand = void 0;
+  return { command, duration_ms: Date.now() - startedAt, ...shape };
+}
+function commandCompleted() {
+  const run = endCommand();
+  if (!run) return;
+  if (surface === "mcp") {
+    void track("MCP Server Started", { boot_ms: run.duration_ms });
+    return;
+  }
+  void track("CLI Command Completed", run);
+}
+async function installDetected(command, opts = {}) {
+  if (opts.hostedServer || analyticsOptedOut()) return;
+  if (!claimFirstRun()) return;
+  if (getToken()) return;
+  await track("CLI Install Detected", { command });
+}
+async function loginCompleted(properties) {
+  await track(
+    surface === "mcp" ? "MCP Login Completed" : "CLI Login Completed",
+    properties
+  );
+}
+function commandFailed(reason) {
+  const run = endCommand();
+  if (!run) return;
+  if (surface === "mcp") {
+    void track("MCP Server Failed", { boot_ms: run.duration_ms, reason });
+    return;
+  }
+  void track("CLI Command Failed", { ...run, reason });
+}
+
 // src/usecases/auth/persistLoginProfile.ts
 async function persistLoginProfile() {
   try {
@@ -38676,10 +39028,10 @@ function documentTypeByCode(code) {
 
 // src/core/handles/HandleRegistry.ts
 import fs2 from "fs";
-import os from "os";
+import os2 from "os";
 import path3 from "path";
 var HANDLES_FILE = "handles.json";
-var LEGACY_HANDLES_PATH = path3.join(os.homedir(), ".bookipi-handles.json");
+var LEGACY_HANDLES_PATH = path3.join(os2.homedir(), ".bookipi-handles.json");
 function getHandlesPath() {
   const configDir = getBookipiConfigDir();
   return configDir ? path3.join(configDir, HANDLES_FILE) : LEGACY_HANDLES_PATH;
@@ -44098,7 +44450,7 @@ var createCommand4 = new Command("create").description("Create a new item/produc
     if (opts.photo) {
       process.stderr.write(`  \u2022 Uploading ${opts.photo}...
 `);
-      const { uploadItemImage: uploadItemImage2 } = await import("./chunks/uploadItemImage-7MGLCOXO.js");
+      const { uploadItemImage: uploadItemImage2 } = await import("./chunks/uploadItemImage-T5RVIYAA.js");
       const { filename } = await uploadItemImage2(opts.photo);
       record2.photos = [{ filename }];
     }
@@ -78916,7 +79268,7 @@ import { tmpdir as tmpdir4 } from "node:os";
 import { join as join4 } from "node:path";
 
 // src/mcp/previewStore.ts
-import crypto4 from "node:crypto";
+import crypto5 from "node:crypto";
 import { gzipSync, gunzipSync } from "node:zlib";
 var PREVIEW_TTL_MS = 15 * 60 * 1e3;
 var PREVIEW_MAX = 2e3;
@@ -78958,7 +79310,7 @@ function sweep() {
 }
 function putPreview(html, opts = {}) {
   const existing = opts.invoiceId ? byInvoice.get(opts.invoiceId) : void 0;
-  const id = existing && store.has(existing) ? existing : crypto4.randomBytes(16).toString("hex");
+  const id = existing && store.has(existing) ? existing : crypto5.randomBytes(16).toString("hex");
   const prior = store.get(id);
   if (prior) totalBytes -= prior.bytes;
   const gzip = gzipSync(Buffer.from(html, "utf8"));
@@ -82889,7 +83241,6 @@ function fallbackSessionId() {
 }
 
 // src/mcp/server.ts
-init_esm();
 function logToolFailure(tool, reason, detail) {
   let message;
   if (detail instanceof Error) {
@@ -82922,64 +83273,42 @@ function buildMcpServer(options = {}) {
     });
   };
   const register = server.registerTool.bind(server);
-  server.registerTool = ((name, meta3, handler) => register(name, meta3, (async (...args) => (
-    // startActiveSpan (not startSpan) so the graphql.request span a usecase
-    // opens downstream nests under this one via the context manager. A no-op
-    // span until initOtel has run. Only OUTCOME metadata goes on the span —
-    // tool name, bytes, status — never the arguments or the output, the same
-    // data policy as the Amplitude events beside it.
-    otelTracer().startActiveSpan(`mcp.tool_call ${name}`, async (span) => {
-      const started = Date.now();
-      const report = (event, props) => {
-        void track(event, { ...clientProps(), ...props });
-      };
-      const finish = (outcome, bytes) => {
-        span.setAttribute("bookipi.tool", name);
-        span.setAttribute("bookipi.outcome", outcome);
-        if (bytes !== void 0) span.setAttribute("bookipi.output_bytes", bytes);
-        if (outcome !== "ok") span.setStatus({ code: SpanStatusCode.ERROR, message: outcome });
-        span.end();
-        toolDurationHistogram().record(Date.now() - started, {
-          tool: name,
-          outcome
-        });
-      };
-      const session_id = sessionIdFrom(args);
-      try {
-        const result = await handler(...args);
-        const bytes = responseBytes(result);
-        const handled = result ?? {};
-        if (handled.isError === true) {
-          report("MCP Tool Failed", {
-            tool: name,
-            session_id,
-            reason: "refused",
-            output_bytes: bytes
-          });
-          logToolFailure(name, "refused", result);
-          finish("refused", bytes);
-          return result;
-        }
-        report("MCP Tool Completed", {
-          tool: name,
-          session_id,
-          output_bytes: bytes,
-          est_tokens: estTokens(bytes)
-        });
-        finish("ok", bytes);
-        return result;
-      } catch (err2) {
+  server.registerTool = ((name, meta3, handler) => register(name, meta3, (async (...args) => {
+    const report = (event, props) => {
+      void track(event, { ...clientProps(), ...props });
+    };
+    const session_id = sessionIdFrom(args);
+    try {
+      const result = await handler(...args);
+      const bytes = responseBytes(result);
+      const handled = result ?? {};
+      if (handled.isError === true) {
         report("MCP Tool Failed", {
           tool: name,
           session_id,
-          reason: "threw"
+          reason: "refused",
+          output_bytes: bytes
         });
-        logToolFailure(name, "threw", err2);
-        finish("threw");
-        throw err2;
+        logToolFailure(name, "refused", result);
+        return result;
       }
-    })
-  ))));
+      report("MCP Tool Completed", {
+        tool: name,
+        session_id,
+        output_bytes: bytes,
+        est_tokens: estTokens(bytes)
+      });
+      return result;
+    } catch (err2) {
+      report("MCP Tool Failed", {
+        tool: name,
+        session_id,
+        reason: "threw"
+      });
+      logToolFailure(name, "threw", err2);
+      throw err2;
+    }
+  })));
   const writeOptions = { allowWrites };
   registerReadTools(server);
   registerWriteTools(server, writeOptions);
@@ -84810,10 +85139,10 @@ var StreamableHTTPServerTransport = class {
     this._requestContext = /* @__PURE__ */ new WeakMap();
     this._webStandardTransport = new WebStandardStreamableHTTPServerTransport(options);
     this._requestListener = getRequestListener(async (webRequest) => {
-      const context2 = this._requestContext.get(webRequest);
+      const context = this._requestContext.get(webRequest);
       return this._webStandardTransport.handleRequest(webRequest, {
-        authInfo: context2?.authInfo,
-        parsedBody: context2?.parsedBody
+        authInfo: context?.authInfo,
+        parsedBody: context?.parsedBody
       });
     }, { overrideGlobalObjects: false });
   }
@@ -84907,10 +85236,10 @@ var StreamableHTTPServerTransport = class {
 };
 
 // src/mcp/oauth/broker.ts
-import crypto6 from "node:crypto";
+import crypto7 from "node:crypto";
 
 // src/mcp/oauth/tokens.ts
-import crypto5 from "node:crypto";
+import crypto6 from "node:crypto";
 function secretConfigured() {
   return Boolean(process.env["MCP_OAUTH_SECRET"]);
 }
@@ -84930,11 +85259,11 @@ function key() {
       "MCP_OAUTH_SECRET is not set \u2014 required for the OAuth broker (encrypts stateless tokens)."
     );
   }
-  return crypto5.createHash("sha256").update(secret).digest();
+  return crypto6.createHash("sha256").update(secret).digest();
 }
 function seal(payload) {
-  const iv = crypto5.randomBytes(12);
-  const cipher = crypto5.createCipheriv("aes-256-gcm", key(), iv);
+  const iv = crypto6.randomBytes(12);
+  const cipher = crypto6.createCipheriv("aes-256-gcm", key(), iv);
   const plaintext = Buffer.from(JSON.stringify(payload), "utf8");
   const enc = Buffer.concat([cipher.update(plaintext), cipher.final()]);
   const tag = cipher.getAuthTag();
@@ -84944,7 +85273,7 @@ function open(token) {
   const parts2 = token.split(".");
   if (parts2.length !== 3) throw new Error("Malformed token");
   const [iv, enc, tag] = parts2.map((p) => Buffer.from(p, "base64url"));
-  const decipher = crypto5.createDecipheriv("aes-256-gcm", key(), iv);
+  const decipher = crypto6.createDecipheriv("aes-256-gcm", key(), iv);
   decipher.setAuthTag(tag);
   const dec = Buffer.concat([decipher.update(enc), decipher.final()]);
   return JSON.parse(dec.toString("utf8"));
@@ -84971,7 +85300,7 @@ var ACCESS_TTL = 45 * 60;
 var CODE_TTL = 5 * 60;
 var REFRESH_TTL = 14 * 24 * 3600;
 function b64uSha256(input) {
-  return crypto6.createHash("sha256").update(input).digest("base64url");
+  return crypto7.createHash("sha256").update(input).digest("base64url");
 }
 function protectedResourceMetadata() {
   return {
@@ -84995,7 +85324,7 @@ function authorizationServerMetadata() {
 function registerClient(body) {
   const redirectUris = Array.isArray(body?.redirect_uris) ? body.redirect_uris : [];
   return {
-    client_id: `mcp-${crypto6.randomBytes(12).toString("hex")}`,
+    client_id: `mcp-${crypto7.randomBytes(12).toString("hex")}`,
     token_endpoint_auth_method: "none",
     grant_types: ["authorization_code", "refresh_token"],
     response_types: ["code"],
@@ -85016,7 +85345,7 @@ async function buildAuthorizeRedirect(query) {
       description: "PKCE code_challenge with S256 is required"
     };
   }
-  const upstreamVerifier = crypto6.randomBytes(32).toString("base64url");
+  const upstreamVerifier = crypto7.randomBytes(32).toString("base64url");
   const upstreamChallenge = b64uSha256(upstreamVerifier);
   const state = {
     redirectUri,
@@ -85211,7 +85540,6 @@ function wwwAuthenticate() {
 }
 
 // src/mcp/httpServer.ts
-init_esm();
 var MCP_PATH = "/mcp";
 var IDENTITY_CACHE_MAX = 500;
 var IDENTITY_CACHE_TTL_MS = 10 * 60 * 1e3;
@@ -85250,20 +85578,6 @@ function favicon() {
   }
   faviconCache = null;
   return null;
-}
-function routeLabel(path10) {
-  if (path10.startsWith("/preview/")) return "/preview/:id";
-  if (path10.startsWith("/.well-known/")) return path10;
-  const known = /* @__PURE__ */ new Set([
-    "/mcp",
-    "/health",
-    "/favicon.ico",
-    "/oauth/register",
-    "/oauth/authorize",
-    "/oauth/callback",
-    "/oauth/token"
-  ]);
-  return known.has(path10) ? path10 : "/other";
 }
 function bearerFrom(req) {
   const raw = req.headers["authorization"] ?? req.headers["Authorization"];
@@ -85409,9 +85723,6 @@ async function handleMcp(req, res, body) {
     return;
   }
   const ctx = auth.ctx;
-  if (ctx.analyticsUserId) {
-    trace.getActiveSpan()?.setAttribute("user.id", ctx.analyticsUserId);
-  }
   const sessionId = req.headers["mcp-session-id"];
   const method = req.method ?? "POST";
   if (sessionId && !sessions.has(sessionId)) {
@@ -85612,7 +85923,6 @@ var serverOptions = {};
 async function runMcpHttp(port, host = "127.0.0.1", options = {}) {
   serverOptions = options;
   markMcpSurface("http");
-  initOtel("bookipi-mcp");
   const debug = process.env["MCP_DEBUG"] === "1";
   const server = http.createServer((req, res) => {
     if (debug) {
@@ -85626,7 +85936,7 @@ async function runMcpHttp(port, host = "127.0.0.1", options = {}) {
         );
       });
     }
-    const dispatch = () => handleHttp(req, res).catch((err2) => {
+    void handleHttp(req, res).catch((err2) => {
       if (debug) {
         process.stderr.write(
           `[mcp] ERROR on ${req.method} ${req.url}: ${err2 instanceof Error ? err2.stack : String(err2)}
@@ -85641,27 +85951,6 @@ async function runMcpHttp(port, host = "127.0.0.1", options = {}) {
       } catch {
       }
     });
-    const route = routeLabel((req.url ?? "/").split("?")[0]);
-    if (route === "/health") {
-      void dispatch();
-      return;
-    }
-    otelTracer().startActiveSpan(
-      `mcp.http_request ${req.method} ${route}`,
-      (span) => {
-        res.on("finish", () => {
-          const status = res.statusCode;
-          span.setAttribute("http.request.method", req.method ?? "GET");
-          span.setAttribute("url.path", route);
-          span.setAttribute("http.response.status_code", status);
-          span.setAttribute("bookipi.auth.kind", authKindFor(req.headers["authorization"]));
-          if (status >= 500) span.setStatus({ code: SpanStatusCode.ERROR });
-          span.end();
-          httpRequestCounter().add(1, { path: route, status });
-        });
-        void dispatch();
-      }
-    );
   });
   const previewOrigin = (process.env["MCP_OAUTH_ISSUER"] || config.MCP_OAUTH_ISSUER || "").trim() || (host === "0.0.0.0" || host === "::" ? `http://localhost:${port}` : `http://${host}:${port}`);
   setPreviewBaseUrl(previewOrigin);
@@ -85713,10 +86002,8 @@ function installShutdownHandler(server) {
 `
     );
     server.close(() => {
-      void shutdownOtel(3e3).finally(() => {
-        process.stderr.write("[mcp] drained cleanly\n");
-        process.exit(0);
-      });
+      process.stderr.write("[mcp] drained cleanly\n");
+      process.exit(0);
     });
     for (const { transport, server: mcp } of sessions.values()) {
       void Promise.resolve().then(() => transport.close?.()).catch(() => {
@@ -85792,11 +86079,7 @@ function captureReferral(flag) {
 }
 
 // src/index.ts
-init_esm();
 configureHttpProxy();
-initOtel(process.argv[2] === "mcp" ? "bookipi-mcp" : "bookipi-cli", {
-  metricIntervalMs: process.argv[2] === "mcp" ? 6e4 : 3e5
-});
 var program2 = new Command();
 program2.name("bookipi").description("Bookipi CLI").version(`${CLI_VERSION} (${BUILD_ENV}, build ${BUILD_STAMP})`);
 program2.addCommand(loginCommand);
@@ -85824,9 +86107,6 @@ program2.hook("preAction", async (_thisCommand, actionCommand) => {
   }
   const fullName = parts2.slice(1).join(" ");
   beginCommand(fullName, invocationShape(actionCommand));
-  cliCommandName = fullName;
-  cliSpan.updateName(`cli.command ${fullName}`);
-  cliSpan.setAttribute("bookipi.command", fullName);
   captureReferral(actionCommand.opts()["ref"]);
   await installDetected(fullName, {
     hostedServer: fullName === "mcp" && actionCommand.opts()["http"] === true
@@ -85834,15 +86114,8 @@ program2.hook("preAction", async (_thisCommand, actionCommand) => {
 });
 program2.hook("postAction", async () => {
   commandCompleted();
-  cliSpan.end();
-  cliCommandCounter().add(1, { command: cliCommandName, success: true });
-  await flushOtel(2e3);
 });
-var cliCommandName = "";
-var cliSpan = otelTracer().startSpan("cli.command");
-context.with(trace.setSpan(context.active(), cliSpan), () => {
-  program2.parse();
-});
+program2.parse();
 /*! Bundled license information:
 
 undici/lib/web/fetch/body.js:
