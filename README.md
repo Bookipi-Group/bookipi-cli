@@ -237,14 +237,13 @@ Bookipi CLI is also a standalone, JSON-first command-line tool you can build on
 directly — for AI agents, automations, integrations, and your own products. The
 bundled CLI runs on Node 22+ with no build step.
 
-Grab the bundled CLI from the latest release — this repo holds the skill and
-docs, not the CLI source, so cloning it won't give you a binary:
+The bundled CLI ships in this repository at `skills/bookipi-cli/bin/bookipi.js`
+(the same production build as the release's `bookipi-cli.skill`), so cloning
+the repo gives you a runnable CLI:
 
 ```
-curl -fsSL -o bookipi-cli.skill \
-  https://github.com/Bookipi-Group/bookipi-cli/releases/latest/download/bookipi-cli.skill
-unzip -q bookipi-cli.skill 'bookipi-cli/bin/*'
-alias bookipi='node "$PWD/bookipi-cli/bin/bookipi.js"'
+git clone https://github.com/Bookipi-Group/bookipi-cli.git
+alias bookipi='node "$PWD/bookipi-cli/skills/bookipi-cli/bin/bookipi.js"'
 
 bookipi init                                   # creates a workspace + browser OAuth sign-in (~5s)
 bookipi invoice list --status overdue --json   # structured output your code can act on
