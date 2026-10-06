@@ -43,7 +43,7 @@ import {
   saveSignitToken,
   saveToken,
   uploadItemImage
-} from "./chunks/chunk-MAJ7HXTK.js";
+} from "./chunks/chunk-EE4DXZQL.js";
 import {
   __commonJS,
   __export,
@@ -40381,7 +40381,6 @@ var INVOICES_CREATE_ONE_MUTATION = `
         _id
         status
         paymentStatus
-        paymentTest
         type
         isTrashed
         trashedDate
@@ -44450,7 +44449,7 @@ var createCommand4 = new Command("create").description("Create a new item/produc
     if (opts.photo) {
       process.stderr.write(`  \u2022 Uploading ${opts.photo}...
 `);
-      const { uploadItemImage: uploadItemImage2 } = await import("./chunks/uploadItemImage-T5RVIYAA.js");
+      const { uploadItemImage: uploadItemImage2 } = await import("./chunks/uploadItemImage-3O54LIOI.js");
       const { filename } = await uploadItemImage2(opts.photo);
       record2.photos = [{ filename }];
     }
