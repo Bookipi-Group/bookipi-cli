@@ -30,7 +30,7 @@ response, and contracts pending signature. It's what you schedule when the user 
 >
 > - `bookipi deal list --search "<name>" --json`
 > - `bookipi proposal list --search "<name>" --json`
-> - `bookipi invoice list --json` (filter locally by customer)
+> - `bookipi invoice list --customer "<name>" --json` (filtered server-side — never pull every invoice and filter locally)
 > - `bookipi contract list --status pending_signature,draft --limit 50 --json` (filter locally by recipient)
 >
 > **Do NOT rely on `deal.proposals[]` or `deal.invoices[]` alone.** Those inline arrays only contain artifacts formally attached to that specific deal record. A customer can have proposals/invoices that exist independently. If you skip the separate `proposal list` query, you will incorrectly tell the user "no proposal sent yet" when they actually just sent one — this has happened before and embarrassed the user.
@@ -91,7 +91,7 @@ That's 6 parallel calls, ~1 second total. For each meeting, also issue these per
 ```bash
 bookipi deal list --search "<customer name>" --json
 bookipi proposal list --search "<customer name>" --json
-bookipi invoice list --json   # then filter locally by customer
+bookipi invoice list --customer "<customer name>" --json   # server-side filter
 bookipi contract list --status pending_signature,draft --limit 50 --json   # filter by recipient
 ```
 
@@ -243,7 +243,7 @@ If you only inspect `deal.proposals[]`, you'll miss proposals that exist in the 
 |---|---|---|
 | Deals | `deal list --search "<name>"` | Pipeline position, deal value |
 | Proposals | `proposal list --search "<name>"` | All proposals for the customer, attached or not |
-| Invoices | `invoice list --json` (filter locally) | Outstanding amounts, history |
+| Invoices | `invoice list --customer "<name>" --json` | Outstanding amounts, history |
 | Contracts | `contract list ... --json` (filter recipients) | Signature status |
 
 When merging, dedupe proposals: any `_id` already present in a `deal.proposals[]` should be marked as "attached to deal X"; the rest are loose proposals worth surfacing too.

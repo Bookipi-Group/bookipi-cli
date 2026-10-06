@@ -14,14 +14,12 @@ tools.
 ## Before you run them
 
 1. **Get the CLI.** If you use Claude Code, Codex or Gemini CLI, follow the
-   [install steps](../README.md). To run the scripts from a plain terminal, get
-   the bundled CLI:
+   [install steps](../README.md). To run the scripts from a plain terminal, use
+   the CLI that ships in this repository:
 
    ```bash
-   curl -fsSL -o bookipi-cli.skill \
-     https://github.com/Bookipi-Group/bookipi-cli/releases/latest/download/bookipi-cli.skill
-   unzip -q bookipi-cli.skill 'bookipi-cli/bin/*'
-   export BOOKIPI="node $PWD/bookipi-cli/bin/bookipi.js"
+   git clone https://github.com/Bookipi-Group/bookipi-cli.git
+   export BOOKIPI="node $PWD/bookipi-cli/skills/bookipi-cli/bin/bookipi.js"
    ```
 
    The scripts call `$BOOKIPI`, or `bookipi` if that isn't set. You need Node

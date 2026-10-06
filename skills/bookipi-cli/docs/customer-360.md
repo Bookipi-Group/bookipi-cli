@@ -27,7 +27,7 @@ Same per-customer block as the morning brief uses, in parallel:
 bookipi customer list --search "<name>" --json
 bookipi deal list --search "<name>" --json
 bookipi proposal list --search "<name>" --json
-bookipi invoice list --json   # filter locally by customer ID or name
+bookipi invoice list --customer "<name>" --json   # server-side filter — never list everything and filter locally
 bookipi contract list --status pending_signature,draft,signed --limit 100 --json   # filter locally by recipients[].email
 ```
 

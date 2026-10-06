@@ -17,7 +17,7 @@ The CLI uses short handles (`@i1`, `@c1`, `@t1`, `@e1`) as aliases for long Mong
 
 - Handles from previous sessions are immediately available
 - If a handle doesn't exist, you'll get an error: "Handle @i1 not found"
-- Solution: Run `bookipi invoice list` first to register handles
+- Solution: use the record's **ID** from earlier output instead (every `--json` result carries `_id`, and IDs work everywhere a handle does). Only run a `list` if no ID for that record is in the conversation — and then ONE filtered list (`--search` / `--customer`), not a full one. Handles live on disk, so in a sandbox that resets between commands they never persist: switch to IDs for the rest of the session rather than re-listing each time.
 
 **CRITICAL — User-Facing Presentation:**
 
@@ -111,7 +111,7 @@ The CLI emits errors in a consistent format on stderr — the agent should **pas
 | `network` | *Couldn't reach Bookipi (network issue).* | *Check your connection and try again in a moment.* | 1 |
 | `timeout` | *Request timed out.* | *The service might be slow — try the command again.* | 1 |
 | `rate-limit` | *Hit Bookipi's rate limit.* | *Wait ~30s and retry.* | 1 |
-| `handle-not-found` | *Handle @X isn't registered.* | *Run the matching `list` command (e.g. `bookipi invoice list`) to register handles in this session.* | 3 |
+| `handle-not-found` | *Handle @X isn't registered.* | *Use the record's ID from earlier output instead; only if none is in context, run ONE filtered `list` (`--search`/`--customer`). If handles keep failing, the environment isn't persisting them — use IDs for the rest of the session.* | 3 |
 | `not-found` | *Record not found (it may have been deleted, or the ID is wrong).* | *Run the appropriate `list` command to find a valid ID/handle.* | 3 |
 | `validation` | *(passes through, e.g. "Invalid --status value")* | — | 3 |
 | `upload` | *File upload failed.* | *Retry the command. If it keeps failing, the file might be too large or the network unstable.* | 1 |
