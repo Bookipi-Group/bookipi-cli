@@ -43,7 +43,7 @@ import {
   saveSignitToken,
   saveToken,
   uploadItemImage
-} from "./chunks/chunk-EE4DXZQL.js";
+} from "./chunks/chunk-24RB4RI6.js";
 import {
   __commonJS,
   __export,
@@ -37922,7 +37922,7 @@ async function track(event, properties = {}) {
   const userId = getAnalyticsUserId();
   const cliPlatform = surface === "cli" ? detectCliPlatform() : {};
   const clientPlatform = (typeof properties["client_platform"] === "string" ? properties["client_platform"] : void 0) ?? cliPlatform.client_platform ?? "unknown";
-  const referral = currentRequestAuth() ? null : getReferral();
+  const referral = getReferral();
   const internalEmail = getInternalTesterEmail();
   const internal = internalEmail ? { internal_tester: true, internal_tester_email: internalEmail } : {};
   const payload = {
@@ -38164,7 +38164,11 @@ function formatError(err2, opts = {}) {
       friendly = "Request timed out.";
       hint = "The service might be slow \u2014 try the command again.";
       code = "timeout";
-    } else if (lower.includes("429") || lower.includes("rate limit") || lower.includes("rate-limiting")) {
+    } else if (
+      // Word-bounded like 401 above: a bare substring matched record ids, so
+      // "Customer not found: 64f4291a…" was reported as a rate limit.
+      /\b429\b/.test(lower) || lower.includes("rate limit") || lower.includes("rate-limiting")
+    ) {
       if (lower.includes("website builder")) {
         friendly = raw;
       } else {
@@ -38172,6 +38176,11 @@ function formatError(err2, opts = {}) {
         hint = "Wait ~30s and retry.";
       }
       code = "rate-limit";
+    } else if (lower.startsWith("file not found")) {
+      friendly = raw;
+      hint = "Check the path \u2014 it must point to a file on this machine.";
+      code = "validation";
+      exitCode = 3;
     } else if (lower.includes("handle ") && lower.includes("not found")) {
       const match = raw.match(/Handle (@\w+\d*)/i);
       const handle = match ? match[1] : "the handle";
@@ -38192,7 +38201,7 @@ function formatError(err2, opts = {}) {
       friendly = raw;
       code = "validation";
       exitCode = 3;
-    } else if (lower.includes("malformedpost") || lower.includes("s3") || lower.includes("upload failed") || lower.includes("file not found")) {
+    } else if (lower.includes("malformedpost") || lower.includes("s3") || lower.includes("upload failed")) {
       friendly = "File upload failed.";
       hint = "Retry the command. If it keeps failing, the file might be too large or the network unstable.";
       code = "upload";
@@ -38243,6 +38252,30 @@ function failWith(message, opts = {}) {
     exitCode: 3,
     ...opts
   });
+}
+
+// src/commands/shared.ts
+function withErrors(action) {
+  return async (...args) => {
+    try {
+      await action(...args);
+    } catch (err2) {
+      const command = args[args.length - 1];
+      emitError(err2, { json: command.opts()["json"] });
+    }
+  };
+}
+function parsePaging(opts) {
+  const json3 = opts.json === true;
+  const page = parseInt(opts.page, 10);
+  const perPage = parseInt(opts.limit, 10);
+  if (isNaN(page) || page < 1) failWith("Invalid page number", { json: json3 });
+  if (isNaN(perPage) || perPage < 1) failWith("Invalid limit value", { json: json3 });
+  return { page, perPage };
+}
+function collectList(value, previous = []) {
+  const parts2 = value.split(",").map((s) => s.trim()).filter(Boolean);
+  return [...previous, ...parts2];
 }
 
 // src/commands/auth/login.ts
@@ -38297,8 +38330,8 @@ var loginCommand = new Command("login").description("Login to Bookipi via browse
 ).option(
   "--wait-seconds <seconds>",
   "Widen (or narrow) --relay-wait's window. Use it only when the call cannot be killed \u2014 e.g. a background task, where ~290 covers the whole 5-minute session in one call. A killed process prints nothing at all, which is why this is not the default."
-).action(async (opts) => {
-  try {
+).action(
+  withErrors(async (opts) => {
     if (opts.relayStart) {
       if (opts.relayResume) {
         failWith("--relay-start and --relay-resume are mutually exclusive");
@@ -38407,16 +38440,14 @@ var loginCommand = new Command("login").description("Login to Bookipi via browse
     const profile = await saveRelaySuccess(token, "terminal");
     console.log(JSON.stringify(successPayload(profile)));
     process.exit(0);
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/commands/auth/logout.ts
 var logoutCommand = new Command("logout").description(
   "Log out \u2014 clear cached credentials and handles from every location the CLI reads. Run 'bookipi login' afterwards to log back in (with the same or a different account)."
-).action(() => {
-  try {
+).action(
+  withErrors(async () => {
     const removed = clearAllCredentials();
     if (removed.length === 0) {
       console.log("Already logged out \u2014 no credentials or handles to clear.");
@@ -38428,21 +38459,17 @@ Cleared:`);
     removed.forEach((p) => console.log(`  - ${p}`));
     console.log(`
 Run \`bookipi login\` to log back in.`);
-  } catch (err2) {
-    emitError(err2);
-  }
-});
+  })
+);
 
 // src/commands/auth/whoami.ts
-var whoamiCommand = new Command("whoami").description("Get current user").action(async () => {
-  try {
+var whoamiCommand = new Command("whoami").description("Get current user").action(
+  withErrors(async () => {
     const data = await whoami();
     await persistLoginProfile();
     console.log(JSON.stringify(data, null, 2));
-  } catch (err2) {
-    emitError(err2);
-  }
-});
+  })
+);
 
 // src/commands/init.ts
 import path2 from "path";
@@ -39138,12 +39165,6 @@ var HandleRegistry = class _HandleRegistry {
     return this.reverseHandles.get(id);
   }
   /**
-   * Check if a handle exists
-   */
-  hasHandle(handle) {
-    return this.handles.has(handle);
-  }
-  /**
    * Clear all handles (useful for testing or sessions)
    */
   clear() {
@@ -39158,12 +39179,6 @@ var HandleRegistry = class _HandleRegistry {
       } catch {
       }
     }
-  }
-  /**
-   * Get all registered handles (for debugging)
-   */
-  getAllHandles() {
-    return new Map(this.handles);
   }
 };
 
@@ -39376,6 +39391,46 @@ function formatCents(cents, currencyCode) {
   return formatCurrency(safe / 100, currencyCode);
 }
 
+// src/core/format/dates.ts
+var MS_PER_DAY = 1e3 * 60 * 60 * 24;
+function daysBetween(from, to = /* @__PURE__ */ new Date()) {
+  if (!from) return 0;
+  const d = from instanceof Date ? from : new Date(from);
+  if (isNaN(d.getTime())) return 0;
+  return Math.floor((to.getTime() - d.getTime()) / MS_PER_DAY);
+}
+function daysOverdue(dueDate, now2 = /* @__PURE__ */ new Date()) {
+  return Math.max(0, daysBetween(dueDate, now2));
+}
+function daysSince(date5, now2 = /* @__PURE__ */ new Date()) {
+  return Math.max(0, daysBetween(date5, now2));
+}
+function formatLocalDate(date5) {
+  if (!date5) return "N/A";
+  if (typeof date5 === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date5)) return date5;
+  const d = date5 instanceof Date ? date5 : new Date(date5);
+  if (isNaN(d.getTime())) return "N/A";
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+function formatCalendarDate(date5) {
+  return calendarDate(date5) ?? "N/A";
+}
+function monthKey(date5) {
+  const d = date5 instanceof Date ? date5 : new Date(date5);
+  if (isNaN(d.getTime())) return "";
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
+}
+function calendarDate(date5) {
+  if (!date5) return null;
+  const d = date5 instanceof Date ? date5 : new Date(date5);
+  if (isNaN(d.getTime())) return null;
+  const snapped = new Date(Math.round(d.getTime() / MS_PER_DAY) * MS_PER_DAY);
+  return snapped.toISOString().slice(0, 10) || null;
+}
+
 // src/core/formatters/BaseFormatter.ts
 var BaseFormatter = class {
   /**
@@ -39391,14 +39446,8 @@ var BaseFormatter = class {
    */
   formatDate(date5) {
     if (!date5) return "N/A";
-    try {
-      const d = typeof date5 === "string" ? new Date(date5) : date5;
-      if (Number.isNaN(d.getTime())) return String(date5);
-      const pad = (n) => String(n).padStart(2, "0");
-      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-    } catch {
-      return String(date5);
-    }
+    const day = formatLocalDate(date5);
+    return day === "N/A" ? String(date5) : day;
   }
   /**
    * Format datetime
@@ -39765,16 +39814,9 @@ var listCommand = new Command("list").description("List invoices").option(
 ).option(
   "--type <type>",
   `Document type to list: ${DOCUMENT_TYPE_NAMES.join(", ")} (default: invoice)`
-).option("--customer <value>", "Filter by customer \u2014 name, handle (@c1), or ID").option("--from <date>", "Only documents on/after this date (YYYY-MM-DD or ISO)").option("--to <date>", "Only documents on/before this date (YYYY-MM-DD or ISO)").option("--search <text>", "Free-text search (number, customer name, etc.)").option("-p, --page <number>", "Page number", "1").option("-l, --limit <number>", "Items per page", "15").option("--sort <field>", "Sort order", "createdAt_desc").option("--json", "Output raw JSON instead of formatted").action(async (opts) => {
-  try {
-    const page = parseInt(opts.page, 10);
-    const perPage = parseInt(opts.limit, 10);
-    if (isNaN(page) || page < 1) {
-      failWith("Invalid page number", { json: opts?.json, exitCode: 1 });
-    }
-    if (isNaN(perPage) || perPage < 1) {
-      failWith("Invalid limit value", { json: opts?.json, exitCode: 1 });
-    }
+).option("--customer <value>", "Filter by customer \u2014 name, handle (@c1), or ID").option("--from <date>", "Only documents on/after this date (YYYY-MM-DD or ISO)").option("--to <date>", "Only documents on/before this date (YYYY-MM-DD or ISO)").option("--search <text>", "Free-text search (number, customer name, etc.)").option("-p, --page <number>", "Page number", "1").option("-l, --limit <number>", "Items per page", "15").option("--sort <field>", "Sort order", "createdAt_desc").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (opts) => {
+    const { page, perPage } = parsePaging(opts);
     let status;
     if (opts.status) {
       const requested = opts.status.split(",").map((s) => s.trim());
@@ -39805,10 +39847,8 @@ var listCommand = new Command("list").description("List invoices").option(
     const formatter = new InvoiceFormatter();
     const output = formatter.format(data.searchInvoices?.items || [], opts);
     console.log(output);
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/invoice/getInvoice.ts
 var INVOICES_MANY_QUERY = `
@@ -39907,8 +39947,8 @@ async function invoiceWebUrl(invoice, idFallback) {
 }
 
 // src/commands/invoice/get.ts
-var getCommand = new Command("get").description("Get a single invoice by ID or handle (@i1)").argument("<id>", "Invoice ID or handle (@i1)").option("--json", "Output raw JSON instead of formatted").action(async (id, opts) => {
-  try {
+var getCommand = new Command("get").description("Get a single invoice by ID or handle (@i1)").argument("<id>", "Invoice ID or handle (@i1)").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (id, opts) => {
     const registry3 = HandleRegistry.getInstance();
     const resolvedId = registry3.resolve(id);
     const data = await getInvoice(resolvedId);
@@ -39922,10 +39962,8 @@ var getCommand = new Command("get").description("Get a single invoice by ID or h
     const label = invoiceWebPath(data) === "edit" ? "Edit invoice" : "View invoice";
     console.log(`
 \u{1F517} **${label}:** ${link}`);
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/commands/invoice/preview.ts
 import { writeFileSync } from "node:fs";
@@ -40280,8 +40318,8 @@ var previewCommand = new Command("preview").description(
 ).option(
   "--embed",
   "Write an embeddable, self-contained fragment (head <style> + body only, remote <img> inlined as data URIs) ready to render as an Artifact without further editing. Keeps the full HTML out of an agent's context (HTML only; ignored with --pdf)."
-).option("--json", "Output JSON metadata { file, no, _id }").action(async (id, opts) => {
-  try {
+).option("--json", "Output JSON metadata { file, no, _id }").action(
+  withErrors(async (id, opts) => {
     const registry3 = HandleRegistry.getInstance();
     const resolvedId = registry3.resolve(id);
     const invoice = await getInvoice(resolvedId);
@@ -40367,10 +40405,8 @@ var previewCommand = new Command("preview").description(
 \u{1F4A1} Open that file in a browser to view or print the invoice.`
       );
     }
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/invoice/createInvoice.ts
 var INVOICES_CREATE_ONE_MUTATION = `
@@ -40757,7 +40793,7 @@ async function getNextInvoiceNumber(docType = 1, companyId) {
 
 // src/usecases/invoice/dueDate.ts
 var DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
-var MS_PER_DAY = 24 * 60 * 60 * 1e3;
+var MS_PER_DAY2 = 24 * 60 * 60 * 1e3;
 function parseDateOnly(value, flag) {
   if (!DATE_ONLY.test(value)) {
     throw new Error(`${flag} must be YYYY-MM-DD, got "${value}"`);
@@ -40781,7 +40817,7 @@ function computeDueIn(invoiceDate, dueDate) {
       `Cannot compute days between "${invoiceDate}" and "${dueDate}"`
     );
   }
-  return Math.round((to - from) / MS_PER_DAY);
+  return Math.round((to - from) / MS_PER_DAY2);
 }
 function localStartOfDayIso(dateOnly) {
   const [y, m, d] = dateOnly.split("-").map(Number);
@@ -40793,7 +40829,7 @@ function dueDateFromDueIn(invoiceDate, days) {
     throw new Error(`Invoice has an unparseable date: "${invoiceDate}"`);
   }
   const snapped = new Date(
-    Math.round(base.getTime() / MS_PER_DAY) * MS_PER_DAY
+    Math.round(base.getTime() / MS_PER_DAY2) * MS_PER_DAY2
   );
   snapped.setUTCDate(snapped.getUTCDate() + days);
   return snapped.toISOString().slice(0, 10);
@@ -40825,6 +40861,24 @@ function computeDepositAmount(spec, total) {
     return round2(total * (spec.depositPercentage ?? 0) / 100);
   }
   return round2(spec.fixedAmount ?? 0);
+}
+function recomputePercentageDeposit(invoice, newTotal) {
+  const pct2 = Number(invoice.depositPercentage ?? 0);
+  if (invoice.depositType !== "percentage" || !(pct2 > 0)) return null;
+  const amount = computeDepositAmount(
+    { depositType: "percentage", depositPercentage: pct2, fixedAmount: null },
+    newTotal
+  );
+  return amount === invoice.depositAmount ? null : amount;
+}
+function defaultDepositDue(invoiceDate, flag) {
+  const day = typeof invoiceDate === "string" ? calendarDate(invoiceDate) : null;
+  if (!day) {
+    throw new Error(
+      "Cannot default the deposit due date \u2014 the invoice has no readable date. Pass a deposit due date explicitly."
+    );
+  }
+  return depositDueEndOfDay(day, flag);
 }
 function depositDueEndOfDay(value, flag = "--deposit-due") {
   let day;
@@ -41757,8 +41811,8 @@ var createCommand2 = new Command("create").description(
 ).option(
   "--link",
   "Also print the signed web link. Off by default: the link embeds a live authToken, and an agent that sees it tends to paste it into chat."
-).option("--json", "Output raw JSON instead of formatted").action(async (opts) => {
-  try {
+).option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (opts) => {
     const docType = resolveDocumentType(opts.type ?? "invoice");
     parseDateOnly(opts.date, "--date");
     if (opts.dueDate) parseDateOnly(opts.dueDate, "--due-date");
@@ -41863,10 +41917,8 @@ var createCommand2 = new Command("create").description(
 \u{1F517} **${label}:** ${link}`);
       }
     }
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/invoice/createInvoiceFromProposal.ts
 var INVOICE_FROM_PROPOSAL_MUTATION = `
@@ -41913,8 +41965,8 @@ async function createInvoiceFromProposal(proposalId) {
 // src/commands/invoice/create-from-proposal.ts
 var createFromProposalCommand = new Command("create-from-proposal").description(
   "Create an invoice from an accepted proposal. Server copies items, customer, and totals; links back via proposalId."
-).argument("<proposal>", "Proposal ID or handle (@p1)").option("--json", "Output raw JSON instead of formatted").action(async (proposalRef, opts) => {
-  try {
+).argument("<proposal>", "Proposal ID or handle (@p1)").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (proposalRef, opts) => {
     const registry3 = HandleRegistry.getInstance();
     const proposalId = registry3.resolve(proposalRef);
     const data = await createInvoiceFromProposal(proposalId);
@@ -41937,10 +41989,8 @@ var createFromProposalCommand = new Command("create-from-proposal").description(
       `
 \u{1F4A1} Invoice ${invoiceHandle} (${invoice.no || "no number"}) is ready. To email it: \`bookipi invoice send ${invoiceHandle} -r <email>\`.`
     );
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/invoice/duplicateInvoice.ts
 var INVOICES_DUPLICATE_ONE_MUTATION = `
@@ -42126,8 +42176,8 @@ var duplicateCommand = new Command("duplicate").description(
 ).option("--as <type>", "Alias for --type (e.g. `--as estimate`)").option(
   "--timezone <tz>",
   "IANA timezone for the new draft's date (defaults to your system zone)"
-).option("--json", "Output raw JSON instead of formatted").action(async (id, opts) => {
-  try {
+).option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (id, opts) => {
     const registry3 = HandleRegistry.getInstance();
     const resolvedId = registry3.resolve(id);
     const { record: record2, converted, crossCompany } = await copyInvoice(
@@ -42165,16 +42215,11 @@ var duplicateCommand = new Command("duplicate").description(
 \u{1F4A1} Draft copy created in the target company (handle: ${handle}). The original is untouched.` : `
 \u{1F4A1} Draft copy created (handle: ${handle}). Edit it via the link above, then send with \`bookipi invoice send ${handle} -r <email>\`.`
     );
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
-// src/commands/invoice/update.ts
+// src/usecases/invoice/lineItemEdits.ts
 var MONGO_ID = /^[a-f0-9]{24}$/i;
-function collect(value, previous) {
-  return [...previous, value];
-}
 function findItemIndex(items, match, flag) {
   if (MONGO_ID.test(match)) {
     const idx = items.findIndex((i) => i._id === match);
@@ -42191,13 +42236,11 @@ function findItemIndex(items, match, flag) {
     return idx;
   }
   const normalized = match.trim().toLowerCase();
-  const hits = items.map((item, idx) => ({ item, idx })).filter(({ item }) => (item.name ?? "").toLowerCase() === normalized);
+  const hits = items.map((item, idx) => ({ item, idx })).filter(({ item }) => String(item["name"] ?? "").toLowerCase() === normalized);
   if (hits.length === 0) {
-    const names = items.map((i, n) => `  ${n + 1}. ${i.name}`).join("\n");
-    throw new Error(
-      `${flag}: no line item named "${match}". Current items:
-${names}`
-    );
+    const names = items.map((i, n) => `  ${n + 1}. ${String(i["name"])}`).join("\n");
+    throw new Error(`${flag}: no line item named "${match}". Current items:
+${names}`);
   }
   if (hits.length > 1) {
     throw new Error(
@@ -42205,6 +42248,26 @@ ${names}`
     );
   }
   return hits[0].idx;
+}
+function applyLineItemEdits(items, edits) {
+  const out = [...items];
+  for (const match of edits.remove ?? []) {
+    out.splice(findItemIndex(out, match, "--remove-item"), 1);
+  }
+  for (const patch of edits.set ?? []) {
+    const idx = findItemIndex(out, String(patch["_id"] ?? patch["name"]), "--set-item");
+    const merged = { ...out[idx], ...patch };
+    if (patch["total"] == null && (patch["price"] != null || patch["quantity"] != null)) {
+      merged.total = (Number(merged.price) || 0) * (Number(merged.quantity) || 0);
+    }
+    out[idx] = merged;
+  }
+  return out;
+}
+
+// src/commands/invoice/update.ts
+function collect(value, previous) {
+  return [...previous, value];
 }
 var updateCommand = new Command("update").description("Update an existing invoice by ID or handle (@i1)").argument("<id>", "Invoice ID or handle (@i1) to update").option("--status <status>", "Set invoice status (e.g. paid, sent, saved)").option("--note <text>", "Set or update the invoice note").option(
   "--due-date <date>",
@@ -42241,8 +42304,8 @@ var updateCommand = new Command("update").description("Update an existing invoic
 ).option("--remove-deposit", "Remove the deposit request from the invoice").option(
   "-d, --data <json>",
   "Additional fields to update as JSON (merged with other options; explicit totals here win over recomputed ones)"
-).option("--reset-status", "Reset the invoice status after update", false).option("--json", "Output raw JSON instead of formatted").action(async (id, opts) => {
-  try {
+).option("--reset-status", "Reset the invoice status after update", false).option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (id, opts) => {
     const registry3 = HandleRegistry.getInstance();
     const resolvedId = registry3.resolve(id);
     let extra = {};
@@ -42320,10 +42383,7 @@ var updateCommand = new Command("update").description("Update an existing invoic
           return rest;
         });
       }
-      for (const match of opts.removeItem) {
-        items.splice(findItemIndex(items, match, "--remove-item"), 1);
-      }
-      for (const raw of opts.setItem) {
+      const patches = opts.setItem.map((raw) => {
         let patch;
         try {
           patch = JSON.parse(raw);
@@ -42332,19 +42392,17 @@ var updateCommand = new Command("update").description("Update an existing invoic
             json: opts?.json
           });
         }
-        const match = patch._id ?? patch.name;
-        if (!match) {
+        if (patch?.["_id"] == null && !patch?.["name"]) {
           failWith('--set-item JSON needs "_id" or "name" to locate the line item', {
             json: opts?.json
           });
         }
-        const idx = findItemIndex(items, String(match), "--set-item");
-        const merged = { ...items[idx], ...patch };
-        if (patch.total == null && (patch.price != null || patch.quantity != null)) {
-          merged.total = (merged.price ?? 0) * (merged.quantity ?? 0);
-        }
-        items[idx] = merged;
-      }
+        return patch;
+      });
+      items = applyLineItemEdits(items, {
+        remove: opts.removeItem,
+        set: patches
+      });
       for (const raw of opts.addItem) {
         items.push(await resolveItem(raw, companyId));
       }
@@ -42378,7 +42436,7 @@ var updateCommand = new Command("update").description("Update an existing invoic
         record2.depositType = depositSpec.depositType;
         record2.depositPercentage = depositSpec.depositPercentage;
         record2.depositAmount = depositAmount;
-        record2.depositDue = depositDueInput ?? cur.depositDue ?? depositDueEndOfDay(cur.date);
+        record2.depositDue = depositDueInput ?? cur.depositDue ?? defaultDepositDue(cur.date);
       } else {
         const hasDeposit = (cur.depositAmount ?? 0) > 0 || cur.depositStatus != null && cur.depositStatus !== "unset";
         if (!hasDeposit) {
@@ -42392,22 +42450,13 @@ var updateCommand = new Command("update").description("Update an existing invoic
     } else if (!opts.removeDeposit && (itemOpsRequested || Array.isArray(extra.items))) {
       const cur = current;
       const newTotal = record2.total ?? cur.total ?? 0;
-      if (cur.depositType === "percentage" && (cur.depositPercentage ?? 0) > 0) {
-        const recomputed = computeDepositAmount(
-          {
-            depositType: "percentage",
-            depositPercentage: cur.depositPercentage,
-            fixedAmount: null
-          },
-          newTotal
+      const recomputed = recomputePercentageDeposit(cur, newTotal);
+      if (recomputed !== null) {
+        record2.depositAmount = recomputed;
+        console.error(
+          `Note: ${cur.depositPercentage}% deposit recomputed from the new total \u2192 ${recomputed}`
         );
-        if (recomputed !== cur.depositAmount) {
-          record2.depositAmount = recomputed;
-          console.error(
-            `Note: ${cur.depositPercentage}% deposit recomputed from the new total \u2192 ${recomputed}`
-          );
-        }
-      } else if ((cur.depositAmount ?? 0) > newTotal) {
+      } else if (cur.depositType !== "percentage" && (cur.depositAmount ?? 0) > newTotal) {
         console.error(
           `Warning: the fixed deposit (${cur.depositAmount}) now exceeds the invoice total (${newTotal}) \u2014 adjust it with --deposit or --remove-deposit.`
         );
@@ -42436,10 +42485,8 @@ var updateCommand = new Command("update").description("Update an existing invoic
 `);
       console.log(formatter.format(invoice, opts));
     }
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/invoice/deleteInvoice.ts
 var INVOICES_REMOVE_MUTATION = `
@@ -42464,8 +42511,8 @@ async function deleteInvoice(id, companyId) {
 }
 
 // src/commands/invoice/delete.ts
-var deleteCommand = new Command("delete").description("Delete an invoice by ID or handle (@i1)").argument("<id>", "Invoice ID or handle (@i1) to delete").option("--json", "Output raw JSON instead of formatted").action(async (id, opts) => {
-  try {
+var deleteCommand = new Command("delete").description("Delete an invoice by ID or handle (@i1)").argument("<id>", "Invoice ID or handle (@i1) to delete").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (id, opts) => {
     const registry3 = HandleRegistry.getInstance();
     const resolvedId = registry3.resolve(id);
     const data = await deleteInvoice(resolvedId);
@@ -42483,10 +42530,8 @@ var deleteCommand = new Command("delete").description("Delete an invoice by ID o
         `- Create invoice: \`bookipi invoice create --data '{...}'\``
       );
     }
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/invoice/sendInvoice.ts
 var INVOICES_SEND_MUTATION = `
@@ -42515,8 +42560,8 @@ async function sendInvoice(options) {
 var sendCommand = new Command("send").description("Send an invoice to one or more recipients").argument("<id>", "Invoice ID or handle (@i1) to send").requiredOption(
   "-r, --recipients <emails>",
   "Comma-separated list of recipient email addresses"
-).option("-s, --subject <subject>", "Email subject line").option("-b, --bcc <emails>", "Comma-separated list of BCC email addresses").option("-m, --message <message>", "Email message body").option("--json", "Output raw JSON instead of formatted").action(async (id, opts) => {
-  try {
+).option("-s, --subject <subject>", "Email subject line").option("-b, --bcc <emails>", "Comma-separated list of BCC email addresses").option("-m, --message <message>", "Email message body").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (id, opts) => {
     const registry3 = HandleRegistry.getInstance();
     const resolvedId = registry3.resolve(id);
     const recipients = opts.recipients.split(",").map((e) => e.trim()).filter(Boolean);
@@ -42549,10 +42594,8 @@ BCC:`);
       console.log(`- View invoice: \`bookipi invoice get ${invoiceHandle}\``);
       console.log(`- List invoices: \`bookipi invoice list\``);
     }
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/invoice/sendPaymentReceipt.ts
 var SEND_PAYMENT_RECEIPT_MUTATION = `
@@ -42605,8 +42648,8 @@ var sendReceiptCommand = new Command("send-receipt").description(
 ).option(
   "--date <date>",
   "Payment date (YYYY-MM-DD or ISO). Defaults to now."
-).option("--brand <brand>", "Card brand to show on the receipt (e.g. Visa)").option("--last4 <digits>", "Last 4 digits of the card").option("--json", "Output raw JSON instead of formatted").action(async (id, opts) => {
-  try {
+).option("--brand <brand>", "Card brand to show on the receipt (e.g. Visa)").option("--last4 <digits>", "Last 4 digits of the card").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (id, opts) => {
     const registry3 = HandleRegistry.getInstance();
     const invoiceId = registry3.resolve(id);
     const invoice = await getInvoice(invoiceId);
@@ -42646,10 +42689,8 @@ var sendReceiptCommand = new Command("send-receipt").description(
     console.log(
       `   Invoice ${invoice?.no ?? invoiceId} \xB7 Amount: ${amount}`
     );
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/invoice/invoicePayment.ts
 function buildMarkPaidPayments(inv, opts) {
@@ -42699,8 +42740,8 @@ async function voidInvoicePayments(invoiceId) {
 // src/commands/invoice/mark-paid.ts
 var markPaidCommand = new Command("mark-paid").description(
   "Record a payment against an invoice (the real 'mark as paid' \u2014 logs it in payment history, sets paymentStatus, and clears the balance). Defaults to the full outstanding amount. DESTRUCTIVE \u2014 confirm with the user first."
-).argument("<id>", "Invoice ID or handle (@i1)").option("--amount <n>", "Amount to record (defaults to the full outstanding balance)").option("--method <method>", "Payment method: cash | check | credit | transfer | card | unknown. Default: cash").option("--date <YYYY-MM-DD>", "Payment date (default: today)").option("--note <text>", "Optional note on the payment").option("--json", "Output raw JSON").action(async (id, opts) => {
-  try {
+).argument("<id>", "Invoice ID or handle (@i1)").option("--amount <n>", "Amount to record (defaults to the full outstanding balance)").option("--method <method>", "Payment method: cash | check | credit | transfer | card | unknown. Default: cash").option("--date <YYYY-MM-DD>", "Payment date (default: today)").option("--note <text>", "Optional note on the payment").option("--json", "Output raw JSON").action(
+  withErrors(async (id, opts) => {
     let amount;
     if (opts.amount !== void 0) {
       amount = Number.parseFloat(String(opts.amount).replace(/[^0-9.\-]/g, ""));
@@ -42727,16 +42768,14 @@ var markPaidCommand = new Command("mark-paid").description(
     console.log(
       remaining > 0 ? `   Payment status: ${r.paymentStatus} \u2014 ${formatCurrency(remaining)} still outstanding.` : `   Payment status: ${r.paymentStatus} \u2014 fully paid. \u{1F389}`
     );
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/commands/invoice/void.ts
 var voidCommand = new Command("void").description(
   "Void an invoice's recorded payment(s) \u2014 clears its payments and reverts it to unpaid (undoes a 'mark as paid'). This does NOT delete or cancel the invoice document. DESTRUCTIVE \u2014 confirm with the user first."
-).argument("<id>", "Invoice ID or handle (@i1)").option("--json", "Output raw JSON").action(async (id, opts) => {
-  try {
+).argument("<id>", "Invoice ID or handle (@i1)").option("--json", "Output raw JSON").action(
+  withErrors(async (id, opts) => {
     const registry3 = HandleRegistry.getInstance();
     const invoiceId = registry3.resolve(id);
     const r = await voidInvoicePayments(invoiceId);
@@ -42748,10 +42787,8 @@ var voidCommand = new Command("void").description(
     console.log(
       `   Reverted to unpaid \u2014 payment status: ${r.paymentStatus}` + (typeof r.amountDue === "number" ? `, ${formatCurrency(r.amountDue)} due.` : ".")
     );
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/invoice/overdueInvoices.ts
 async function fetchOverdueInvoices() {
@@ -42785,44 +42822,6 @@ function renderTemplate(template, vars) {
     out = out.split(`{${key2}}`).join(String(value));
   }
   return out;
-}
-
-// src/core/format/dates.ts
-var MS_PER_DAY2 = 1e3 * 60 * 60 * 24;
-function daysBetween(from, to = /* @__PURE__ */ new Date()) {
-  if (!from) return 0;
-  const d = from instanceof Date ? from : new Date(from);
-  if (isNaN(d.getTime())) return 0;
-  return Math.floor((to.getTime() - d.getTime()) / MS_PER_DAY2);
-}
-function daysOverdue(dueDate, now2 = /* @__PURE__ */ new Date()) {
-  return Math.max(0, daysBetween(dueDate, now2));
-}
-function daysSince(date5, now2 = /* @__PURE__ */ new Date()) {
-  return Math.max(0, daysBetween(date5, now2));
-}
-function formatIsoDate(date5) {
-  if (!date5) return "N/A";
-  try {
-    const d = date5 instanceof Date ? date5 : new Date(date5);
-    return d.toISOString().split("T")[0] || "N/A";
-  } catch {
-    return "N/A";
-  }
-}
-function monthKey(date5) {
-  const d = date5 instanceof Date ? date5 : new Date(date5);
-  if (isNaN(d.getTime())) return "";
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  return `${y}-${m}`;
-}
-function calendarDate(date5) {
-  if (!date5) return null;
-  const d = date5 instanceof Date ? date5 : new Date(date5);
-  if (isNaN(d.getTime())) return null;
-  const snapped = new Date(Math.round(d.getTime() / MS_PER_DAY2) * MS_PER_DAY2);
-  return snapped.toISOString().slice(0, 10) || null;
 }
 
 // src/usecases/invoice/remindInvoices.ts
@@ -42905,7 +42904,7 @@ async function remindInvoices(options = {}) {
       no: entry.invoiceNo,
       amount: formatCurrency(amountDue),
       days: daysOverdue2,
-      dueDate: formatIsoDate(dueDateIso)
+      dueDate: formatCalendarDate(dueDateIso)
     };
     const overdue = daysOverdue2 > 0;
     entry.renderedSubject = renderTemplate(
@@ -43005,8 +43004,8 @@ var remindCommand = new Command("remind").description(
 ).option(
   "-m, --message <message>",
   "Override the default body. Same placeholders as --subject"
-).option("--json", "Output raw JSON instead of formatted markdown").action(async (opts) => {
-  try {
+).option("--json", "Output raw JSON instead of formatted markdown").action(
+  withErrors(async (opts) => {
     const minDaysOverdue = parseInt(opts.minDays, 10);
     if (isNaN(minDaysOverdue) || minDaysOverdue < 0) {
       failWith("--min-days must be a non-negative integer", { json: opts?.json });
@@ -43059,7 +43058,7 @@ var remindCommand = new Command("remind").description(
       for (const entry of eligible) {
         const handle = registry3.register("i", entry.invoiceId);
         const icon = statusIcon(entry);
-        const line = `${icon} ${entry.invoiceNo} [${handle}] \u2014 ${entry.customerName} <${entry.customerEmail}> \u2014 ${formatCurrency(entry.amountDue)} (${entry.daysOverdue}d overdue, due ${formatIsoDate(entry.dueDate)})`;
+        const line = `${icon} ${entry.invoiceNo} [${handle}] \u2014 ${entry.customerName} <${entry.customerEmail}> \u2014 ${formatCurrency(entry.amountDue)} (${entry.daysOverdue}d overdue, due ${formatCalendarDate(entry.dueDate)})`;
         console.log(line);
         if (entry.status === "failed" && entry.error) {
           console.log(`     \u21B3 error: ${entry.error}`);
@@ -43121,10 +43120,8 @@ var remindCommand = new Command("remind").description(
       }
     }
     if (result.failed > 0) process.exit(1);
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/invoice/collectionsPlan.ts
 var COLLECTIONS_STAGES = [
@@ -43161,9 +43158,6 @@ function classify(daysOverdue2) {
   }
   return null;
 }
-function dateLabel(iso) {
-  return iso.slice(0, 10);
-}
 function buildCollectionsPlan(entries, now2 = /* @__PURE__ */ new Date(), fmt = (n) => formatCurrency(n)) {
   const drafts = [];
   const skipped = [];
@@ -43191,7 +43185,7 @@ function buildCollectionsPlan(entries, now2 = /* @__PURE__ */ new Date(), fmt = 
       name: e.customerName || "there",
       amount: fmt(e.amountDue),
       days: daysOverdue2,
-      dueDate: dateLabel(e.dueDateIso)
+      dueDate: formatCalendarDate(e.dueDateIso)
     };
     drafts.push({
       ...e,
@@ -43363,8 +43357,8 @@ var collectionsCommand = new Command("collections").description(
   "--cooldown-days <n>",
   "Don't re-chase an invoice emailed within N days (idempotency + spaces out the escalation). 0 disables.",
   "7"
-).option("--json", "Output raw JSON instead of formatted markdown").action(async (opts) => {
-  try {
+).option("--json", "Output raw JSON instead of formatted markdown").action(
+  withErrors(async (opts) => {
     let stage;
     if (opts.stage !== void 0) {
       if (!STAGE_ORDER.includes(opts.stage)) {
@@ -43484,10 +43478,8 @@ var collectionsCommand = new Command("collections").description(
       }
     }
     if (result.failed > 0) process.exit(1);
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/commands/invoice/attach-photo.ts
 var attachPhotoCommand = new Command("attach-photo").description(
@@ -43498,8 +43490,8 @@ var attachPhotoCommand = new Command("attach-photo").description(
 ).option("--title <text>", "Photo title shown on the invoice", "").option("--description <text>", "Photo description", "").option(
   "--replace",
   "Replace ALL existing photos with this one instead of appending"
-).option("--json", "Output JSON { _id, no, photos }").action(async (id, opts) => {
-  try {
+).option("--json", "Output JSON { _id, no, photos }").action(
+  withErrors(async (id, opts) => {
     const registry3 = HandleRegistry.getInstance();
     const invoiceId = registry3.resolve(id);
     const invoice = await getInvoice(invoiceId);
@@ -43547,10 +43539,8 @@ var attachPhotoCommand = new Command("attach-photo").description(
       `
 \u{1F4A1} Open the invoice in the web app to see the image (the CLI's print preview doesn't render attached photos).`
     );
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/commands/invoice/index.ts
 var invoiceCommand = new Command("invoice").description("Manage invoices").addCommand(listCommand).addCommand(getCommand).addCommand(previewCommand).addCommand(createCommand2).addCommand(createFromProposalCommand).addCommand(duplicateCommand).addCommand(updateCommand).addCommand(deleteCommand).addCommand(sendCommand).addCommand(sendReceiptCommand).addCommand(markPaidCommand).addCommand(voidCommand).addCommand(remindCommand).addCommand(collectionsCommand).addCommand(attachPhotoCommand);
@@ -43678,16 +43668,9 @@ Page ${meta3.currentPage} of ${meta3.pageCount} (${meta3.itemCount} total)
 };
 
 // src/commands/customer/list.ts
-var listCommand2 = new Command("list").description("List customers").option("--search <query>", "Search customers by name, email, or company").option("-p, --page <number>", "Page number", "1").option("-l, --limit <number>", "Items per page", "15").option("--sort <field>", "Sort order", "createdAt_desc").option("--json", "Output raw JSON instead of formatted").action(async (opts) => {
-  try {
-    const page = parseInt(opts.page, 10);
-    const perPage = parseInt(opts.limit, 10);
-    if (isNaN(page) || page < 1) {
-      failWith("Invalid page number", { json: opts?.json, exitCode: 1 });
-    }
-    if (isNaN(perPage) || perPage < 1) {
-      failWith("Invalid limit value", { json: opts?.json, exitCode: 1 });
-    }
+var listCommand2 = new Command("list").description("List customers").option("--search <query>", "Search customers by name, email, or company").option("-p, --page <number>", "Page number", "1").option("-l, --limit <number>", "Items per page", "15").option("--sort <field>", "Sort order", "createdAt_desc").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (opts) => {
+    const { page, perPage } = parsePaging(opts);
     const data = await listCustomers({
       search: opts.search,
       page,
@@ -43697,24 +43680,20 @@ var listCommand2 = new Command("list").description("List customers").option("--s
     const formatter = new CustomerFormatter();
     const output = formatter.format(data, opts);
     console.log(output);
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/commands/customer/get.ts
-var getCommand2 = new Command("get").description("Get a single customer by ID or handle (@c1)").argument("<id>", "Customer ID or handle (@c1)").option("--json", "Output raw JSON instead of formatted").action(async (id, opts) => {
-  try {
+var getCommand2 = new Command("get").description("Get a single customer by ID or handle (@c1)").argument("<id>", "Customer ID or handle (@c1)").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (id, opts) => {
     const registry3 = HandleRegistry.getInstance();
     const resolvedId = registry3.resolve(id);
     const data = await getCustomer(resolvedId);
     const formatter = new CustomerFormatter();
     const output = formatter.format(data, opts);
     console.log(output);
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/customer/updateCustomer.ts
 var CUSTOMERS_UPDATE_ONE_MUTATION = `
@@ -43745,8 +43724,8 @@ async function updateCustomer(id, record2) {
 var updateCommand2 = new Command("update").description("Update an existing customer by ID or handle (@c1)").argument("<id>", "Customer ID or handle (@c1) to update").option("--company-name <name>", "Company name").option("--first-name <name>", "First name").option("--last-name <name>", "Last name").option("--email <email>", "Email address").option("--phone <phone>", "Phone number").option("--notes <text>", "Notes").option("--job-title <title>", "Job title").option(
   "-d, --data <json>",
   "Any updatable fields as a JSON object (merged with named flags; flags take precedence)"
-).option("--json", "Output raw JSON instead of formatted").action(async (id, opts) => {
-  try {
+).option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (id, opts) => {
     let extra = {};
     if (opts.data) {
       try {
@@ -43785,17 +43764,15 @@ var updateCommand2 = new Command("update").description("Update an existing custo
 `);
       console.log(formatter.format(customer, opts));
     }
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/commands/customer/create.ts
 var createCommand3 = new Command("create").description("Create a new customer").option("--first-name <name>", "Customer first name").option("--last-name <name>", "Customer last name").option("--company-name <name>", "Company name").option("--email <email>", "Email address").option("--phone <phone>", "Phone number").option("--mobile <mobile>", "Mobile number").option("--job-title <title>", "Job title").option("--notes <text>", "Notes about the customer").option("--business-number <number>", "Business/tax number").option(
   "-d, --data <json>",
   "Additional fields as JSON (merged with other options)"
-).option("--json", "Output raw JSON instead of formatted").action(async (opts) => {
-  try {
+).option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (opts) => {
     let extra = {};
     if (opts.data) {
       try {
@@ -43830,10 +43807,8 @@ var createCommand3 = new Command("create").description("Create a new customer").
 `);
       console.log(formatter.format(customer, opts));
     }
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/core/api/unwrapRemoveMany.ts
 function unwrapRemoveMany(value) {
@@ -43874,8 +43849,8 @@ async function deleteCustomer(id) {
 }
 
 // src/commands/customer/delete.ts
-var deleteCommand2 = new Command("delete").description("Delete a customer by ID or handle (@c1) \u2014 moves to trash (soft delete)").argument("<id>", "Customer ID or handle (@c1) to delete").option("--json", "Output raw JSON instead of formatted").action(async (id, opts) => {
-  try {
+var deleteCommand2 = new Command("delete").description("Delete a customer by ID or handle (@c1) \u2014 moves to trash (soft delete)").argument("<id>", "Customer ID or handle (@c1) to delete").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (id, opts) => {
     const registry3 = HandleRegistry.getInstance();
     const resolvedId = registry3.resolve(id);
     const record2 = await deleteCustomer(resolvedId);
@@ -43886,10 +43861,8 @@ var deleteCommand2 = new Command("delete").description("Delete a customer by ID 
       const label = record2.companyName || fullName || record2.individualCompanyName || record2._id || resolvedId;
       console.log(`\u2705 Customer moved to trash: ${label}`);
     }
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/customer/sendCustomerEmail.ts
 var CUSTOMERS_SEND_EMAIL_MUTATION = `
@@ -43956,10 +43929,6 @@ function deriveHtmlAndText(body) {
   const html = `<p>${escaped.replace(/\n/g, "<br>")}</p>`;
   return { html, text: body };
 }
-function collectList(value, previous) {
-  const parts2 = value.split(",").map((s) => s.trim()).filter(Boolean);
-  return [...previous, ...parts2];
-}
 var sendEmailCommand = new Command("send-email").description(
   "Send a standalone email to a customer. Returns server-side delivery status. NOTE: depends on a backend recaptcha-bypass for authenticated CLI requests; until that ships you will see a recaptcha error from the server."
 ).argument("<customer>", "Customer ID, handle (@c1), or name").requiredOption(
@@ -43986,8 +43955,8 @@ var sendEmailCommand = new Command("send-email").description(
 ).option(
   "--project-pipeline <id>",
   "MongoID of the project pipeline this email belongs to (optional)"
-).option("--json", "Output raw JSON instead of formatted").action(async (customer, opts) => {
-  try {
+).option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (customer, opts) => {
     if (!Array.isArray(opts.to) || opts.to.length === 0) {
       failWith("--to is required (at least one recipient)", { json: opts.json });
     }
@@ -44030,10 +43999,8 @@ var sendEmailCommand = new Command("send-email").description(
     if (opts.bcc && opts.bcc.length > 0) console.log(`   Bcc: ${opts.bcc.join(", ")}`);
     console.log(`   Subject: ${opts.subject}`);
     if (statusCode != null) console.log(`   Status: ${statusCode}`);
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/customer/listCustomerEmails.ts
 var CRM_EMAIL_LIST_QUERY = `
@@ -44160,16 +44127,9 @@ Page ${meta3.currentPage} of ${meta3.pageCount} (${meta3.itemCount} total)
 // src/commands/customer/emails.ts
 var emailsCommand = new Command("emails").description(
   "List the email history (sent + received) for a customer, newest first."
-).argument("<customer>", "Customer ID, handle (@c1), or name").option("-p, --page <number>", "Page number", "1").option("-l, --limit <number>", "Items per page", "15").option("--json", "Output raw JSON instead of formatted").action(async (customer, opts) => {
-  try {
-    const page = parseInt(opts.page, 10);
-    const perPage = parseInt(opts.limit, 10);
-    if (isNaN(page) || page < 1) {
-      failWith("Invalid page number", { json: opts?.json });
-    }
-    if (isNaN(perPage) || perPage < 1) {
-      failWith("Invalid limit value", { json: opts?.json });
-    }
+).argument("<customer>", "Customer ID, handle (@c1), or name").option("-p, --page <number>", "Page number", "1").option("-l, --limit <number>", "Items per page", "15").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (customer, opts) => {
+    const { page, perPage } = parsePaging(opts);
     const customerId = await resolveCustomerId(customer);
     const owned = await getCustomerById(customerId);
     if (!owned) {
@@ -44181,10 +44141,8 @@ var emailsCommand = new Command("emails").description(
     const data = await listCustomerEmails(customerId, { page, perPage });
     const formatter = new EmailFormatter();
     console.log(formatter.format(data, opts));
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/customer/getCustomerPayments.ts
 function paymentsFromInvoices(invoices, truncated = false) {
@@ -44251,8 +44209,8 @@ function methodLabel(r) {
 }
 var paymentsCommand = new Command("payments").description(
   "Show a customer's payment history \u2014 a chronological ledger of every payment across their invoices, with a running total. Built by scanning the customer's invoices (there's no single payments endpoint)."
-).argument("<id>", "Customer ID or handle (@c1)").option("-l, --limit <n>", "Show only the most recent N payments").option("--json", "Output raw JSON instead of formatted markdown").action(async (id, opts) => {
-  try {
+).argument("<id>", "Customer ID or handle (@c1)").option("-l, --limit <n>", "Show only the most recent N payments").option("--json", "Output raw JSON instead of formatted markdown").action(
+  withErrors(async (id, opts) => {
     const registry3 = HandleRegistry.getInstance();
     const customerId = registry3.resolve(id);
     const [customer, ledger] = await Promise.all([
@@ -44282,7 +44240,7 @@ var paymentsCommand = new Command("payments").description(
     console.log("|---|---|---|---|");
     for (const r of shown) {
       console.log(
-        `| ${formatIsoDate(r.date)} | ${r.invoiceNo} | ${formatCurrency(r.amount)} | ${methodLabel(r)} |`
+        `| ${formatLocalDate(r.date)} | ${r.invoiceNo} | ${formatCurrency(r.amount)} | ${methodLabel(r)} |`
       );
     }
     if (limit && ledger.rows.length > shown.length) {
@@ -44297,10 +44255,8 @@ _Showing ${shown.length} of ${ledger.rows.length} payments \u2014 drop \`--limit
 \u26A0\uFE0F This customer has a very large invoice history; older payments may not be included.`
       );
     }
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/commands/customer/index.ts
 var customerCommand = new Command("customer").description("Manage customers").addCommand(listCommand2).addCommand(getCommand2).addCommand(paymentsCommand).addCommand(updateCommand2).addCommand(createCommand3).addCommand(deleteCommand2).addCommand(sendEmailCommand).addCommand(emailsCommand);
@@ -44384,16 +44340,9 @@ Page ${meta3.currentPage} of ${meta3.pageCount} (${meta3.itemCount} total)
 };
 
 // src/commands/item/list.ts
-var listCommand3 = new Command("list").description("List items/products").option("--search <query>", "Search items by name or product code").option("-p, --page <number>", "Page number", "1").option("-l, --limit <number>", "Items per page", "50").option("--sort <field>", "Sort order", "createdAt_asc").option("--json", "Output raw JSON instead of formatted").action(async (opts) => {
-  try {
-    const page = parseInt(opts.page, 10);
-    const perPage = parseInt(opts.limit, 10);
-    if (isNaN(page) || page < 1) {
-      failWith("Invalid page number", { json: opts?.json, exitCode: 1 });
-    }
-    if (isNaN(perPage) || perPage < 1) {
-      failWith("Invalid limit value", { json: opts?.json, exitCode: 1 });
-    }
+var listCommand3 = new Command("list").description("List items/products").option("--search <query>", "Search items by name or product code").option("-p, --page <number>", "Page number", "1").option("-l, --limit <number>", "Items per page", "50").option("--sort <field>", "Sort order", "createdAt_asc").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (opts) => {
+    const { page, perPage } = parsePaging(opts);
     const data = await listItems({
       search: opts.search,
       page,
@@ -44403,10 +44352,8 @@ var listCommand3 = new Command("list").description("List items/products").option
     const formatter = new ItemFormatter();
     const output = formatter.format(data, opts);
     console.log(output);
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/commands/item/create.ts
 var createCommand4 = new Command("create").description("Create a new item/product").requiredOption("--name <name>", "Item name").requiredOption("--price <number>", "Item price").option("--company <id>", "Company ID (or handle like @co1) \u2014 defaults to your primary company").option("--code <code>", "Product code").option("--unit <type>", "Unit type (e.g. none, hour, kg)").option("--description <text>", "Item description").option("--tax-code <code>", "Tax code").option("--tax-rate <number>", "Tax rate percentage").option(
@@ -44415,8 +44362,8 @@ var createCommand4 = new Command("create").description("Create a new item/produc
 ).option(
   "-d, --data <json>",
   "Additional fields as JSON (merged with other options)"
-).option("--json", "Output raw JSON instead of formatted").action(async (opts) => {
-  try {
+).option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (opts) => {
     const price = parseFloat(opts.price);
     if (isNaN(price)) {
       failWith("Invalid price value", { json: opts?.json });
@@ -44449,7 +44396,7 @@ var createCommand4 = new Command("create").description("Create a new item/produc
     if (opts.photo) {
       process.stderr.write(`  \u2022 Uploading ${opts.photo}...
 `);
-      const { uploadItemImage: uploadItemImage2 } = await import("./chunks/uploadItemImage-3O54LIOI.js");
+      const { uploadItemImage: uploadItemImage2 } = await import("./chunks/uploadItemImage-THX2BUNR.js");
       const { filename } = await uploadItemImage2(opts.photo);
       record2.photos = [{ filename }];
     }
@@ -44466,10 +44413,8 @@ var createCommand4 = new Command("create").description("Create a new item/produc
 `);
       console.log(formatter.format(item, opts));
     }
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/item/updateItem.ts
 var ITEMS_UPDATE_ONE_MUTATION = `
@@ -44512,8 +44457,8 @@ var setPhotoCommand = new Command("set-photo").description(
 ).argument("<id>", "Item ID or handle (@t1)").requiredOption(
   "-f, --file <path>",
   "Path to the image file (png, jpg, jpeg, webp, heic)"
-).option("--json", "Output raw JSON instead of formatted").action(async (id, opts) => {
-  try {
+).option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (id, opts) => {
     const registry3 = HandleRegistry.getInstance();
     const itemId = registry3.resolve(id);
     const item = await getItemById(itemId);
@@ -44547,10 +44492,8 @@ var setPhotoCommand = new Command("set-photo").description(
     console.log(`\u2705 **Photo attached to ${updated.name}**
 `);
     console.log(formatter.format(updated, opts));
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/commands/item/index.ts
 var itemCommand = new Command("item").description("Manage items/products").addCommand(listCommand3).addCommand(createCommand4).addCommand(setPhotoCommand);
@@ -44592,8 +44535,8 @@ async function listExpenseCategories() {
 }
 
 // src/commands/expense/categories.ts
-var categoriesCommand = new Command("categories").description("List available expense categories (default + custom)").option("--json", "Output raw JSON instead of formatted markdown").action(async (opts) => {
-  try {
+var categoriesCommand = new Command("categories").description("List available expense categories (default + custom)").option("--json", "Output raw JSON instead of formatted markdown").action(
+  withErrors(async (opts) => {
     const data = await listExpenseCategories();
     const defaults = data.allExpenseCategories?.default ?? [];
     const custom2 = data.allExpenseCategories?.custom ?? [];
@@ -44627,10 +44570,8 @@ var categoriesCommand = new Command("categories").description("List available ex
         );
       }
     }
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/expense/uploadToS3.ts
 import fs4 from "fs";
@@ -44710,8 +44651,8 @@ var uploadCommand = new Command("upload").description(
 ).option(
   "--thumbnail",
   "Also upload the same file as a thumbnail (second presigned URL). Defaults to off; enable for parity with the Bookipi web app which stores both."
-).option("--json", "Output raw JSON instead of formatted text").action(async (opts) => {
-  try {
+).option("--json", "Output raw JSON instead of formatted text").action(
+  withErrors(async (opts) => {
     const main = await uploadReceiptFile({
       filePath: opts.file,
       isThumbnail: false
@@ -44740,10 +44681,8 @@ var uploadCommand = new Command("upload").description(
       console.log(`  thumbnailKey: ${thumb.filename}`);
       console.log(`  fullThumbKey: ${thumb.fullKey}`);
     }
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/expense/scanImage.ts
 var SCAN_INVOICE_IMAGE_QUERY = `
@@ -44784,8 +44723,8 @@ var scanCommand = new Command("scan").description(
 ).requiredOption(
   "-f, --file <path>",
   "Path to the receipt file (png, jpg, jpeg, pdf, heic, webp)"
-).option("--json", "Output raw JSON instead of formatted text").action(async (opts) => {
-  try {
+).option("--json", "Output raw JSON instead of formatted text").action(
+  withErrors(async (opts) => {
     const upload = await uploadReceiptFile({
       filePath: opts.file,
       isThumbnail: false
@@ -44824,10 +44763,8 @@ var scanCommand = new Command("scan").description(
     }
     console.log(`
 _imageKey to pass to \`expense create\`: \`${upload.filename}\`_`);
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/expense/createExpense.ts
 var CREATE_EXPENSE_MUTATION = `
@@ -44953,8 +44890,8 @@ var createCommand5 = new Command("create").description(
 ).option("--tax-inclusive", "Mark amount as tax-inclusive (default: true)").option("--no-tax-inclusive", "Mark amount as tax-exclusive").option("--tax1 <amount>", "Tax 1 amount in dollars (optional)").option("--tax2 <amount>", "Tax 2 amount in dollars (optional)").option(
   "-d, --data <json>",
   "Additional fields as JSON, merged over other options (escape hatch for fields we don't expose)"
-).option("--json", "Output raw JSON instead of formatted text").action(async (opts) => {
-  try {
+).option("--json", "Output raw JSON instead of formatted text").action(
+  withErrors(async (opts) => {
     let extra = {};
     if (opts.data) {
       try {
@@ -45022,10 +44959,8 @@ var createCommand5 = new Command("create").description(
     console.log(`- Category:  ${record2.categoryName ?? "\u2014"}`);
     if (imageKey) console.log(`- Receipt:   attached (${imageKey})`);
     if (recordId) console.log(`- ID:        ${recordId}`);
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/expense/searchTransactions.ts
 var LIST_EXPENSES_QUERY = `
@@ -45093,8 +45028,8 @@ function truncate(s, n) {
 }
 var listCommand4 = new Command("list").description(
   "List expenses (and optionally income) with filters. Read-only \u2014 safe to explore."
-).option("--start <date>", "Start date (YYYY-MM-DD). Defaults to 12 months ago.").option("--end <date>", "End date (YYYY-MM-DD). Defaults to today.").option("--search <text>", "Filter by merchantName (exact match on this server)").option("--page <n>", "Page number (1-based)", "1").option("--per-page <n>", "Records per page (default 50)", "50").option("--json", "Output raw JSON instead of a formatted table").action(async (opts) => {
-  try {
+).option("--start <date>", "Start date (YYYY-MM-DD). Defaults to 12 months ago.").option("--end <date>", "End date (YYYY-MM-DD). Defaults to today.").option("--search <text>", "Filter by merchantName (exact match on this server)").option("--page <n>", "Page number (1-based)", "1").option("--per-page <n>", "Records per page (default 50)", "50").option("--json", "Output raw JSON instead of a formatted table").action(
+  withErrors(async (opts) => {
     const now2 = /* @__PURE__ */ new Date();
     const oneYearAgo = new Date(now2);
     oneYearAgo.setFullYear(now2.getFullYear() - 1);
@@ -45141,10 +45076,8 @@ var listCommand4 = new Command("list").description(
       console.log("");
       console.log(`(More results \u2014 pass --page ${pageInfo.currentPage + 1})`);
     }
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/expense/removeExpense.ts
 var REMOVE_EXPENSE_MUTATION = `
@@ -45167,8 +45100,8 @@ async function removeExpense(id) {
 var deleteCommand3 = new Command("delete").description("Delete an expense by ID (destructive \u2014 use with care)").argument("<ids...>", "One or more expense _id values").option(
   "-y, --yes",
   "Skip the safety check when deleting more than one expense at a time"
-).option("--json", "Output raw JSON instead of a status line per delete").action(async (ids, opts) => {
-  try {
+).option("--json", "Output raw JSON instead of a status line per delete").action(
+  withErrors(async (ids, opts) => {
     if (ids.length > 1 && !opts.yes) {
       throw new Error(
         `Refusing to bulk-delete ${ids.length} expenses without --yes. Re-run with -y if you're sure.`
@@ -45202,13 +45135,55 @@ var deleteCommand3 = new Command("delete").description("Delete an expense by ID 
     }
     const failed = results.filter((r) => !r.ok).length;
     if (failed > 0) process.exit(1);
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/commands/expense/index.ts
 var expenseCommand = new Command("expense").description("Manage expenses \u2014 upload receipts, scan with OCR, create records").addCommand(categoriesCommand).addCommand(listCommand4).addCommand(uploadCommand).addCommand(scanCommand).addCommand(createCommand5).addCommand(deleteCommand3);
+
+// src/core/auth/callerCache.ts
+import { createHash } from "node:crypto";
+var CallerCache = class {
+  constructor(options = {}) {
+    this.options = options;
+  }
+  options;
+  entries = /* @__PURE__ */ new Map();
+  /** The caller's value, minting it when absent, expired or `stale`. */
+  get(mint, stale) {
+    const key2 = callerKey();
+    const hit = this.entries.get(key2);
+    this.entries.delete(key2);
+    if (hit && hit.value !== stale && hit.expires > Date.now()) {
+      this.entries.set(key2, hit);
+      return hit.value;
+    }
+    const value = mint();
+    const max = this.options.max ?? 500;
+    if (this.entries.size >= max) {
+      const oldest = this.entries.keys().next().value;
+      if (oldest !== void 0) this.entries.delete(oldest);
+    }
+    const entry = {
+      value,
+      expires: Date.now() + (this.options.ttlMs ?? Infinity)
+    };
+    this.entries.set(key2, entry);
+    const { expiresAt } = this.options;
+    value.then(
+      (v) => {
+        if (expiresAt) entry.expires = Math.min(entry.expires, expiresAt(v));
+      },
+      () => {
+        if (this.entries.get(key2) === entry) this.entries.delete(key2);
+      }
+    );
+    return value;
+  }
+};
+function callerKey() {
+  return createHash("sha256").update(`${getToken() ?? ""}\0${getDefaultCompany() ?? ""}`).digest("hex");
+}
 
 // src/core/auth/bpayToken.ts
 function parseBpayRedirect(location) {
@@ -45260,7 +45235,7 @@ async function mintBpaySession() {
   }
   return parseBpayRedirect(loc);
 }
-var sessionPromise = null;
+var sessions = new CallerCache({ ttlMs: 30 * 6e4 });
 function getBpaySession() {
   const override = process.env["BPAY_TOKEN"];
   if (override) {
@@ -45271,8 +45246,7 @@ function getBpaySession() {
       acceptCardPayments: false
     });
   }
-  if (!sessionPromise) sessionPromise = mintBpaySession();
-  return sessionPromise;
+  return sessions.get(mintBpaySession);
 }
 
 // src/core/api/bpayGraphql.ts
@@ -45463,8 +45437,8 @@ var createCommand6 = new Command("create").description(
 ).option(
   "--allow-custom-amount",
   "Let the payer enter their own amount (then --price is optional)"
-).option("--json", "Output raw JSON instead of formatted text").action(async (opts) => {
-  try {
+).option("--json", "Output raw JSON instead of formatted text").action(
+  withErrors(async (opts) => {
     const allowCustom = opts.allowCustomAmount === true;
     const price = allowCustom && opts.price == null && opts.priceCents == null ? 0 : parsePriceToCents(opts.price, opts.priceCents);
     const payload = {
@@ -45487,10 +45461,8 @@ var createCommand6 = new Command("create").description(
     const url2 = paymentLinkUrl(link.shortCode);
     if (url2) console.log(`
 Share this link to get paid: ${url2}`);
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/paymentLink/listPaymentLinks.ts
 var GET_PAYMENT_LINKS_QUERY = `
@@ -45517,8 +45489,8 @@ async function listPaymentLinks(opts = {}) {
 }
 
 // src/commands/paylink/list.ts
-var listCommand5 = new Command("list").description("List payment links (most recent first)").option("--page <n>", "Page number (1-based)", "1").option("--per-page <n>", "Records per page", "25").option("--json", "Output raw JSON instead of formatted text").action(async (opts) => {
-  try {
+var listCommand5 = new Command("list").description("List payment links (most recent first)").option("--page <n>", "Page number (1-based)", "1").option("--per-page <n>", "Records per page", "25").option("--json", "Output raw JSON instead of formatted text").action(
+  withErrors(async (opts) => {
     const page = Number.parseInt(opts.page, 10);
     const perPage = Number.parseInt(opts.perPage, 10);
     if (!Number.isFinite(page) || page < 1) {
@@ -45544,10 +45516,8 @@ var listCommand5 = new Command("list").description("List payment links (most rec
       console.log(formatPaymentLink(link));
       console.log("");
     }
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/paymentLink/getPaymentLink.ts
 var PAYMENT_LINK_ONE_QUERY = `
@@ -45566,8 +45536,8 @@ async function getPaymentLink(id) {
 }
 
 // src/commands/paylink/get.ts
-var getCommand3 = new Command("get").description("Get a single payment link by its ID").argument("<id>", "Payment link _id").option("--json", "Output raw JSON instead of formatted text").action(async (id, opts) => {
-  try {
+var getCommand3 = new Command("get").description("Get a single payment link by its ID").argument("<id>", "Payment link _id").option("--json", "Output raw JSON instead of formatted text").action(
+  withErrors(async (id, opts) => {
     const link = await getPaymentLink(id);
     if (!link) {
       throw new Error(`No payment link found with id "${id}"`);
@@ -45579,10 +45549,8 @@ var getCommand3 = new Command("get").description("Get a single payment link by i
     console.log(`# Payment Link
 `);
     console.log(formatPaymentLink(link));
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/paymentLink/getPaymentLinkPayments.ts
 var PAYMENT_LINK_PAYMENTS_QUERY = `
@@ -45617,8 +45585,8 @@ function upper(c) {
 }
 var statusCommand = new Command("status").description(
   "Show payment status for a payment link \u2014 whether it's been paid, how much was collected, and any failed attempts."
-).argument("<id>", "Payment link _id").option("--json", "Output raw JSON instead of formatted text").action(async (id, opts) => {
-  try {
+).argument("<id>", "Payment link _id").option("--json", "Output raw JSON instead of formatted text").action(
+  withErrors(async (id, opts) => {
     const [link, payments] = await Promise.all([
       getPaymentLink(id).catch(() => null),
       getPaymentLinkPayments(id)
@@ -45660,25 +45628,19 @@ Payments:`);
         );
       }
     }
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/commands/paylink/send.ts
-function collectList2(value, previous) {
-  const parts2 = value.split(",").map((s) => s.trim()).filter(Boolean);
-  return [...previous, ...parts2];
-}
 var sendCommand2 = new Command("send").description(
   "Email a payment link to a customer (via the app's customer email). NOTE: customer email depends on a backend recaptcha-bypass for authenticated CLI requests; until that ships the server may return a recaptcha error."
 ).argument("<id>", "Payment link _id").requiredOption("--customer <value>", "Customer ID, handle (@c1), or name").requiredOption(
   "--to <email>",
   "Recipient email (repeatable, or comma-separated)",
-  collectList2,
+  collectList,
   []
-).option("--cc <email>", "CC email (repeatable, or comma-separated)", collectList2, []).option("--subject <text>", "Override the email subject").option("--message <text>", "Optional note included above the link").option("--json", "Output raw JSON instead of formatted text").action(async (id, opts) => {
-  try {
+).option("--cc <email>", "CC email (repeatable, or comma-separated)", collectList, []).option("--subject <text>", "Override the email subject").option("--message <text>", "Optional note included above the link").option("--json", "Output raw JSON instead of formatted text").action(
+  withErrors(async (id, opts) => {
     if (!Array.isArray(opts.to) || opts.to.length === 0) {
       failWith("--to is required (at least one recipient)", { json: opts.json });
     }
@@ -45729,10 +45691,8 @@ var sendCommand2 = new Command("send").description(
     if (opts.cc && opts.cc.length > 0) console.log(`   Cc:   ${opts.cc.join(", ")}`);
     console.log(`   Subject: ${subject}`);
     if (statusCode != null) console.log(`   Status: ${statusCode}`);
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/commands/paylink/index.ts
 var paylinkCommand = new Command("paylink").description("Create and manage BPay payment links").addCommand(createCommand6).addCommand(listCommand5).addCommand(getCommand3).addCommand(statusCommand).addCommand(sendCommand2);
@@ -45832,8 +45792,6 @@ var GET_INVOICE_REPORTS_QUERY = `
   }
 `;
 async function getReportSummary(options) {
-  const companyId = getDefaultCompany();
-  if (!companyId) throw new Error("No default company set. Run: bookipi whoami");
   const { start, end, cycle = "month" } = options;
   const variables = {
     start,
@@ -45842,7 +45800,8 @@ async function getReportSummary(options) {
   };
   return bookipiGraphql({
     query: GET_INVOICE_REPORTS_QUERY,
-    variables
+    variables,
+    ...options.companyId ? { companyId: options.companyId } : {}
   });
 }
 
@@ -46117,8 +46076,8 @@ var summaryCommand = new Command("summary").description(
   "--cycle <cycle>",
   "Breakdown cycle: month or year",
   "month"
-).option("--json", "Output raw JSON instead of formatted").action(async (opts) => {
-  try {
+).option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (opts) => {
     const { start, end } = getDefaultDateRange(opts.start, opts.end);
     const data = await getReportSummary({
       start,
@@ -46133,10 +46092,8 @@ var summaryCommand = new Command("summary").description(
       end: end.split("T")[0]
     });
     console.log(output);
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/report/fragments.ts
 var TOTAL_FIELDS = `
@@ -46176,8 +46133,6 @@ var GET_INVOICE_CUSTOMERS_RANK_QUERY = `
   }
 `;
 async function getCustomersRank(options) {
-  const companyId = getDefaultCompany();
-  if (!companyId) throw new Error("No default company set. Run: bookipi whoami");
   const { start, end, page = 1, perPage = 10, sort } = options;
   const variables = {
     docType: 1,
@@ -46192,19 +46147,16 @@ async function getCustomersRank(options) {
   if (sort) variables.sort = sort;
   return bookipiGraphql({
     query: GET_INVOICE_CUSTOMERS_RANK_QUERY,
-    variables
+    variables,
+    ...options.companyId ? { companyId: options.companyId } : {}
   });
 }
 
 // src/commands/report/customers.ts
-var customersCommand = new Command("customers").description("Top customers ranked by invoice revenue").option("--start <date>", "Start date (YYYY-MM-DD). Defaults to 12 months ago").option("--end <date>", "End date (YYYY-MM-DD). Defaults to today").option("-p, --page <number>", "Page number", "1").option("-l, --limit <number>", "Items per page", "10").option("--json", "Output raw JSON instead of formatted").action(async (opts) => {
-  try {
+var customersCommand = new Command("customers").description("Top customers ranked by invoice revenue").option("--start <date>", "Start date (YYYY-MM-DD). Defaults to 12 months ago").option("--end <date>", "End date (YYYY-MM-DD). Defaults to today").option("-p, --page <number>", "Page number", "1").option("-l, --limit <number>", "Items per page", "10").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (opts) => {
     const { start, end } = getDefaultDateRange(opts.start, opts.end);
-    const page = parseInt(opts.page, 10);
-    const perPage = parseInt(opts.limit, 10);
-    if (isNaN(page) || page < 1) {
-      failWith("Invalid page number", { json: opts?.json, exitCode: 1 });
-    }
+    const { page, perPage } = parsePaging(opts);
     const data = await getCustomersRank({
       start,
       end,
@@ -46219,10 +46171,8 @@ var customersCommand = new Command("customers").description("Top customers ranke
       end: end.split("T")[0]
     });
     console.log(output);
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/report/getItemsRank.ts
 var GET_INVOICE_ITEMS_RANK_QUERY = `
@@ -46255,8 +46205,6 @@ var GET_INVOICE_ITEMS_RANK_QUERY = `
   }
 `;
 async function getItemsRank(options) {
-  const companyId = getDefaultCompany();
-  if (!companyId) throw new Error("No default company set. Run: bookipi whoami");
   const { start, end, page = 1, perPage = 10, sort } = options;
   const variables = {
     docType: 1,
@@ -46271,19 +46219,16 @@ async function getItemsRank(options) {
   if (sort) variables.sort = sort;
   return bookipiGraphql({
     query: GET_INVOICE_ITEMS_RANK_QUERY,
-    variables
+    variables,
+    ...options.companyId ? { companyId: options.companyId } : {}
   });
 }
 
 // src/commands/report/items.ts
-var itemsCommand = new Command("items").description("Top items/products ranked by invoice revenue").option("--start <date>", "Start date (YYYY-MM-DD). Defaults to 12 months ago").option("--end <date>", "End date (YYYY-MM-DD). Defaults to today").option("-p, --page <number>", "Page number", "1").option("-l, --limit <number>", "Items per page", "10").option("--json", "Output raw JSON instead of formatted").action(async (opts) => {
-  try {
+var itemsCommand = new Command("items").description("Top items/products ranked by invoice revenue").option("--start <date>", "Start date (YYYY-MM-DD). Defaults to 12 months ago").option("--end <date>", "End date (YYYY-MM-DD). Defaults to today").option("-p, --page <number>", "Page number", "1").option("-l, --limit <number>", "Items per page", "10").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (opts) => {
     const { start, end } = getDefaultDateRange(opts.start, opts.end);
-    const page = parseInt(opts.page, 10);
-    const perPage = parseInt(opts.limit, 10);
-    if (isNaN(page) || page < 1) {
-      failWith("Invalid page number", { json: opts?.json, exitCode: 1 });
-    }
+    const { page, perPage } = parsePaging(opts);
     const data = await getItemsRank({
       start,
       end,
@@ -46298,10 +46243,8 @@ var itemsCommand = new Command("items").description("Top items/products ranked b
       end: end.split("T")[0]
     });
     console.log(output);
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/templates/dashboardTemplate.ts
 var DASHBOARD_TEMPLATE = `<!DOCTYPE html>
@@ -46878,8 +46821,8 @@ var dashboardCommand = new Command("dashboard").description(
 ).option("--end <date>", "End date (YYYY-MM-DD). Defaults to today").option(
   "-o, --output <path>",
   "Output file path (default: ./bookipi-report.html)"
-).option("--no-open", "Don't auto-open in browser").action(async (opts) => {
-  try {
+).option("--no-open", "Don't auto-open in browser").action(
+  withErrors(async (opts) => {
     const { start, end } = getDefaultDateRange(opts.start, opts.end);
     console.log("Fetching report data...");
     let companyName = "Your Company";
@@ -46905,10 +46848,8 @@ var dashboardCommand = new Command("dashboard").description(
       console.log("Opening in browser...");
       openInBrowser(outputPath);
     }
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/report/overdue.ts
 function groupOverdueByCustomer(overdueInvoices, now2 = /* @__PURE__ */ new Date()) {
@@ -47534,7 +47475,7 @@ function analyzeChaseList(overdueInvoices, now2 = /* @__PURE__ */ new Date()) {
     severity: "warning"
   }];
 }
-async function fetchInvoiceAnalysisData(start, end) {
+async function fetchInvoiceAnalysisData(start, end, company) {
   const byCustomer = /* @__PURE__ */ new Map();
   const baskets = [];
   const leakage = {
@@ -47548,7 +47489,7 @@ async function fetchInvoiceAnalysisData(start, end) {
   let page = 1;
   let pageCount = 1;
   do {
-    const resp = await listInvoices({ start, end, page, perPage: 100 });
+    const resp = await listInvoices({ start, end, page, perPage: 100, ...company });
     const items = resp?.searchInvoices?.items ?? [];
     for (const inv of items) {
       const c = inv.customer || inv.customerReference || {};
@@ -47737,7 +47678,7 @@ function analyzeCashProjection(overdueInvoices, leakage, expenses) {
     severity: net >= 0 ? "info" : "warning"
   }];
 }
-async function fetchExpenses(start, end) {
+async function fetchExpenses(start, end, company) {
   try {
     const startMs = new Date(start).getTime();
     const endMs = new Date(end).getTime();
@@ -47746,7 +47687,7 @@ async function fetchExpenses(start, end) {
     let page = 1;
     let pageCount = 1;
     do {
-      const resp = await listExpenses({ page, perPage: 100 });
+      const resp = await listExpenses({ page, perPage: 100, ...company });
       for (const e of resp.items ?? []) {
         const t = e.purchaseDate ? new Date(e.purchaseDate).getTime() : NaN;
         if (Number.isFinite(t) && (isNaN(startMs) || t >= startMs) && (isNaN(endMs) || t <= endMs)) {
@@ -47888,14 +47829,14 @@ function analyzeSeasonalOutlook(months, now2 = /* @__PURE__ */ new Date()) {
     severity: "info"
   }];
 }
-async function fetchCustomerTags() {
+async function fetchCustomerTags(company) {
   try {
     const out = {};
     const MAX_PAGES = 20;
     let page = 1;
     let pageCount = 1;
     do {
-      const resp = await listCustomers({ page, perPage: 100 });
+      const resp = await listCustomers({ page, perPage: 100, ...company });
       const items = resp?.searchCustomers?.items ?? [];
       for (const c of items) {
         if (!c?._id) continue;
@@ -47909,6 +47850,19 @@ async function fetchCustomerTags() {
     return {};
   }
 }
+function metricPeriod(m) {
+  let year = Number(m.year);
+  let month = Number(m.month);
+  const ym = typeof m.month === "string" ? /^(\d{4})-(\d{1,2})$/.exec(m.month) : null;
+  if (ym) {
+    year = Number(ym[1]);
+    month = Number(ym[2]);
+  }
+  if (!Number.isInteger(year) || year < 1 || !Number.isInteger(month) || month < 1 || month > 12) {
+    return null;
+  }
+  return { key: `${year}-${String(month).padStart(2, "0")}`, year, month };
+}
 async function getInsights(opts) {
   const company = opts.companyId ? { companyId: opts.companyId } : {};
   const [summaryData, customersData, itemsData, overdueData] = await Promise.all([
@@ -47921,16 +47875,13 @@ async function getInsights(opts) {
   const paidMetrics = summaryData?.totalPaidMetrics || [];
   const paidByKey = {};
   for (const p of paidMetrics) {
-    const key2 = `${p.year}-${String(p.month).padStart(2, "0")}`;
-    paidByKey[key2] = p.total?.amount || 0;
+    const period = metricPeriod(p);
+    if (period) paidByKey[period.key] = p.total?.amount || 0;
   }
-  const months = createdMetrics.filter((c) => c.year && c.month && c.month >= 1 && c.month <= 12).map((c) => ({
-    key: `${c.year}-${String(c.month).padStart(2, "0")}`,
-    year: c.year,
-    month: c.month,
-    created: c.total?.amount || 0,
-    paid: paidByKey[`${c.year}-${String(c.month).padStart(2, "0")}`] || 0
-  })).sort((a, b) => a.key.localeCompare(b.key));
+  const months = createdMetrics.flatMap((c) => {
+    const period = metricPeriod(c);
+    return period ? [{ ...period, created: c.total?.amount || 0, paid: paidByKey[period.key] || 0 }] : [];
+  }).sort((a, b) => a.key.localeCompare(b.key));
   const customerItems = customersData?.GetInvoiceCustomersRank?.items || [];
   const totalCustomerRevenue = customersData?.GetInvoiceCustomersRank?.totalDocs?.amount || 0;
   const customers = customerItems.filter((c) => identifiedCustomerName(c.customer)).map((c) => ({
@@ -47948,16 +47899,22 @@ async function getInsights(opts) {
     totalRevenue: i.total?.amount || 0
   }));
   const overdueInvoices = overdueData?.searchInvoices?.items || [];
-  const {
-    orders: ordersByCustomer,
-    baskets,
-    leakage,
-    customerRevenue,
-    itemRevenue,
-    paymentRecords
-  } = await fetchInvoiceAnalysisData(opts.start, opts.end);
-  const expenses = await fetchExpenses(opts.start, opts.end);
-  const customerTags = await fetchCustomerTags();
+  const [
+    {
+      orders: ordersByCustomer,
+      baskets,
+      leakage,
+      customerRevenue,
+      itemRevenue,
+      paymentRecords
+    },
+    expenses,
+    customerTags
+  ] = await Promise.all([
+    fetchInvoiceAnalysisData(opts.start, opts.end, company),
+    fetchExpenses(opts.start, opts.end, company),
+    fetchCustomerTags(company)
+  ]);
   const insights = [
     ...analyzeRevenueTrends(months),
     ...analyzeForecast(months),
@@ -48038,8 +47995,8 @@ ${parts2.join("  \u2022  ")}`);
   lines.push(`- Top customers: \`bookipi report customers\``);
   return lines.join("\n");
 }
-var insightsCommand = new Command("insights").description("AI-powered analysis \u2014 surfaces patterns and insights you didn't think to ask about").option("--start <date>", "Start date (YYYY-MM-DD). Defaults to 12 months ago").option("--end <date>", "End date (YYYY-MM-DD). Defaults to today").option("--json", "Output raw insights as JSON").action(async (opts) => {
-  try {
+var insightsCommand = new Command("insights").description("AI-powered analysis \u2014 surfaces patterns and insights you didn't think to ask about").option("--start <date>", "Start date (YYYY-MM-DD). Defaults to 12 months ago").option("--end <date>", "End date (YYYY-MM-DD). Defaults to today").option("--json", "Output raw insights as JSON").action(
+  withErrors(async (opts) => {
     const { start, end } = getDefaultDateRange(opts.start, opts.end);
     const startLabel = start.split("T")[0] ?? start;
     const endLabel = end.split("T")[0] ?? end;
@@ -48058,10 +48015,8 @@ var insightsCommand = new Command("insights").description("AI-powered analysis \
       return;
     }
     console.log(formatInsights(insights, startLabel, endLabel));
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/deal/listDeals.ts
 var DEAL_STATUSES = [
@@ -48655,8 +48610,8 @@ var digestCommand = new Command("digest").description(
   "-p, --period <period>",
   'Time period: "week" (default), "today", "yesterday", or "month"',
   "week"
-).option("--start <date>", "Custom start date (YYYY-MM-DD), overrides --period").option("--end <date>", "Custom end date (YYYY-MM-DD), overrides --period").option("--json", "Output digest as structured JSON").action(async (opts) => {
-  try {
+).option("--start <date>", "Custom start date (YYYY-MM-DD), overrides --period").option("--end <date>", "Custom end date (YYYY-MM-DD), overrides --period").option("--json", "Output digest as structured JSON").action(
+  withErrors(async (opts) => {
     let period;
     if (opts.start) {
       const startDate = /* @__PURE__ */ new Date(opts.start + "T00:00:00.000");
@@ -48681,10 +48636,8 @@ var digestCommand = new Command("digest").description(
     } else {
       console.log(formatTextDigest(data));
     }
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/report/getSuggestions.ts
 function suggestOverdueActions(overdueInvoices) {
@@ -48918,8 +48871,8 @@ function formatTextSuggestions(topActions) {
 \u{1F4AC} Just tell me what you'd like to do \u2014 or pick a number!`);
   return lines.join("\n");
 }
-var suggestCommand = new Command("suggest").description("Smart recommendations \u2014 tells you what to do next based on your current data").option("--limit <number>", "Max suggestions to show", "5").option("--json", "Output as JSON").action(async (opts) => {
-  try {
+var suggestCommand = new Command("suggest").description("Smart recommendations \u2014 tells you what to do next based on your current data").option("--limit <number>", "Max suggestions to show", "5").option("--json", "Output as JSON").action(
+  withErrors(async (opts) => {
     const limit = parseInt(opts.limit, 10) || 5;
     const { start, end } = getDefaultDateRange();
     if (!opts.json) console.log("\n\u{1F914} Analyzing your account...\n");
@@ -48930,16 +48883,14 @@ var suggestCommand = new Command("suggest").description("Smart recommendations \
       return;
     }
     console.log(formatTextSuggestions(topActions));
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/commands/report/open.ts
 var openCommand = new Command("open").description(
   "Mint an authenticated link to the Reports page in the Bookipi web app. The link signs the user in automatically (short-lived)."
-).option("--json", "Output raw JSON { reportsUrl }").action(async (opts) => {
-  try {
+).option("--json", "Output raw JSON { reportsUrl }").action(
+  withErrors(async (opts) => {
     const link = await buildAuthenticatedUrl(
       `${config.BOOKIPI_WEB_URL}/reports`
     );
@@ -48950,22 +48901,29 @@ var openCommand = new Command("open").description(
     console.log(`\u{1F517} **Open Reports in Bookipi:** ${link}`);
     console.log(`
 \u{1F4A1} The link signs you in automatically (short-lived).`);
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/commands/report/index.ts
 var reportCommand = new Command("report").description("Invoice reports and analytics").addCommand(summaryCommand).addCommand(customersCommand).addCommand(itemsCommand).addCommand(dashboardCommand).addCommand(insightsCommand).addCommand(digestCommand).addCommand(suggestCommand).addCommand(openCommand);
 
 // src/core/auth/meetAppToken.ts
 var REFRESH_LEEWAY_MS = 6e4;
+var hosted = new CallerCache({
+  expiresAt: (jwt2) => (decodeJwtExp(jwt2) ?? 0) * 1e3 - REFRESH_LEEWAY_MS
+});
 async function ensureMeetAppToken() {
-  const cached3 = getMeetAppTokenCached();
-  if (cached3) {
-    const cachedJwt = extractJwt(cached3);
+  if (currentRequestAuth()) return hosted.get(mintMeetAppToken);
+  const cached2 = getMeetAppTokenCached();
+  if (cached2) {
+    const cachedJwt = extractJwt(cached2);
     if (cachedJwt && !isExpired(cachedJwt)) return cachedJwt;
   }
+  const jwt2 = await mintMeetAppToken();
+  saveMeetAppToken(jwt2);
+  return jwt2;
+}
+async function mintMeetAppToken() {
   const userToken = getToken();
   if (!userToken) throw new Error("Not logged in");
   const companyId = getDefaultCompany();
@@ -48998,7 +48956,6 @@ async function ensureMeetAppToken() {
       "calendarSchedulerDashboard response did not contain a usable token"
     );
   }
-  saveMeetAppToken(jwt2);
   return jwt2;
 }
 function extractJwt(value) {
@@ -49302,8 +49259,8 @@ var listCommand6 = new Command("list").description(
 ).option("-p, --page <number>", "Page number", "1").option("-l, --limit <number>", "Items per page (default: 50; auto-bumped to 200 when --search is set)").option("--via-link-only", "Only meetings booked through a meeting link").option(
   "--transcript",
   "Include the full verbatim transcript (speaker-attributed, timestamped utterances) for each meeting. Heavy payload \u2014 one meeting can be thousands of words; prefer a narrow window or --search when using it."
-).option("--json", "Output raw JSON instead of formatted").action(async (opts) => {
-  try {
+).option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (opts) => {
     const isSearch = typeof opts.search === "string" && opts.search.trim().length > 0;
     const searchQuery = isSearch ? opts.search.trim().toLowerCase() : "";
     const page = parseInt(opts.page, 10);
@@ -49414,10 +49371,8 @@ var listCommand6 = new Command("list").description(
     }
     const formatter = new MeetingFormatter();
     console.log(formatter.format(filteredData, opts));
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/commands/meeting/index.ts
 var meetingCommand = new Command("meeting").description("Manage meetings / bookings").addCommand(listCommand6);
@@ -49567,16 +49522,9 @@ Page ${page} of ${pages} (${items} total, ${perPage} per page)
 var listCommand7 = new Command("list").description("List deals (project pipelines)").option(
   "-s, --status <key>",
   `Filter by stage key (${DEAL_STATUSES.join(", ")}). Omit to list all stages.`
-).option("--search <query>", "Free-text search across deal/customer fields").option("--include-deleted", "Include soft-deleted deals").option("-p, --page <number>", "Page number", "1").option("-l, --limit <number>", "Items per page", "25").option("--sort <field>", "Sort enum", "UPDATEDAT_DESC").option("--json", "Output raw JSON instead of formatted").action(async (opts) => {
-  try {
-    const page = parseInt(opts.page, 10);
-    const perPage = parseInt(opts.limit, 10);
-    if (isNaN(page) || page < 1) {
-      failWith("Invalid page number", { json: opts?.json });
-    }
-    if (isNaN(perPage) || perPage < 1) {
-      failWith("Invalid limit value", { json: opts?.json });
-    }
+).option("--search <query>", "Free-text search across deal/customer fields").option("--include-deleted", "Include soft-deleted deals").option("-p, --page <number>", "Page number", "1").option("-l, --limit <number>", "Items per page", "25").option("--sort <field>", "Sort enum", "UPDATEDAT_DESC").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (opts) => {
+    const { page, perPage } = parsePaging(opts);
     let status;
     if (opts.status) {
       if (!DEAL_STATUSES.includes(opts.status)) {
@@ -49594,10 +49542,8 @@ var listCommand7 = new Command("list").description("List deals (project pipeline
     });
     const formatter = new DealFormatter();
     console.log(formatter.format(data, opts));
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/deal/createDeal.ts
 var PROJECT_CREATE_MUTATION = `
@@ -49645,8 +49591,8 @@ var createCommand7 = new Command("create").description(
 ).option("--description <text>", "Deal description").option("--value <number>", "Deal value (numeric)").option("--due-date <iso>", "Due date (ISO datetime)").option(
   "--data <json>",
   "Advanced: JSON object merged into the record (overrides other flags)"
-).option("--json", "Output raw JSON instead of formatted").action(async (opts) => {
-  try {
+).option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (opts) => {
     const customerId = await resolveCustomerId(opts.customer);
     const record2 = {
       customerId,
@@ -49696,10 +49642,8 @@ var createCommand7 = new Command("create").description(
       `
 \u{1F4A1} Deal ${handle} created at stage \`${deal.status}\`. To attach a proposal: \`bookipi proposal generate --customer ${opts.customer} ...\` then optionally link via \`bookipi proposal update <id> --data '{"projectPipelineId":"${deal._id}"}'\`.`
     );
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/deal/updateDeal.ts
 var PROJECT_PIPELINES_UPDATE_MUTATION = `
@@ -49744,8 +49688,8 @@ var updateCommand3 = new Command("update").description(
 ).option("--name <text>", "Deal name").option("--description <text>", "Deal description").option("--value <number>", "Deal value (numeric)").option("--due-date <iso>", "Due date (ISO datetime)").option(
   "--data <json>",
   "Advanced: JSON object merged into the record (overrides other flags)"
-).option("--json", "Output raw JSON instead of formatted").action(async (id, opts) => {
-  try {
+).option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (id, opts) => {
     const registry3 = HandleRegistry.getInstance();
     const dealId = registry3.resolve(id);
     const record2 = {};
@@ -49791,10 +49735,8 @@ var updateCommand3 = new Command("update").description(
     console.log(`\u2705 **Deal Updated**
 `);
     console.log(formatter.format(deal, opts));
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/commands/deal/index.ts
 var dealCommand = new Command("deal").description("Manage deals (project pipelines)").addCommand(listCommand7).addCommand(createCommand7).addCommand(updateCommand3);
@@ -50064,16 +50006,9 @@ Page ${page} of ${pages} (${items} total, ${perPage} per page)
 var listCommand8 = new Command("list").description("List proposals").option(
   "-s, --status <statuses>",
   `Comma-separated list of statuses to filter by (${PROPOSAL_STATUSES.join(", ")})`
-).option("--search <query>", "Free-text search across proposal/customer fields").option("--ai-only", "Only AI-generated proposals").option("-p, --page <number>", "Page number", "1").option("-l, --limit <number>", "Items per page", "15").option("--sort <field>", "Sort string", "createdAt_desc").option("--json", "Output raw JSON instead of formatted").action(async (opts) => {
-  try {
-    const page = parseInt(opts.page, 10);
-    const perPage = parseInt(opts.limit, 10);
-    if (isNaN(page) || page < 1) {
-      failWith("Invalid page number", { json: opts?.json });
-    }
-    if (isNaN(perPage) || perPage < 1) {
-      failWith("Invalid limit value", { json: opts?.json });
-    }
+).option("--search <query>", "Free-text search across proposal/customer fields").option("--ai-only", "Only AI-generated proposals").option("-p, --page <number>", "Page number", "1").option("-l, --limit <number>", "Items per page", "15").option("--sort <field>", "Sort string", "createdAt_desc").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (opts) => {
+    const { page, perPage } = parsePaging(opts);
     let status;
     if (opts.status) {
       const requested = opts.status.split(",").map((s) => s.trim());
@@ -50095,10 +50030,8 @@ var listCommand8 = new Command("list").description("List proposals").option(
     });
     const formatter = new ProposalFormatter();
     console.log(formatter.format(data, opts));
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/proposal/generateProposal.ts
 var PROPOSAL_AI_CREATE_MUTATION = `
@@ -50304,8 +50237,8 @@ var generateCommand = new Command("generate").description(
 ).option("--contract-length <months>", "Contract length in months", "36").option("--start-date <iso>", "Start date (ISO datetime). Defaults to now.").option("--expires-in <days>", "Days until expiration. Defaults to 30.", "30").option("--payment-enabled", "Enable payment on the proposal").option(
   "--data <json>",
   "Advanced: JSON object merged into the record (overrides defaults)"
-).option("--json", "Output raw JSON instead of formatted").action(async (opts) => {
-  try {
+).option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (opts) => {
     const registry3 = HandleRegistry.getInstance();
     const itemArgs = opts.item ?? [];
     if (itemArgs.length === 0) {
@@ -50350,10 +50283,8 @@ var generateCommand = new Command("generate").description(
       `
 \u{1F4A1} Draft (handle: ${handle}). Show the user a brief summary in chat plus the edit link above (rendered as a clickable Markdown link). When they're ready to send: \`bookipi proposal send ${handle} -r <email> --advance-deal\`.`
     );
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/proposal/updateProposal.ts
 var PROPOSAL_UPDATE_MUTATION = `
@@ -50410,8 +50341,8 @@ var updateCommand4 = new Command("update").description("Update a proposal \u2014
 ).option("--no-draft", "Mark the proposal as ready (isDraft=false)").option("--draft", "Mark the proposal as draft (isDraft=true)").option("--title <text>", "Proposal title").option(
   "--data <json>",
   "Advanced: JSON object merged into the record (overrides other flags)"
-).option("--json", "Output raw JSON instead of formatted").action(async (id, opts) => {
-  try {
+).option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (id, opts) => {
     const registry3 = HandleRegistry.getInstance();
     const proposalId = registry3.resolve(id);
     const record2 = {};
@@ -50456,10 +50387,8 @@ var updateCommand4 = new Command("update").description("Update a proposal \u2014
     console.log(formatter.format(proposal, opts));
     console.log(`
 \u{1F517} **Review or edit:** ${editUrl}`);
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/proposal/duplicateProposal.ts
 var PROPOSAL_DUPLICATE_MUTATION = `
@@ -50520,8 +50449,8 @@ async function duplicateProposal(proposalId) {
 // src/commands/proposal/duplicate.ts
 var duplicateCommand2 = new Command("duplicate").description(
   "Duplicate a proposal \u2014 creates a fresh editable draft copy with the same title, items, and terms."
-).argument("<id>", "Proposal ID or handle (@p1) to duplicate").option("--json", "Output raw JSON instead of formatted").action(async (id, opts) => {
-  try {
+).argument("<id>", "Proposal ID or handle (@p1) to duplicate").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (id, opts) => {
     const registry3 = HandleRegistry.getInstance();
     const proposalId = registry3.resolve(id);
     const proposal = await duplicateProposal(proposalId);
@@ -50542,10 +50471,8 @@ var duplicateCommand2 = new Command("duplicate").description(
       `
 \u{1F4A1} Draft copy created (handle: ${handle}). Edit it via the link above, then send with \`bookipi proposal send ${handle} -r <email>\`.`
     );
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/proposal/deleteProposal.ts
 var PROPOSALS_REMOVE_MANY_MUTATION = `
@@ -50574,8 +50501,8 @@ async function deleteProposal(id) {
 }
 
 // src/commands/proposal/delete.ts
-var deleteCommand4 = new Command("delete").description("Delete a proposal by ID or handle (@p1) \u2014 moves to trash (soft delete)").argument("<id>", "Proposal ID or handle (@p1) to delete").option("--json", "Output raw JSON instead of formatted").action(async (id, opts) => {
-  try {
+var deleteCommand4 = new Command("delete").description("Delete a proposal by ID or handle (@p1) \u2014 moves to trash (soft delete)").argument("<id>", "Proposal ID or handle (@p1) to delete").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (id, opts) => {
     const registry3 = HandleRegistry.getInstance();
     const resolvedId = registry3.resolve(id);
     const record2 = await deleteProposal(resolvedId);
@@ -50585,10 +50512,8 @@ var deleteCommand4 = new Command("delete").description("Delete a proposal by ID 
     }
     const label = record2.title || record2._id || resolvedId;
     console.log(`\u2705 Proposal moved to trash: ${label}`);
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/proposal/sendProposal.ts
 var PROPOSAL_SEND_MUTATION = `
@@ -50778,8 +50703,8 @@ var sendCommand3 = new Command("send").description(
 ).option("-b, --bcc <emails>", "Comma-separated list of BCC email addresses").option("-s, --subject <text>", "Email subject line").option("-m, --message <text>", "Email message body").option(
   "--advance-deal",
   "After successful send, also bump the linked deal's stage to 'proposal' (only when the deal isn't already at or past it). See common.md \xA7 Deal Stage Auto-Progression."
-).option("--json", "Output raw JSON instead of formatted").action(async (id, opts) => {
-  try {
+).option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (id, opts) => {
     const registry3 = HandleRegistry.getInstance();
     const resolvedId = registry3.resolve(id);
     const recipients = opts.recipients.split(",").map((e) => e.trim()).filter(Boolean);
@@ -50859,21 +50784,28 @@ Server: ${result.message} (status ${result.statusCode ?? "?"})`);
    \u2022 Invoice direct:    \`bookipi invoice create-from-proposal ${handle}\`
    \u2022 Or sign-then-bill: \`bookipi contract create-from-proposal ${handle}\` (then \`contract send\`)`
     );
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/commands/proposal/index.ts
 var proposalCommand = new Command("proposal").description("Manage proposals").addCommand(listCommand8).addCommand(generateCommand).addCommand(updateCommand4).addCommand(duplicateCommand2).addCommand(deleteCommand4).addCommand(sendCommand3);
 
 // src/core/auth/signitToken.ts
 var REFRESH_LEEWAY_MS2 = 6e4;
+var hosted2 = new CallerCache({
+  expiresAt: (t) => t.expiryMs - REFRESH_LEEWAY_MS2
+});
 async function ensureSignitToken() {
-  const cached3 = getSignitTokenCached();
-  if (cached3.token && cached3.expiry && !isExpired2(cached3.expiry)) {
-    return cached3.token;
+  if (currentRequestAuth()) return (await hosted2.get(mintSignitToken)).token;
+  const cached2 = getSignitTokenCached();
+  if (cached2.token && cached2.expiry && !isExpired2(cached2.expiry)) {
+    return cached2.token;
   }
+  const fresh = await mintSignitToken();
+  saveSignitToken(fresh.token, fresh.expiryMs);
+  return fresh.token;
+}
+async function mintSignitToken() {
   const userToken = getToken();
   if (!userToken) throw new Error("Not logged in");
   const companyId = getDefaultCompany();
@@ -50908,8 +50840,7 @@ async function ensureSignitToken() {
       `generateCustomerSessionKey returned an unrecognised expiry (${typeof rawExpiry}: ${String(rawExpiry)})`
     );
   }
-  saveSignitToken(token, expiryMs);
-  return token;
+  return { token, expiryMs };
 }
 function isExpired2(expiryMs) {
   return expiryMs - Date.now() < REFRESH_LEEWAY_MS2;
@@ -51148,8 +51079,8 @@ var listCommand9 = new Command("list").description("List eSign contracts (docume
   "-p, --page <number>",
   "Page number (signit uses 0-based pagination)",
   "0"
-).option("-l, --limit <number>", "Items per page", "15").option("--sort <field>", "Sort enum", "_ID_DESC").option("--json", "Output raw JSON instead of formatted").action(async (opts) => {
-  try {
+).option("-l, --limit <number>", "Items per page", "15").option("--sort <field>", "Sort enum", "_ID_DESC").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (opts) => {
     const page = parseInt(opts.page, 10);
     const perPage = parseInt(opts.limit, 10);
     if (isNaN(page) || page < 0) {
@@ -51177,10 +51108,8 @@ var listCommand9 = new Command("list").description("List eSign contracts (docume
     });
     const formatter = new ContractFormatter();
     console.log(formatter.format(data, opts));
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/contract/resolveJurisdiction.ts
 var FALLBACK_JURISDICTION = "usa";
@@ -51450,8 +51379,8 @@ var draftCommand = new Command("draft").description(
   'Extra detail as "question::answer" to tailor the clauses (repeatable) \u2014 e.g. --detail "Term?::12 months" --detail "Payment?::50% upfront"',
   parseDetail,
   []
-).option("--signer-name <name>", "Suggested signer's full name (pre-filled in the editor)").option("--signer-email <email>", "Suggested signer's email (pre-filled in the editor)").option("--json", "Output raw JSON instead of formatted").action(async (description, opts) => {
-  try {
+).option("--signer-name <name>", "Suggested signer's full name (pre-filled in the editor)").option("--signer-email <email>", "Suggested signer's email (pre-filled in the editor)").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (description, opts) => {
     if (opts.signerEmail && !opts.signerName || opts.signerName && !opts.signerEmail) {
       failWith("Provide both --signer-name and --signer-email, or neither", {
         json: opts?.json
@@ -51508,10 +51437,8 @@ var draftCommand = new Command("draft").description(
     console.log(
       `\u{1F4A1} The contract is still in AI-edit mode \u2014 tweak wording in the editor, then attach the signer and send from there. (Once finalized in the web, the document becomes read-only and only accepts signer changes.)`
     );
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/contract/uploadContractDocument.ts
 import fs7 from "node:fs";
@@ -51647,8 +51574,8 @@ async function uploadContractDocument(opts) {
 // src/commands/contract/upload.ts
 var uploadCommand2 = new Command("upload").description(
   "Upload an existing file (PDF, image) as an eSign contract \u2014 bring-your-own document. Creates the contract in Bookipi and returns an editor URL to add signers and place the signature. Also the target for an AI-written contract: render it to a PDF, then upload it here."
-).argument("<file>", "Path to the contract file (.pdf, .png, .jpg)").option("--title <title>", "Document title (defaults to the file name)").option("--json", "Output raw JSON instead of formatted").action(async (file2, opts) => {
-  try {
+).argument("<file>", "Path to the contract file (.pdf, .png, .jpg)").option("--title <title>", "Document title (defaults to the file name)").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (file2, opts) => {
     process.stderr.write(`  \u2022 Uploading ${file2}...
 `);
     const { documentId, title } = await uploadContractDocument({
@@ -51675,10 +51602,8 @@ var uploadCommand2 = new Command("upload").description(
     console.log(
       `\u{1F4A1} Open the editor to drop the signature field on the page, add one or more signers, and send for signing. It stays a draft in your eSign documents until you send it.`
     );
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/contract/contractFromProposal.ts
 function sumProposalValue(items) {
@@ -51775,8 +51700,8 @@ var createFromProposalCommand2 = new Command("create-from-proposal").description
 ).option(
   "--what-to-create <text>",
   "Override the auto-derived 'what to create' string (e.g. 'service agreement for SEO retainer')."
-).option("--json", "Output raw JSON instead of formatted").action(async (proposalRef, opts) => {
-  try {
+).option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (proposalRef, opts) => {
     if (opts.industry === DEFAULT_INDUSTRY) {
       process.stderr.write(
         `  \u2022 Using default industry "${DEFAULT_INDUSTRY}" \u2014 pass --industry to match the actual business (the clauses adapt to it).
@@ -51833,10 +51758,8 @@ var createFromProposalCommand2 = new Command("create-from-proposal").description
     console.log(
       `\u{1F4A1} The contract is still in AI-edit mode \u2014 tweak wording in the editor, then attach the signer and send from there. (Once finalized in the web, the document becomes read-only and only accepts signer changes.)`
     );
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/contract/getDocument.ts
 var DOCUMENTS_ONE_QUERY = `
@@ -51979,9 +51902,9 @@ async function finalizeContract(input) {
   const warnings = [];
   say("Fetching contract state...");
   const doc = await getDocument(aiDocId);
-  const cached3 = getContractAiCache(aiDocId);
-  const title = cached3?.title ?? doc?.["title"] ?? "Untitled Contract";
-  const clauses = cached3?.clauses ?? [];
+  const cached2 = getContractAiCache(aiDocId);
+  const title = cached2?.title ?? doc?.["title"] ?? "Untitled Contract";
+  const clauses = cached2?.clauses ?? [];
   const status = String(doc?.["status"] ?? "");
   if (!FINALIZABLE.has(status)) {
     throw new Error(
@@ -52012,12 +51935,12 @@ async function finalizeContract(input) {
   say("Generating contract document ID...");
   const contractDocId = await generateDocumentId();
   let signerRecipientId = null;
-  if (cached3?.signer) {
+  if (cached2?.signer) {
     try {
-      say(`Creating recipient record for ${cached3.signer.email}...`);
+      say(`Creating recipient record for ${cached2.signer.email}...`);
       signerRecipientId = await createRecipient({
-        fullName: cached3.signer.fullName,
-        email: cached3.signer.email
+        fullName: cached2.signer.fullName,
+        email: cached2.signer.email
       });
     } catch (err2) {
       warnings.push(
@@ -52076,8 +51999,8 @@ var finalizeCommand = new Command("finalize").description(
 ).argument("<id-or-handle>", "AI source doc ID or handle (@k1)").option(
   "--no-pdf",
   "Skip PDF render and upload (useful for debugging the contract record step in isolation)"
-).option("--json", "Output raw JSON instead of formatted").action(async (idOrHandle, opts) => {
-  try {
+).option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (idOrHandle, opts) => {
     const registry3 = HandleRegistry.getInstance();
     const aiDocId = registry3.resolve(idOrHandle);
     progress(
@@ -52123,10 +52046,8 @@ var finalizeCommand = new Command("finalize").description(
     console.log(`\u{1F4C2} Next step \u2014 attach signer, place signature, send:`);
     console.log(`\u{1F517} ${editorUrl}
 `);
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/contract/updateDocument.ts
 var UPDATE_DOCUMENT_MUTATION = `
@@ -52191,8 +52112,8 @@ var sendCommand4 = new Command("send").description(
 ).option(
   "--deal <value>",
   "Deal handle (@d1) or ID to advance after send. Required if you want to use --advance-deal \u2014 the contract record itself doesn't store the deal link."
-).option("--json", "Output raw JSON instead of formatted").action(async (id, opts) => {
-  try {
+).option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (id, opts) => {
     const registry3 = HandleRegistry.getInstance();
     const contractId = registry3.resolve(id);
     const contract = await getDocument(contractId);
@@ -52281,10 +52202,8 @@ Status: ${updated?.status ?? "?"}`);
       console.log(`
 \u{1F4CD} ${advanceNote}`);
     }
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/commands/contract/index.ts
 var contractCommand = new Command("contract").description("Manage eSign contracts (documents)").addCommand(listCommand9).addCommand(draftCommand).addCommand(uploadCommand2).addCommand(createFromProposalCommand2).addCommand(finalizeCommand).addCommand(sendCommand4);
@@ -52317,8 +52236,8 @@ async function getCustomerWhoami() {
 }
 
 // src/commands/calendar/status.ts
-var statusCommand2 = new Command("status").description("Check whether Google Calendar is connected and print the setup URL if not").option("--json", "Output raw JSON instead of formatted text").action(async (opts) => {
-  try {
+var statusCommand2 = new Command("status").description("Check whether Google Calendar is connected and print the setup URL if not").option("--json", "Output raw JSON instead of formatted text").action(
+  withErrors(async (opts) => {
     const result = await getCustomerWhoami();
     const setupUrlPlain = `${config.BOOKIPI_WEB_URL}/calendar-scheduling`;
     const setupUrl = await buildAuthenticatedUrl(setupUrlPlain);
@@ -52346,10 +52265,8 @@ var statusCommand2 = new Command("status").description("Check whether Google Cal
       }
     }
     process.exit(0);
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/commands/calendar/index.ts
 var calendarCommand = new Command("calendar").description("Calendar connectivity and setup").addCommand(statusCommand2);
@@ -52370,8 +52287,8 @@ async function listCompanies() {
 }
 
 // src/commands/company/list.ts
-var listCommand10 = new Command("list").description("List all companies on this account and show the current default").option("--json", "Output raw JSON instead of formatted").action(async (opts) => {
-  try {
+var listCommand10 = new Command("list").description("List all companies on this account and show the current default").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (opts) => {
     const result = await listCompanies();
     if (opts.json) {
       const defaultEntry = result.companies.find((c) => c.isDefault) ?? null;
@@ -52406,10 +52323,8 @@ var listCommand10 = new Command("list").description("List all companies on this 
     } else {
       console.log("Switch with: bookipi company set <id-or-name>");
     }
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/usecases/company/setDefaultCompany.ts
 async function setDefaultCompany(idOrName) {
@@ -52470,8 +52385,8 @@ async function setDefaultCompany(idOrName) {
 }
 
 // src/commands/company/set.ts
-var setCommand = new Command("set").description("Set the default company by ID or name").argument("<id-or-name>", "Company _id (24-char hex) or name (case-insensitive)").option("--json", "Output raw JSON instead of formatted").action(async (idOrName, opts) => {
-  try {
+var setCommand = new Command("set").description("Set the default company by ID or name").argument("<id-or-name>", "Company _id (24-char hex) or name (case-insensitive)").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (idOrName, opts) => {
     if (idOrName.trim() === "") {
       failWith("Company id or name cannot be empty.", { json: opts?.json });
     }
@@ -52489,10 +52404,8 @@ var setCommand = new Command("set").description("Set the default company by ID o
 `
       );
     }
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 
 // src/commands/company/index.ts
 var companyCommand = new Command("company").description("Manage the active company").addCommand(listCommand10).addCommand(setCommand);
@@ -52555,7 +52468,10 @@ async function createWebsiteLink() {
 }
 
 // src/core/api/builderGraphql.ts
-var cached = null;
+var sessions2 = new CallerCache();
+function builderSession(stale) {
+  return sessions2.get(mintBuilderSession, stale);
+}
 function websiteIdFromToken(token) {
   try {
     const payload = (token.split(".")[1] ?? "").replace(/-/g, "+").replace(/_/g, "/");
@@ -52613,66 +52529,78 @@ async function mintBuilderSession() {
   if (!token) throw new Error("Builder link carried no token \u2014 cannot authenticate to the builder service.");
   return { origin: link.origin, endpoint: `${link.origin}/graphql`, token };
 }
-async function builderRest(path10) {
-  if (!cached) cached = await mintBuilderSession();
+var BUILDER_TIMEOUT_MS = 12e4;
+var BUILDER_CHAT_TIMEOUT_MS = 3e5;
+async function builderFetch(request, timeoutMs = BUILDER_TIMEOUT_MS) {
+  let pending = builderSession();
+  let session = await pending;
   let lastDenial = "";
   for (let attempt = 0; attempt < 2; attempt++) {
-    const res = await fetch(`${cached.origin}${path10}`, {
-      headers: {
-        cookie: `token=${cached.token}`,
-        platform: "web"
+    const { url: url2, method, headers, body } = request(session);
+    try {
+      const res = await fetch(url2, {
+        ...method ? { method } : {},
+        ...body !== void 0 ? { body } : {},
+        headers: { ...headers, cookie: `token=${session.token}`, platform: "web" },
+        signal: AbortSignal.timeout(timeoutMs)
+      });
+      if (res.status === 401 || res.status === 403) {
+        const denial = await classifyBuilderDenial(res);
+        if (denial.hardError) throw denial.hardError;
+        lastDenial = denial.summary;
+        pending = builderSession(pending);
+        session = await pending;
+        continue;
       }
-    });
-    if (res.status === 401 || res.status === 403) {
-      const denial = await classifyBuilderDenial(res);
-      if (denial.hardError) throw denial.hardError;
-      lastDenial = denial.summary;
-      cached = await mintBuilderSession();
-      continue;
+      if (res.status === 429) throw builderRateLimitError(res);
+      return { status: res.status, ok: res.ok, text: await res.text() };
+    } catch (err2) {
+      if (err2?.name === "TimeoutError") {
+        throw new Error(
+          `The website builder didn't respond within ${timeoutMs / 1e3}s \u2014 try again in a moment.`
+        );
+      }
+      throw err2;
     }
-    if (res.status === 404) return null;
-    if (res.status === 429) throw builderRateLimitError(res);
-    if (!res.ok) {
-      throw new Error(`Builder API error: ${res.status} on ${path10}`);
-    }
-    return res.json();
   }
   throw new Error(
     `Builder service rejected the request even after re-minting the token (${lastDenial}).`
   );
 }
-async function builderRestWrite(method, path10, body, parse3 = "json") {
-  if (!cached) cached = await mintBuilderSession();
-  let lastDenial = "";
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const res = await fetch(`${cached.origin}${path10}`, {
-      method,
-      headers: {
-        "content-type": "application/json",
-        cookie: `token=${cached.token}`,
-        platform: "web"
-      },
-      body: JSON.stringify(body)
-    });
-    if (res.status === 401 || res.status === 403) {
-      const denial = await classifyBuilderDenial(res);
-      if (denial.hardError) throw denial.hardError;
-      lastDenial = denial.summary;
-      cached = await mintBuilderSession();
-      continue;
-    }
-    if (res.status === 429) throw builderRateLimitError(res);
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(
-        `Builder API error: ${res.status} on ${path10}${text ? ` \u2014 ${text.slice(0, 300)}` : ""}`
-      );
-    }
-    return parse3 === "text" ? res.text() : res.json();
-  }
-  throw new Error(
-    `Builder service rejected the request even after re-minting the token (${lastDenial}).`
+function builderError(res, what) {
+  return new Error(
+    `Builder API error: ${res.status} on ${what}${res.text ? ` \u2014 ${res.text.slice(0, 300)}` : ""}`
   );
+}
+function parseJson(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return void 0;
+  }
+}
+async function builderRest(path10) {
+  const res = await builderFetch((s) => ({ url: `${s.origin}${path10}` }));
+  if (res.status === 404) return null;
+  const body = res.ok ? parseJson(res.text) : void 0;
+  if (body === void 0) throw builderError(res, path10);
+  return body;
+}
+async function builderRestWrite(method, path10, body, parse3 = "json") {
+  const res = await builderFetch(
+    (s) => ({
+      url: `${s.origin}${path10}`,
+      method,
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body)
+    }),
+    parse3 === "text" ? BUILDER_CHAT_TIMEOUT_MS : BUILDER_TIMEOUT_MS
+  );
+  if (!res.ok) throw builderError(res, path10);
+  if (parse3 === "text") return res.text;
+  const json3 = parseJson(res.text);
+  if (json3 === void 0) throw builderError(res, path10);
+  return json3;
 }
 function builderRestPost(path10, body) {
   return builderRestWrite("POST", path10, body);
@@ -52684,48 +52612,31 @@ function builderRestPostText(path10, body) {
   return builderRestWrite("POST", path10, body, "text");
 }
 async function getBuilderWebsiteId() {
-  if (!cached) cached = await mintBuilderSession();
-  return websiteIdFromToken(cached.token);
+  return websiteIdFromToken((await builderSession()).token);
 }
 async function getBuilderOrigin() {
-  if (!cached) cached = await mintBuilderSession();
-  return cached.origin;
+  return (await builderSession()).origin;
 }
 async function builderGraphql({
   query,
   variables,
   operationName
 }) {
-  if (!cached) cached = await mintBuilderSession();
-  let lastDenial = "";
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const res = await fetch(cached.endpoint, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "apollo-require-preflight": "true",
-        cookie: `token=${cached.token}`,
-        platform: "web"
-      },
-      body: JSON.stringify({ query, variables, operationName })
-    });
-    if (res.status === 401 || res.status === 403) {
-      const denial = await classifyBuilderDenial(res);
-      if (denial.hardError) throw denial.hardError;
-      lastDenial = denial.summary;
-      cached = await mintBuilderSession();
-      continue;
-    }
-    if (res.status === 429) throw builderRateLimitError(res);
-    const body = await res.json();
-    if (body.errors) {
-      throw new Error(`Builder GraphQL error: ${JSON.stringify(body.errors).slice(0, 500)}`);
-    }
-    return body.data;
+  const res = await builderFetch((s) => ({
+    url: s.endpoint,
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "apollo-require-preflight": "true"
+    },
+    body: JSON.stringify({ query, variables, operationName })
+  }));
+  const body = parseJson(res.text);
+  if (body?.errors) {
+    throw new Error(`Builder GraphQL error: ${JSON.stringify(body.errors).slice(0, 500)}`);
   }
-  throw new Error(
-    `Builder service rejected the request even after re-minting the token (${lastDenial}).`
-  );
+  if (!res.ok || body == null) throw builderError(res, "GraphQL");
+  return body.data;
 }
 
 // src/usecases/website/getWebsiteDraft.ts
@@ -54385,8 +54296,8 @@ async function writeSitePreview(draft, opts) {
 }
 var statusCommand3 = new Command("status").description(
   "Show the active company's website: business name/description, published state, page/section count, domain + domain status. Cross-checks the published flag against actual content, so a deleted-but-still-published site reports as empty rather than live. Reports plainly when no website exists yet."
-).option("--json", "Output raw JSON instead of formatted").action(async (opts) => {
-  try {
+).option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (opts) => {
     const { companyName, website } = await getWebsiteInfo();
     let content = null;
     let contentError = null;
@@ -54469,14 +54380,12 @@ var statusCommand3 = new Command("status").description(
       `
 \u{1F4A1} \`bookipi website open\` returns an authenticated builder link to view or edit it.`
     );
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 var openCommand2 = new Command("open").description(
   "Mint an authenticated link into the website builder (edit the existing website). The link carries a short-lived token."
-).option("--json", "Output raw JSON { websiteLink }").action(async (opts) => {
-  try {
+).option("--json", "Output raw JSON { websiteLink }").action(
+  withErrors(async (opts) => {
     const link = await getWebsiteManageLink();
     if (opts.json) {
       console.log(JSON.stringify({ websiteLink: link }, null, 2));
@@ -54485,14 +54394,12 @@ var openCommand2 = new Command("open").description(
     console.log(`\u{1F517} **Open your website builder:** ${link}`);
     console.log(`
 \u{1F4A1} The link signs you in automatically (short-lived).`);
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 var createCommand8 = new Command("create").description(
   "Create a website for the active company with the AI website builder and return the builder link."
-).option("--json", "Output raw JSON { websiteLink }").action(async (opts) => {
-  try {
+).option("--json", "Output raw JSON { websiteLink }").action(
+  withErrors(async (opts) => {
     const link = await createWebsiteLink();
     if (opts.json) {
       console.log(JSON.stringify({ websiteLink: link }, null, 2));
@@ -54501,14 +54408,12 @@ var createCommand8 = new Command("create").description(
     console.log(`\u2705 Website created.`);
     console.log(`
 \u{1F517} **Open the builder to set it up:** ${link}`);
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 var generateCommand2 = new Command("generate").description(
   "AI-generate a website end to end: infer a business profile, pick the best template, create a draft, and generate the content \u2014 then return a preview + builder link. Polls the generation job (~90s); pass --no-wait to return immediately with the ids."
-).requiredOption("--name <name>", "Business name").option("--description <text>", "One-line description of the business (skips the scrape/infer step)").option("--from-url <url>", "Existing website URL to pull the profile from (enrich instead of scrape)").option("--no-wait", "Return the siteId/jobId immediately instead of waiting for generation").option("--json", "Output raw JSON").action(async (opts) => {
-  try {
+).requiredOption("--name <name>", "Business name").option("--description <text>", "One-line description of the business (skips the scrape/infer step)").option("--from-url <url>", "Existing website URL to pull the profile from (enrich instead of scrape)").option("--no-wait", "Return the siteId/jobId immediately instead of waiting for generation").option("--json", "Output raw JSON").action(
+  withErrors(async (opts) => {
     const result = await generateSite({
       name: opts.name,
       ...opts.description ? { description: opts.description } : {},
@@ -54568,10 +54473,8 @@ var generateCommand2 = new Command("generate").description(
     }
     if (link) console.log(`
 \u{1F517} **Open the builder to tweak & publish:** ${link}`);
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 var addPageCommand = new Command("add-page").description(
   "AI-generate a NEW page on the current AI-built (v4) website from a description (About, Gallery, FAQ, Services, \u2026) \u2014 the builder writes the page in the site's existing style and links it into the nav, then this re-renders the preview. Polls the generation job (~90s); pass --no-wait to return the jobId immediately."
 ).argument(
@@ -54580,8 +54483,8 @@ var addPageCommand = new Command("add-page").description(
 ).option(
   "--summary <text>",
   "One-line label for the change (default: the description)"
-).option("--no-wait", "Return siteId/jobId immediately instead of waiting").option("--no-preview", "Skip rendering a preview of the new page").option("--json", "Output raw JSON").action(async (description, opts) => {
-  try {
+).option("--no-wait", "Return siteId/jobId immediately instead of waiting").option("--no-preview", "Skip rendering a preview of the new page").option("--json", "Output raw JSON").action(
+  withErrors(async (description, opts) => {
     const result = await addSitePage({
       description,
       ...opts.summary ? { summary: opts.summary } : {},
@@ -54636,10 +54539,8 @@ var addPageCommand = new Command("add-page").description(
     }
     if (link) console.log(`
 \u{1F517} **Open the builder to tweak & publish:** ${link}`);
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 var askCommand = new Command("ask").description(
   "Freeform natural-language edit of the current AI-built (v4) website via the builder's conversational AI \u2014 copy rewrites, restructuring, tone/color tweaks ('make the hero punchier'). The AI either applies a change (then this re-renders the preview), answers a question about the site, or asks a clarifying question \u2014 re-run with a refined instruction. For an exact text swap use `website update`."
 ).argument(
@@ -54651,8 +54552,8 @@ var askCommand = new Command("ask").description(
 ).option(
   "--no-wait",
   "Apply the proposed change but return jobIds immediately instead of waiting"
-).option("--no-preview", "Skip re-rendering the preview after a change").option("--json", "Output raw JSON").action(async (instruction, opts) => {
-  try {
+).option("--no-preview", "Skip re-rendering the preview after a change").option("--json", "Output raw JSON").action(
+  withErrors(async (instruction, opts) => {
     const site = await getV4Site();
     if (!site) {
       failWith(
@@ -54799,17 +54700,15 @@ ${outcome.text}`);
     }
     if (link) console.log(`
 \u{1F517} **Open the builder to tweak & publish:** ${link}`);
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 var publishCommand = new Command("publish").description(
   '\u{1F534} PUBLISH the current AI-built (v4) website to the PUBLIC internet at <builder>/v4/pages/<slug>. Ask the user to confirm before running this \u2014 it makes the site visible to anyone with the link. Re-publishing updates the live site in place. The URL slug defaults to the business name ("Acme Cafe" \u2192 acme-cafe); pass --url to choose another.'
 ).option(
   "--url <slug>",
   "URL slug to publish under (default: derived from the business name). Re-publish with the same slug to update the live site."
-).option("--json", "Output raw JSON").action(async (opts) => {
-  try {
+).option("--json", "Output raw JSON").action(
+  withErrors(async (opts) => {
     const site = await getV4Site();
     if (!site) {
       failWith(
@@ -54864,10 +54763,8 @@ var publishCommand = new Command("publish").description(
       `
 \u{1F4A1} Re-run \`bookipi website publish\` after any edit to update the live site.`
     );
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 var previewCommand2 = new Command("preview").description(
   "Render the current website draft to a self-contained HTML preview \u2014 ready to show as an Artifact. Multi-page sites render EVERY page into one navigable file by default (inter-page links become in-file anchors); --page <slug> renders just that page. Reuses the AI-generated (v4) draft from the builder; --full writes a standalone browsable document instead of an embed fragment. Classic (section-based) sites have no page layout to render \u2014 the command points to `website content` and the builder link instead."
 ).option("--page <slug>", "Which page to render (slug or name; default: home)").option(
@@ -54879,8 +54776,8 @@ var previewCommand2 = new Command("preview").description(
 ).option(
   "--open",
   "Open the preview in the default browser after rendering (implies --full \u2014 a real browser loads the remote images/fonts directly, so rendering is also much faster). Only works when the CLI runs on the user's own machine."
-).option("-o, --output <path>", "Write the preview to this path (default: a temp file)").option("--json", "Output JSON metadata { file, page, pages }").action(async (opts) => {
-  try {
+).option("-o, --output <path>", "Write the preview to this path (default: a temp file)").option("--json", "Output JSON metadata { file, page, pages }").action(
+  withErrors(async (opts) => {
     if (opts.open) opts.full = true;
     const site = await getV4Site();
     if (!site) {
@@ -54971,14 +54868,12 @@ var previewCommand2 = new Command("preview").description(
 \u{1F4A1} Open that file in a browser to view the site.` : `
 \u{1F4A1} Render that file as an Artifact to show the site inline.`
     );
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 var pageCommand = new Command("page").description(
   "Dump one page's raw HTML from the current AI-built (v4) draft \u2014 the source you edit before `website update --html-file`. Default: the home page."
-).option("--page <slug>", "Which page (slug or name; default: home)").option("-o, --output <path>", "Write the HTML to this path (default: stdout)").option("--json", "Output JSON { page, pages, file }").action(async (opts) => {
-  try {
+).option("--page <slug>", "Which page (slug or name; default: home)").option("-o, --output <path>", "Write the HTML to this path (default: stdout)").option("--json", "Output JSON { page, pages, file }").action(
+  withErrors(async (opts) => {
     const site = await getV4Site();
     if (!site) {
       failWith(
@@ -55011,14 +54906,12 @@ var pageCommand = new Command("page").description(
       return;
     }
     process.stdout.write(html);
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 var pagesCommand = new Command("pages").description(
   "List the pages of the current AI-built (v4) website (name, slug, visibility, section count) \u2014 the slugs to pass to `preview`/`page`/`update --page`."
-).option("--json", "Output JSON [{ name, slug, visible, sections }]").action(async (opts) => {
-  try {
+).option("--json", "Output JSON [{ name, slug, visible, sections }]").action(
+  withErrors(async (opts) => {
     const site = await getV4Site();
     if (!site) {
       failWith(
@@ -55055,17 +54948,15 @@ var pagesCommand = new Command("pages").description(
       `
 \u{1F4A1} Preview one with \`bookipi website preview --page <slug>\`, all at once with \`--all\`, or edit with \`bookipi website update --page <slug> \u2026\`.`
     );
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 var updateCommand5 = new Command("update").description(
   "Edit the content of the current AI-built (v4) website and re-render the preview. Use --find/--replace for a text swap, or --html-file to submit a fully edited page. Persists to the builder (the edit shows there too). Text/content edits only \u2014 structural changes belong in the builder."
 ).option("--page <slug>", "Which page to edit (slug or name; default: home)").option("--find <text>", "Exact text to replace (use with --replace)").option("--replace <text>", "Replacement text (use with --find)").option(
   "--html-file <path>",
   "Path to the full modified page HTML (from `website page`) to save instead of a find/replace"
-).option("--no-preview", "Skip re-rendering the preview after saving").option("--json", "Output JSON metadata").action(async (opts) => {
-  try {
+).option("--no-preview", "Skip re-rendering the preview after saving").option("--json", "Output JSON metadata").action(
+  withErrors(async (opts) => {
     const site = await getV4Site();
     if (!site) {
       failWith(
@@ -55139,28 +55030,24 @@ var updateCommand5 = new Command("update").description(
       `
 \u{1F4A1} The edit is saved to the builder too \u2014 \`bookipi website open\` to see or keep editing it.`
     );
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 var contentCommand = new Command("content").description(
   "Load the full website content (every page and section \u2014 headings, copy, services, FAQs, testimonials, SEO) as a readable digest. The source of truth for answering any question about what the site says. --json returns the raw draft."
-).option("--json", "Output the raw website draft JSON").action(async (opts) => {
-  try {
+).option("--json", "Output the raw website draft JSON").action(
+  withErrors(async (opts) => {
     const content = await getWebsiteContent();
     if (opts.json) {
       console.log(JSON.stringify(content, null, 2));
       return;
     }
     console.log(summarizeWebsiteContent(content));
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 var analyticsCommand = new Command("analytics").description(
   "Website traffic and inquiries from the builder service: visit counts with device split, inquiry trend, and the actual contact-form messages. Default window is 30 days."
-).option("--days <n>", "Window in days (rolls up by month past ~3 months)", "30").option("--json", "Output the raw analytics JSON").action(async (opts) => {
-  try {
+).option("--days <n>", "Window in days (rolls up by month past ~3 months)", "30").option("--json", "Output the raw analytics JSON").action(
+  withErrors(async (opts) => {
     const days = Math.max(1, parseInt(opts.days, 10) || 30);
     const analytics = await getWebsiteAnalytics(days);
     if (opts.json) {
@@ -55168,10 +55055,8 @@ var analyticsCommand = new Command("analytics").description(
       return;
     }
     console.log(summarizeAnalytics(analytics));
-  } catch (err2) {
-    emitError(err2, { json: opts?.json });
-  }
-});
+  })
+);
 var websiteCommand = new Command("website").description("The company's AI-built website (status, builder links)").addCommand(statusCommand3).addCommand(contentCommand).addCommand(analyticsCommand).addCommand(openCommand2).addCommand(createCommand8).addCommand(generateCommand2).addCommand(addPageCommand).addCommand(askCommand).addCommand(publishCommand).addCommand(previewCommand2).addCommand(pageCommand).addCommand(pagesCommand).addCommand(updateCommand5);
 
 // node_modules/.pnpm/zod@4.4.3/node_modules/zod/v3/helpers/util.js
@@ -59422,7 +59307,7 @@ __export(util_exports, {
   assignProp: () => assignProp,
   base64ToUint8Array: () => base64ToUint8Array,
   base64urlToUint8Array: () => base64urlToUint8Array,
-  cached: () => cached2,
+  cached: () => cached,
   captureStackTrace: () => captureStackTrace,
   cleanEnum: () => cleanEnum,
   cleanRegex: () => cleanRegex,
@@ -59499,7 +59384,7 @@ function jsonStringifyReplacer(_, value) {
     return value.toString();
   return value;
 }
-function cached2(getter) {
+function cached(getter) {
   const set2 = false;
   return {
     get value() {
@@ -59608,7 +59493,7 @@ var captureStackTrace = "captureStackTrace" in Error ? Error.captureStackTrace :
 function isObject(data) {
   return typeof data === "object" && data !== null && !Array.isArray(data);
 }
-var allowsEval = /* @__PURE__ */ cached2(() => {
+var allowsEval = /* @__PURE__ */ cached(() => {
   if (globalConfig.jitless) {
     return false;
   }
@@ -61831,7 +61716,7 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
       }
     });
   }
-  const _normalized = cached2(() => normalizeDef(def));
+  const _normalized = cached(() => normalizeDef(def));
   defineLazy(inst._zod, "propValues", () => {
     const shape = def.shape;
     const propValues = {};
@@ -61883,7 +61768,7 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
 var $ZodObjectJIT = /* @__PURE__ */ $constructor("$ZodObjectJIT", (inst, def) => {
   $ZodObject.init(inst, def);
   const superParse = inst._zod.parse;
-  const _normalized = cached2(() => normalizeDef(def));
+  const _normalized = cached(() => normalizeDef(def));
   const generateFastpass = (shape) => {
     const doc = new Doc(["shape", "payload", "ctx"]);
     const normalized = _normalized.value;
@@ -62145,7 +62030,7 @@ var $ZodDiscriminatedUnion = /* @__PURE__ */ $constructor("$ZodDiscriminatedUnio
     }
     return propValues;
   });
-  const disc = cached2(() => {
+  const disc = cached(() => {
     const opts = def.options;
     const map2 = /* @__PURE__ */ new Map();
     for (const o of opts) {
@@ -79261,6 +79146,86 @@ var StdioServerTransport = class {
   }
 };
 
+// src/mcp/reads/shared.ts
+function compact(obj) {
+  const out = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (v !== void 0) out[k] = v;
+  }
+  return out;
+}
+var companyScope = {
+  company_id: external_exports.string().optional().describe(
+    "Company id to read from, as returned by whoami. Omit for the active default company."
+  )
+};
+var paging = {
+  page: external_exports.number().int().positive().optional().describe("1-based page number."),
+  per_page: external_exports.number().int().positive().max(200).optional().describe("Results per page.")
+};
+var INVOICE_STATUSES = [
+  "saved",
+  "sent",
+  "read",
+  "partialPaid",
+  "overdue",
+  "undelivered",
+  "paid"
+];
+
+// src/mcp/reads/account.ts
+var accountReads = [
+  {
+    name: "document_numbering",
+    group: "account",
+    title: "What the next invoice or estimate will be numbered",
+    description: "Return the company's own numbering for every document type: the configured prefix, the next number it will assign, and whether the type is enabled.\nUSE THIS BEFORE STATING A NUMBER. Numbering is per-company configuration, not a convention \u2014 an account whose prefix is 'invoice-' numbers documents `invoice-698`, and one configured differently will not. There is no rule to derive it from, so a number you did not read here is a guess, and a wrong one names a document the user cannot find.\nNOT whoami: that answers who is signed in and which companies exist. This answers what a document created right now would be called.\n`next` is what the company assigns next; `prefix` already carries its own separator, so the number is prefix + next with nothing between. Either may be null when the setting cannot be read \u2014 say so rather than substituting a guess.",
+    readOnly: true,
+    inputSchema: external_exports.object({ ...companyScope }),
+    run: async (args) => {
+      const { company_id } = args;
+      const types = await getAllDocumentNumbering(company_id);
+      return {
+        documentTypes: types.map((t) => ({
+          type: t.type,
+          prefix: t.prefix,
+          next: t.next,
+          // Precomputed so an agent never has to decide whether a separator
+          // belongs between them — the single most likely way to get this
+          // wrong after not asking at all.
+          nextNumber: t.prefix && t.next != null ? `${t.prefix}${t.next}` : null,
+          enabled: t.enabled
+        }))
+      };
+    }
+  },
+  {
+    name: "whoami",
+    group: "account",
+    title: "Signed-in user and their companies",
+    description: "Return the signed-in Bookipi user, the companies available to them (id, name, currency) and which one is the default.\n`defaultCompanyId` is the company every other operation reads unless told otherwise, and `isDefault` marks it in the list. To read a DIFFERENT company, pass its id as the optional `company_id` argument on the operation \u2014 there is no 'switch company' operation, because one server serves many sessions and a shared switch would affect all of them. Amounts are in each company's own currency.",
+    readOnly: true,
+    inputSchema: external_exports.object({}),
+    run: async () => {
+      const data = await whoami();
+      const me = data?.whoami ?? {};
+      const companies = me.companies ?? [];
+      const defaultCompanyId = pickDefaultCompany(me);
+      return {
+        email: me.email ?? null,
+        // Named so an agent knows what to pass as `company_id` elsewhere.
+        defaultCompanyId,
+        companies: companies.map((c) => ({
+          id: c._id,
+          name: c.name,
+          currency: c.currency ?? null,
+          isDefault: c._id === defaultCompanyId
+        }))
+      };
+    }
+  }
+];
+
 // src/mcp/invoicePreview.ts
 import { writeFileSync as writeFileSync3 } from "node:fs";
 import { tmpdir as tmpdir4 } from "node:os";
@@ -79380,40 +79345,6 @@ async function buildInvoicePreview(invoiceDoc, companyId, label, opts = {}) {
     action: "SHOW this to the user: publish this FILE path as an artifact. Do NOT read, cat or inline it \u2014 the HTML is ~180 KB, about 45,000 tokens, and the artifact tool takes the path directly. Redeploy the same artifact path on later edits so the preview updates in place.",
     ...imageNote
   };
-}
-
-// src/mcp/previewHandle.ts
-import { writeFileSync as writeFileSync4 } from "node:fs";
-import { tmpdir as tmpdir5 } from "node:os";
-import { join as join5 } from "node:path";
-function showInstruction(kind, note) {
-  const base = kind === "uri" ? "SHOW this to the user, do not just repeat the link. If you can run shell commands and publish artifacts: `curl -sL <uri> -o page.html` then publish that FILE as an artifact. Downloading is not reading \u2014 the bytes go to disk, never into this conversation." : "SHOW this to the user: publish this FILE path as an artifact. Do NOT read, cat or inline it.";
-  return `${base} The page is large \u2014 tens of thousands of tokens \u2014 which is why you were handed a handle instead of its contents.` + (note ? ` ${note}` : "");
-}
-function htmlPreviewHandle(html, opts) {
-  if (previewBaseUrl()) {
-    const handle = putPreview(html, opts.key ? { invoiceId: opts.key } : {});
-    return {
-      uri: handle.url,
-      action: showInstruction("uri", opts.note),
-      expiresInMs: handle.expiresInMs
-    };
-  }
-  const safeLabel = opts.label.replace(/[^a-zA-Z0-9._-]/g, "-").slice(0, 64);
-  const stamp = opts.key ? opts.key.replace(/[^a-zA-Z0-9]/g, "").slice(0, 32) : String(Date.now());
-  const file2 = join5(tmpdir5(), `bookipi-preview-${safeLabel}-${stamp}.html`);
-  writeFileSync4(file2, html);
-  sweepTempRenders({ keep: file2 });
-  return { file: file2, action: showInstruction("file", opts.note) };
-}
-
-// src/mcp/uploadPath.ts
-import { existsSync } from "node:fs";
-function assertServerCanRead(path10) {
-  if (existsSync(path10)) return;
-  throw new Error(
-    `This server cannot see ${path10}. \`file_path\` is read by the SERVER, not by you, so it only works when both are on the same machine \u2014 a stdio server, or one you started locally. If you are on a hosted connector the path is probably correct and simply not reachable from there; sending the file's bytes is not supported yet, so upload it from the web app or run a local server instead. Do not retry with a different path \u2014 the path is not the problem.`
-  );
 }
 
 // src/mcp/projections.ts
@@ -79608,7 +79539,9 @@ function projectProposalList(raw) {
         proposalNumber: p.no ?? null,
         title: p.title ?? null,
         status: p.status ?? null,
-        customerId: customer?._id ?? null,
+        // The `customer` snapshot carries no _id; the reference does. Reading
+        // the snapshot returned null for every proposal.
+        customerId: p.customerReference?._id ?? customer?._id ?? null,
         customerName: customerName(customer, { preferCompany: true }),
         startDate: p.startDate ?? null,
         endDate: p.endDate ?? null,
@@ -79684,9 +79617,13 @@ function projectPaymentLinkList(raw) {
     paymentLinks: asRows(result?.items).map((p) => ({
       id: p._id ?? null,
       title: p.title ?? p.name ?? null,
-      amount: p.amount ?? null,
+      // BPay sends `price` in cents and a `shortCode`, not `amount` / `url` —
+      // reading those names returned null for every link. Amount is in the
+      // currency's major units, like create_paylink takes it; null when the
+      // payer chooses the amount.
+      amount: p.allowCustomerToInputAmount || typeof p.price !== "number" ? null : p.price / 100,
       status: p.status ?? null,
-      url: p.url ?? p.shortUrl ?? null,
+      url: paymentLinkUrl(p.shortCode),
       createdAt: p.createdAt ?? null
     })),
     count: result?.count ?? null
@@ -79784,6 +79721,10 @@ function projectWebsiteStatus(raw) {
     // null than as "".
     domain: site["domain"] || null,
     domainStatus: site["domainStatus"] ?? null,
+    // From the builder's v4 draft (see website_status); null for a classic
+    // site. `url` only once the site is published — a slug alone is private.
+    slug: d["slug"] ?? null,
+    url: d["url"] ?? null,
     updatedAt: site["updatedAt"] ?? null
   };
 }
@@ -79912,134 +79853,13 @@ function projectPaylinkStatus(link, payments) {
   };
 }
 
-// src/mcp/registry.ts
-function compact(obj) {
-  const out = {};
-  for (const [k, v] of Object.entries(obj)) {
-    if (v !== void 0) out[k] = v;
-  }
-  return out;
-}
-var companyScope = {
-  company_id: external_exports.string().optional().describe(
-    "Company id to read from, as returned by whoami. Omit for the active default company."
-  )
-};
-var paging = {
-  page: external_exports.number().int().positive().optional().describe("1-based page number."),
-  per_page: external_exports.number().int().positive().max(200).optional().describe("Results per page.")
-};
-var INVOICE_STATUSES = [
-  "saved",
-  "sent",
-  "read",
-  "partialPaid",
-  "overdue",
-  "undelivered",
-  "paid"
-];
-var registry2 = [
-  // ---------------------------------------------------------------- identity
-  {
-    name: "document_numbering",
-    group: "account",
-    title: "What the next invoice or estimate will be numbered",
-    description: "Return the company's own numbering for every document type: the configured prefix, the next number it will assign, and whether the type is enabled.\nUSE THIS BEFORE STATING A NUMBER. Numbering is per-company configuration, not a convention \u2014 an account whose prefix is 'invoice-' numbers documents `invoice-698`, and one configured differently will not. There is no rule to derive it from, so a number you did not read here is a guess, and a wrong one names a document the user cannot find.\nNOT whoami: that answers who is signed in and which companies exist. This answers what a document created right now would be called.\n`next` is what the company assigns next; `prefix` already carries its own separator, so the number is prefix + next with nothing between. Either may be null when the setting cannot be read \u2014 say so rather than substituting a guess.",
-    keywords: [
-      "numbering",
-      "number",
-      "next",
-      "prefix",
-      "sequence",
-      "invoice number",
-      "estimate number",
-      "naming"
-    ],
-    readOnly: true,
-    inputSchema: external_exports.object({ ...companyScope }),
-    run: async (args) => {
-      const { company_id } = args;
-      const types = await getAllDocumentNumbering(company_id);
-      return {
-        documentTypes: types.map((t) => ({
-          type: t.type,
-          prefix: t.prefix,
-          next: t.next,
-          // Precomputed so an agent never has to decide whether a separator
-          // belongs between them — the single most likely way to get this
-          // wrong after not asking at all.
-          nextNumber: t.prefix && t.next != null ? `${t.prefix}${t.next}` : null,
-          enabled: t.enabled
-        }))
-      };
-    }
-  },
-  {
-    name: "whoami",
-    group: "account",
-    title: "Signed-in user and their companies",
-    description: "Return the signed-in Bookipi user, the companies available to them (id, name, currency) and which one is the default.\n`defaultCompanyId` is the company every other operation reads unless told otherwise, and `isDefault` marks it in the list. To read a DIFFERENT company, pass its id as the optional `company_id` argument on the operation \u2014 there is no 'switch company' operation, because one server serves many sessions and a shared switch would affect all of them. Amounts are in each company's own currency.",
-    // "currency" and "company" are here because the description is no longer a
-    // search corpus (see score() in the deleted metaTools.ts; nothing reads the
-    // keywords now — see the note on the field). Without them, "what currency
-    // is my company" only matched whoami's prose and lost to website_content,
-    // whose TITLE contains "company".
-    keywords: [
-      "me",
-      "identity",
-      "account",
-      "login",
-      "who",
-      "currency",
-      "company",
-      "companies",
-      "email"
-    ],
-    readOnly: true,
-    inputSchema: external_exports.object({}),
-    run: async () => {
-      const data = await whoami();
-      const me = data?.whoami ?? {};
-      const companies = me.companies ?? [];
-      const defaultCompanyId = pickDefaultCompany(me);
-      return {
-        email: me.email ?? null,
-        // Named so an agent knows what to pass as `company_id` elsewhere.
-        defaultCompanyId,
-        companies: companies.map((c) => ({
-          id: c._id,
-          name: c.name,
-          currency: c.currency ?? null,
-          isDefault: c._id === defaultCompanyId
-        }))
-      };
-    }
-  },
-  // ---------------------------------------------------------------- invoices
+// src/mcp/reads/invoices.ts
+var invoiceReads = [
   {
     name: "list_invoices",
     group: "invoices",
     title: "List invoices, newest first",
     description: "List the active company's invoices, most recent first. Filter by status and free-text search, and page through results. For 'who owes me money', filter to overdue plus sent/read/partialPaid and read `amountDue`.\nReturns one row per invoice with exactly these fields: id, invoiceNumber, customerId, customerName, customerEmail, date, dueDate, total, amountDue, status, computedStatus, paymentStatus \u2014 plus pageInfo. `computedStatus` is the one to trust for overdue; `status` can still read 'sent' past the due date. Line items, tax breakdown and payment history are NOT returned here \u2014 fetch a single invoice for those. No currency field: it belongs to the company, see whoami.",
-    keywords: [
-      "invoice",
-      "overdue",
-      "unpaid",
-      "owes",
-      "owed",
-      "owe",
-      "money",
-      "due",
-      "receivables",
-      "outstanding",
-      "chase",
-      // "did acme pay yet" used to match the description's paymentStatus.
-      "paid",
-      "pay",
-      "payment",
-      "payments",
-      "balance"
-    ],
     readOnly: true,
     inputSchema: external_exports.object({
       ...companyScope,
@@ -80062,39 +79882,55 @@ var registry2 = [
       );
     }
   },
-  // --------------------------------------------------------------- customers
+  {
+    name: "get_invoice",
+    group: "invoices",
+    title: "Fetch one invoice in full",
+    description: "Fetch a single invoice by id, with the detail list_invoices omits: line items, the tax and discount breakdown, deposit terms and payment history. Get the id from list_invoices \u2014 this does NOT accept an invoice number or a @handle.\nReturns the invoice document plus a flattened customerName. `customerReference` is stripped: it duplicates `customer` field for field. Use this when asked about one invoice; use list_invoices for 'who owes me money'.",
+    readOnly: true,
+    inputSchema: external_exports.object({
+      ...companyScope,
+      invoice_id: external_exports.string().describe(
+        "Invoice id, exactly as returned by list_invoices."
+      )
+    }),
+    run: async (args) => {
+      const a = args;
+      const invoiceId = a.invoice_id;
+      return projectInvoice(await getInvoice(invoiceId, a.company_id));
+    }
+  },
+  {
+    name: "invoice_preview",
+    group: "invoices",
+    title: "Render an invoice as the customer sees it",
+    description: "Render one invoice into the same layout the web app uses, and return a LINK to it (or a local file path, when this server cannot host one).\nUse this when the user wants to SEE the invoice rather than be told its total \u2014 checking a layout, a logo, how the line items read.\nNEVER read, print or inline the target. The render is ~180 KB, about 45,000 tokens; the whole point of returning a handle is that the HTML does not pass through here.\nThe result is for showing the user, not summarising. `uri` is a hosted link the user opens in their browser \u2014 on a hosted connector it is the deliverable, shared as-is. `file` is a local path, returned when this server cannot host a link; a client with file access can render or host that page itself without its contents entering the conversation.\nLinks expire after about 15 minutes \u2014 render again rather than reusing an old one. `imagesFailed` means a product photo's host could not be reached and will show broken; nothing to retry.",
+    readOnly: true,
+    inputSchema: external_exports.object({
+      ...companyScope,
+      invoice_id: external_exports.string().describe("Invoice id, exactly as returned by list_invoices.")
+    }),
+    run: async (args) => {
+      const a = args;
+      const invoiceId = a.invoice_id;
+      const invoice = await getInvoice(invoiceId, a.company_id);
+      const companyId = invoice?.company ?? a.company_id ?? "";
+      return buildInvoicePreview(
+        invoice,
+        companyId,
+        String(invoice?.no ?? invoiceId)
+      );
+    }
+  }
+];
+
+// src/mcp/reads/customers.ts
+var customerReads = [
   {
     name: "list_customers",
     group: "customers",
-    title: "List customers with what they owe",
+    title: "List and search customers",
     description: "List the active company's customers, newest first, with free-text search and paging. Use it to find a customer's id or email before acting on them.\nReturns one row per customer with exactly these fields: id, name, email, phone, amountDue, total, documentCount, projectCount \u2014 plus pageInfo. `name` is the company name where there is one, otherwise the person's name.\nIMPORTANT: `amountDue`, `total` and `documentCount` were null for every customer in the account this was measured against \u2014 the backend does not reliably populate them here. Do NOT answer 'who owes me the most' or 'who is my biggest customer' from this operation; use list_invoices and group by customerName, which carries a real per-invoice amountDue. Addresses, tags, notes and custom fields are NOT returned. No currency field: it belongs to the company, see whoami.",
-    keywords: [
-      "customer",
-      "customers",
-      "client",
-      "clients",
-      "contact",
-      "contacts",
-      "buyer",
-      "directory",
-      "who",
-      // A person's name matches nothing in any entry, so "look up Wayne" ranked
-      // arbitrarily. These give a name-lookup query somewhere to land.
-      "look",
-      "lookup",
-      "name",
-      "person",
-      "people",
-      "search",
-      "details",
-      // It returns email, so a query naming one should reach it rather than
-      // get_customer, which cannot be called without an id.
-      // Only fields it actually returns. "address" was here and is wrong:
-      // the projection drops both addresses, so an address question belongs to
-      // get_customer.
-      "email",
-      "phone"
-    ],
     readOnly: true,
     inputSchema: external_exports.object({
       ...companyScope,
@@ -80115,29 +79951,205 @@ var registry2 = [
       );
     }
   },
-  // ------------------------------------------------------------------- items
+  {
+    name: "get_customer",
+    group: "customers",
+    title: "Fetch one customer in full",
+    description: "Fetch a single customer by id, with contact detail and both billing and shipping addresses. Get the id from list_customers.\nReturns the customer document plus a flattened name. Third-party enrichment state, custom fields and accounting identifiers are stripped \u2014 they are not actionable. For what a customer has paid, use customer_payments instead.",
+    readOnly: true,
+    inputSchema: external_exports.object({
+      ...companyScope,
+      customer_id: external_exports.string().describe(
+        "Customer id, exactly as returned by list_customers."
+      )
+    }),
+    run: async (args) => {
+      const a = args;
+      const customerId = a.customer_id;
+      return projectCustomer(await getCustomer(customerId, a.company_id));
+    }
+  },
+  {
+    name: "customer_payments",
+    group: "customers",
+    title: "One customer's payment history",
+    description: "Every payment received from one customer, newest first, with totals. This is the operation for 'has Wayne paid me' and 'how much has this client paid'.\nReturns rows (date, invoiceNo, invoiceId, amount, method, brand, last4, channel, note) plus totalCollected, paymentCount, invoicesWithPayments and `truncated`.\nCHECK `truncated`: it means the invoice scan hit its page cap and older payments are missing, so a total is a floor rather than the answer. Do not report it as complete when truncated is true.",
+    readOnly: true,
+    inputSchema: external_exports.object({
+      ...companyScope,
+      customer_id: external_exports.string().describe("Customer id, exactly as returned by list_customers."),
+      max_pages: external_exports.number().int().positive().max(20).optional().describe("Invoice pages to scan (200 each). Default 20; lower is faster.")
+    }),
+    // Not projected: the usecase already returns a purpose-built summary
+    // (90 B measured), not a raw document.
+    run: async (args) => {
+      const a = args;
+      return getCustomerPayments(a.customer_id, a.max_pages ?? 20, a.company_id);
+    }
+  },
+  {
+    name: "customer_emails",
+    group: "customers",
+    title: "Emails sent to one customer",
+    description: "The email history for a single customer \u2014 'did we email Wayne', 'what did I send them', 'have they opened it'.\nReturns id, subject, to, sentAt, status and opened per email, newest first. This is correspondence, NOT invoices: an invoice that was sent appears here as the email that carried it, and list_invoices is where its status lives.",
+    readOnly: true,
+    inputSchema: external_exports.object({
+      customer_id: external_exports.string().describe("Customer id, as returned by list_customers."),
+      ...paging
+    }),
+    run: async (args) => {
+      const a = args;
+      const customerId = a.customer_id;
+      return projectCustomerEmails(
+        await listCustomerEmails(
+          customerId,
+          compact({ page: a.page, perPage: a.per_page })
+        )
+      );
+    }
+  }
+];
+
+// src/mcp/reads/sales.ts
+var salesReads = [
+  {
+    name: "list_deals",
+    group: "deals",
+    title: "List sales pipeline deals",
+    description: "List the active company's deals \u2014 the sales pipeline. Filter by status to answer 'what am I about to win' (closed_win) or 'what is still open'. Omitting status costs one API call per status \u2014 seven \u2014 because the filter takes only one: pass a status when you can.\nWith no status the seven pages are merged, bounded to per_page and ordered by most recently updated, so pageInfo counts every matching deal across all stages. A non-default sort applies within a stage but not across them. Paging deep with no status is refused rather than served incompletely \u2014 filter by status to page through a stage.\nReturns one row per deal with exactly these fields: id, name, description, value, dueDate, status, customerId, customerName, invoiceCount, proposalCount \u2014 plus pageInfo. The linked invoice and proposal DOCUMENTS are not returned, only their counts; list those operations filtered by customer if you need them.",
+    readOnly: true,
+    inputSchema: external_exports.object({
+      ...companyScope,
+      status: external_exports.enum(DEAL_STATUSES).optional().describe("One pipeline stage. Omit for all (slower \u2014 see above)."),
+      search: external_exports.string().optional().describe("Free-text on deal or customer."),
+      ...paging
+    }),
+    run: async (args) => {
+      const a = args;
+      return projectDealList(
+        await listDeals(
+          compact({
+            status: a.status,
+            search: a.search,
+            page: a.page,
+            perPage: a.per_page,
+            companyId: a.company_id
+          })
+        )
+      );
+    }
+  },
+  {
+    name: "list_proposals",
+    group: "proposals",
+    title: "List proposals and whether they are signed",
+    description: "List the active company's proposals, newest first, filterable by status. `clientSignedDate` is the field to read for 'has X signed?' \u2014 null means unsigned.\nReturns one row per proposal with exactly these fields: id, proposalNumber, title, status, customerId, customerName, startDate, endDate, expirationDate, clientSignedDate, viewedDate \u2014 plus pageInfo. Service line items, tax, discount and shipping are NOT returned here. No currency field: it belongs to the company, see whoami.",
+    readOnly: true,
+    inputSchema: external_exports.object({
+      ...companyScope,
+      status: external_exports.array(external_exports.enum(PROPOSAL_STATUSES)).optional().describe("Filter by one or more statuses (default: all)."),
+      ...paging
+    }),
+    run: async (args) => {
+      const a = args;
+      return projectProposalList(
+        await listProposals(
+          compact({
+            status: a.status,
+            page: a.page,
+            perPage: a.per_page,
+            companyId: a.company_id
+          })
+        )
+      );
+    }
+  },
+  {
+    name: "list_contracts",
+    group: "contracts",
+    title: "List eSign contracts and signing status",
+    description: "List the active company's eSign documents, newest first, filterable by status. `recipients` carries each signer and their state, so 'has Bruce signed the MSA?' is answerable from this one call.\nReturns one row per contract with exactly these fields: id, title, status, category, recipients, latestAction, sentDate, createdAt \u2014 plus count and pageInfo. The document FILES are deliberately not returned: the API supplies them as presigned S3 URLs which were 55% of the raw payload, expire, and cannot be rendered by an agent.",
+    readOnly: true,
+    inputSchema: external_exports.object({
+      statuses: external_exports.array(external_exports.enum(CONTRACT_STATUSES)).optional().describe("Filter by one or more statuses (default: all)."),
+      ...paging
+    }),
+    run: async (args) => {
+      const a = args;
+      return projectContractList(
+        await listContracts(
+          compact({
+            statuses: a.statuses,
+            page: a.page,
+            perPage: a.per_page
+          })
+        )
+      );
+    }
+  },
+  {
+    name: "calendar_status",
+    group: "meetings",
+    title: "Is Google Calendar connected",
+    description: "Check whether the user's Google Calendar is connected. Scheduling needs it; recorded meetings and transcripts do NOT \u2014 never gate list_meetings on this.",
+    readOnly: true,
+    inputSchema: external_exports.object({}),
+    run: async () => {
+      const result = await getCustomerWhoami();
+      return {
+        isGoogleCalendarConnected: result.isGoogleCalendarConnected,
+        ...result.isGoogleCalendarConnected ? {} : { setupUrl: `${config.BOOKIPI_WEB_URL}/calendar-scheduling` }
+      };
+    }
+  },
+  {
+    name: "list_meetings",
+    group: "meetings",
+    title: "List meetings with summaries",
+    description: `List meetings in a time window (defaults to today). For 'recent' or 'past' meetings pass a \`from\` in the past with sort START_DESC. Recorded meetings and transcripts do NOT require Google Calendar to be connected: always call this for meeting / notes / transcript questions and never gate it on calendar_status. Gating it caused the field-test false negative 'I have meetings but it said I don't have any'.
+Returns per meeting: id, title, start, end, status, location, customerId and customerName (when a customer is linked), guests, guestCount, notes, hasAiSummary, and the AI summary as aiSummary / aiActions / aiNotes / aiSummaryStatus \u2014 plus pageInfo. \`guests\` is capped at ${MAX_GUESTS} addresses; when it is cut, guestsTruncated is set and guestCount still gives the true total \u2014 so do NOT answer 'X is not attending' from a truncated list. Set include_transcript only when the user asks for the verbatim transcript: it adds a \`transcript\` array of {speaker, text} and is a large payload.`,
+    readOnly: true,
+    inputSchema: external_exports.object({
+      from: external_exports.string().optional().describe("ISO datetime \u2014 window start."),
+      to: external_exports.string().optional().describe("ISO datetime \u2014 window end."),
+      sort: external_exports.enum(["START_ASC", "START_DESC"]).optional().describe("START_DESC for most-recent-first."),
+      include_transcript: external_exports.boolean().optional().describe("Include full verbatim transcripts (large)."),
+      ...paging
+    }),
+    run: async (args) => {
+      const a = args;
+      return projectMeetingList(
+        await listMeetings(
+          compact({
+            from: a.from,
+            to: a.to,
+            sort: a.sort,
+            includeTranscript: a.include_transcript,
+            page: a.page,
+            pageSize: a.per_page
+          })
+        )
+      );
+    }
+  }
+];
+
+// src/mcp/uploadPath.ts
+import { existsSync } from "node:fs";
+function assertServerCanRead(path10) {
+  if (existsSync(path10)) return;
+  throw new Error(
+    `This server cannot see ${path10}. \`file_path\` is read by the SERVER, not by you, so it only works when both are on the same machine \u2014 a stdio server, or one you started locally. If you are on a hosted connector the path is probably correct and simply not reachable from there; sending the file's bytes is not supported yet, so upload it from the web app or run a local server instead. Do not retry with a different path \u2014 the path is not the problem.`
+  );
+}
+
+// src/mcp/reads/catalog.ts
+var catalogReads = [
   {
     name: "list_items",
     group: "items",
     title: "List products and services with prices",
     description: "List the active company's saved products and services \u2014 the catalogue invoice line items are drawn from. Use it to answer 'what do I sell', 'what do I charge for X', or to look up a price before quoting.\nReturns one row per item with exactly these fields: id, name, description, price, taxRate, unitType, productCode \u2014 plus pageInfo. Photos and accounting identifiers are NOT returned. `taxRate` is a percentage; there is no tax-inclusive price field. No currency field: it belongs to the company, see whoami.",
-    keywords: [
-      "item",
-      "items",
-      "product",
-      "products",
-      "service",
-      "services",
-      "catalogue",
-      "catalog",
-      "price",
-      "prices",
-      "pricing",
-      "rate",
-      "charge",
-      "cost",
-      "sell"
-    ],
     readOnly: true,
     inputSchema: external_exports.object({
       ...companyScope,
@@ -80158,26 +80170,11 @@ var registry2 = [
       );
     }
   },
-  // ---------------------------------------------------------------- expenses
   {
     name: "list_expenses",
     group: "expenses",
     title: "List expenses and receipts",
     description: "List the active company's recorded expenses, newest first, optionally within a date range or matching a merchant name. Use for 'what did I spend', 'my expenses last month', or finding a specific receipt.\nReturns one row per expense with exactly these fields: id, amount, merchant, date, categoryId, category, notes \u2014 plus pageInfo. The receipt IMAGE is not returned: only S3 keys exist for it and an agent cannot render them. No currency field: it belongs to the company, see whoami.",
-    keywords: [
-      "expense",
-      "expenses",
-      "receipt",
-      "receipts",
-      "spend",
-      "spent",
-      "spending",
-      "cost",
-      "costs",
-      "outgoing",
-      "purchase",
-      "merchant"
-    ],
     readOnly: true,
     inputSchema: external_exports.object({
       ...companyScope,
@@ -80202,277 +80199,11 @@ var registry2 = [
       );
     }
   },
-  // ------------------------------------------------------------------- deals
-  {
-    name: "list_deals",
-    group: "deals",
-    title: "List sales pipeline deals",
-    description: "List the active company's deals \u2014 the sales pipeline. Filter by status to answer 'what am I about to win' (closed_win) or 'what is still open'. Omitting status costs one API call per status \u2014 seven \u2014 because the filter takes only one: pass a status when you can.\nWith no status the seven pages are merged, bounded to per_page and ordered by most recently updated, so pageInfo counts every matching deal across all stages. A non-default sort applies within a stage but not across them. Paging deep with no status is refused rather than served incompletely \u2014 filter by status to page through a stage.\nReturns one row per deal with exactly these fields: id, name, description, value, dueDate, status, customerId, customerName, invoiceCount, proposalCount \u2014 plus pageInfo. The linked invoice and proposal DOCUMENTS are not returned, only their counts; list those operations filtered by customer if you need them.",
-    keywords: [
-      "deal",
-      "deals",
-      "pipeline",
-      "opportunity",
-      "opportunities",
-      "lead",
-      "leads",
-      "prospect",
-      "won",
-      "win",
-      "lost",
-      "lose",
-      "sales",
-      "forecast"
-    ],
-    readOnly: true,
-    inputSchema: external_exports.object({
-      ...companyScope,
-      status: external_exports.enum(DEAL_STATUSES).optional().describe("One pipeline stage. Omit for all (slower \u2014 see above)."),
-      search: external_exports.string().optional().describe("Free-text on deal or customer."),
-      ...paging
-    }),
-    run: async (args) => {
-      const a = args;
-      return projectDealList(
-        await listDeals(
-          compact({
-            status: a.status,
-            search: a.search,
-            page: a.page,
-            perPage: a.per_page,
-            companyId: a.company_id
-          })
-        )
-      );
-    }
-  },
-  // --------------------------------------------------------------- proposals
-  {
-    name: "list_proposals",
-    group: "proposals",
-    title: "List proposals and whether they are signed",
-    description: "List the active company's proposals, newest first, filterable by status. `clientSignedDate` is the field to read for 'has X signed?' \u2014 null means unsigned.\nReturns one row per proposal with exactly these fields: id, proposalNumber, title, status, customerId, customerName, startDate, endDate, expirationDate, clientSignedDate, viewedDate \u2014 plus pageInfo. Service line items, tax, discount and shipping are NOT returned here. No currency field: it belongs to the company, see whoami.",
-    keywords: [
-      "proposal",
-      "proposals",
-      "quote",
-      "quotes",
-      "quotation",
-      "estimate",
-      "estimates",
-      "signed",
-      "sign",
-      "signature",
-      "accepted",
-      "declined",
-      "pitch"
-    ],
-    readOnly: true,
-    inputSchema: external_exports.object({
-      ...companyScope,
-      status: external_exports.array(external_exports.enum(PROPOSAL_STATUSES)).optional().describe("Filter by one or more statuses (default: all)."),
-      ...paging
-    }),
-    run: async (args) => {
-      const a = args;
-      return projectProposalList(
-        await listProposals(
-          compact({
-            status: a.status,
-            page: a.page,
-            perPage: a.per_page,
-            companyId: a.company_id
-          })
-        )
-      );
-    }
-  },
-  // --------------------------------------------------------------- contracts
-  {
-    name: "list_contracts",
-    group: "contracts",
-    title: "List eSign contracts and signing status",
-    description: "List the active company's eSign documents, newest first, filterable by status. `recipients` carries each signer and their state, so 'has Bruce signed the MSA?' is answerable from this one call.\nReturns one row per contract with exactly these fields: id, title, status, category, recipients, latestAction, sentDate, createdAt \u2014 plus count and pageInfo. The document FILES are deliberately not returned: the API supplies them as presigned S3 URLs which were 55% of the raw payload, expire, and cannot be rendered by an agent.",
-    keywords: [
-      "contract",
-      "contracts",
-      "esign",
-      "sign",
-      "signed",
-      "signature",
-      "signatory",
-      "agreement",
-      "msa",
-      "nda",
-      "document",
-      "documents",
-      "signit",
-      "countersign"
-    ],
-    readOnly: true,
-    inputSchema: external_exports.object({
-      statuses: external_exports.array(external_exports.enum(CONTRACT_STATUSES)).optional().describe("Filter by one or more statuses (default: all)."),
-      ...paging
-    }),
-    run: async (args) => {
-      const a = args;
-      return projectContractList(
-        await listContracts(
-          compact({
-            statuses: a.statuses,
-            page: a.page,
-            perPage: a.per_page
-          })
-        )
-      );
-    }
-  },
-  // ------------------------------------------------- single-document lookups
-  {
-    name: "get_invoice",
-    group: "invoices",
-    title: "Fetch one invoice in full",
-    description: "Fetch a single invoice by id, with the detail list_invoices omits: line items, the tax and discount breakdown, deposit terms and payment history. Get the id from list_invoices \u2014 this does NOT accept an invoice number or a @handle.\nReturns the invoice document plus a flattened customerName. `customerReference` is stripped: it duplicates `customer` field for field. Use this when asked about one invoice; use list_invoices for 'who owes me money'.",
-    keywords: ["invoice", "detail", "details", "line", "breakdown", "full"],
-    readOnly: true,
-    requiresArgs: true,
-    inputSchema: external_exports.object({
-      ...companyScope,
-      invoice_id: external_exports.string().optional().describe(
-        "Required. Invoice id, exactly as returned by list_invoices."
-      ),
-      // `id` was this parameter's name until the writes landed using
-      // `invoice_id`; two names for one thing made agents guess, and guess
-      // wrong. Still accepted, and deliberately undescribed: clients cache
-      // tools/list and only re-fetch on reconnect, so a connector added before
-      // the rename is still handing its agent the old schema. Optional in the
-      // schema only because `.strict()` is applied to this object and a
-      // `.refine()` would stop it being a ZodObject — `run` enforces the rule.
-      id: external_exports.string().optional()
-    }),
-    run: async (args) => {
-      const a = args;
-      const invoiceId = a.invoice_id ?? a.id;
-      if (!invoiceId) {
-        throw new Error(
-          "invoice_id is required \u2014 the id from list_invoices."
-        );
-      }
-      return projectInvoice(await getInvoice(invoiceId, a.company_id));
-    }
-  },
-  {
-    name: "invoice_preview",
-    group: "invoices",
-    title: "Render an invoice as the customer sees it",
-    description: "Render one invoice into the same layout the web app uses, and return a LINK to it (or a local file path, when this server cannot host one).\nUse this when the user wants to SEE the invoice rather than be told its total \u2014 checking a layout, a logo, how the line items read.\nNEVER read, print or inline the target. The render is ~180 KB, about 45,000 tokens; the whole point of returning a handle is that the HTML does not pass through here.\nThe result is for showing the user, not summarising. `uri` is a hosted link the user opens in their browser \u2014 on a hosted connector it is the deliverable, shared as-is. `file` is a local path, returned when this server cannot host a link; a client with file access can render or host that page itself without its contents entering the conversation.\nLinks expire after about 15 minutes \u2014 render again rather than reusing an old one. `imagesFailed` means a product photo's host could not be reached and will show broken; nothing to retry.",
-    keywords: [
-      "preview",
-      "render",
-      "look",
-      "looks",
-      "see",
-      "show",
-      "layout",
-      "print",
-      "printable",
-      "document"
-    ],
-    readOnly: true,
-    requiresArgs: true,
-    inputSchema: external_exports.object({
-      ...companyScope,
-      invoice_id: external_exports.string().optional().describe("Required. Invoice id, exactly as returned by list_invoices."),
-      // Legacy alias, as on get_invoice — see the note there.
-      id: external_exports.string().optional()
-    }),
-    run: async (args) => {
-      const a = args;
-      const invoiceId = a.invoice_id ?? a.id;
-      if (!invoiceId) {
-        throw new Error("invoice_id is required \u2014 the id from list_invoices.");
-      }
-      const invoice = await getInvoice(invoiceId, a.company_id);
-      const companyId = invoice?.company ?? a.company_id ?? "";
-      return buildInvoicePreview(
-        invoice,
-        companyId,
-        String(invoice?.no ?? invoiceId)
-      );
-    }
-  },
-  {
-    name: "get_customer",
-    group: "customers",
-    title: "Fetch one customer in full",
-    description: "Fetch a single customer by id, with contact detail and both billing and shipping addresses. Get the id from list_customers.\nReturns the customer document plus a flattened name. Third-party enrichment state, custom fields and accounting identifiers are stripped \u2014 they are not actionable. For what a customer has paid, use customer_payments instead.",
-    keywords: ["customer", "client", "contact", "address", "detail", "details"],
-    readOnly: true,
-    requiresArgs: true,
-    inputSchema: external_exports.object({
-      ...companyScope,
-      customer_id: external_exports.string().optional().describe(
-        "Required. Customer id, exactly as returned by list_customers."
-      ),
-      // Legacy alias, as on get_invoice above — see the note there.
-      id: external_exports.string().optional()
-    }),
-    run: async (args) => {
-      const a = args;
-      const customerId = a.customer_id ?? a.id;
-      if (!customerId) {
-        throw new Error(
-          "customer_id is required \u2014 the id from list_customers."
-        );
-      }
-      return projectCustomer(await getCustomer(customerId, a.company_id));
-    }
-  },
-  {
-    name: "customer_payments",
-    group: "customers",
-    title: "One customer's payment history",
-    description: "Every payment received from one customer, newest first, with totals. This is the operation for 'has Wayne paid me' and 'how much has this client paid'.\nReturns rows (date, invoiceNo, invoiceId, amount, method, brand, last4, channel, note) plus totalCollected, paymentCount, invoicesWithPayments and `truncated`.\nCHECK `truncated`: it means the invoice scan hit its page cap and older payments are missing, so a total is a floor rather than the answer. Do not report it as complete when truncated is true.",
-    keywords: [
-      "payment",
-      "payments",
-      "paid",
-      "pay",
-      "history",
-      "collected",
-      "received",
-      "ledger",
-      "settled"
-    ],
-    readOnly: true,
-    inputSchema: external_exports.object({
-      ...companyScope,
-      customer_id: external_exports.string().describe("Customer id, exactly as returned by list_customers."),
-      max_pages: external_exports.number().int().positive().max(20).optional().describe("Invoice pages to scan (200 each). Default 20; lower is faster.")
-    }),
-    // Not projected: the usecase already returns a purpose-built summary
-    // (90 B measured), not a raw document.
-    run: async (args) => {
-      const a = args;
-      return getCustomerPayments(a.customer_id, a.max_pages ?? 20, a.company_id);
-    }
-  },
-  // ---------------------------------------------------------------- payments
   {
     name: "list_paylinks",
     group: "payments",
     title: "List payment links and whether they were paid",
     description: "List the company's payment links \u2014 shareable pay-now URLs \u2014 newest first, with their amount and status.\nReturns one row per link with exactly these fields: id, title, amount, status, url, createdAt \u2014 plus count. Individual payment ATTEMPTS (including failures) are not returned here.",
-    keywords: [
-      "paylink",
-      "paylinks",
-      "link",
-      "links",
-      "checkout",
-      "stripe",
-      "card",
-      "collect"
-    ],
     readOnly: true,
     inputSchema: external_exports.object({ ...paging }),
     run: async (args) => {
@@ -80482,27 +80213,101 @@ var registry2 = [
       );
     }
   },
-  // ----------------------------------------------------------------- reports
+  {
+    name: "scan_receipt",
+    group: "expenses",
+    title: "Read a receipt photo and extract its fields",
+    description: "Run Bookipi's OCR over a receipt image or PDF and return what it read: amount, merchant, date, suggested category, invoice number.\nSAVES NOTHING. Show the extracted fields to the user, let them correct anything wrong, then call create_expense. Never log an expense straight from a scan without showing it first \u2014 OCR misreads amounts, and a wrong figure in the books is worse than no figure.\n`file_path` must be a path THIS SERVER can read: png, jpg, jpeg, pdf, heic or webp. That works when the server and your files are on the same machine (a local server, or stdio). A hosted connector cannot see your disk, and there is no way to send it the bytes yet \u2014 say so plainly rather than guessing at a path.\nThe file is uploaded to Bookipi's storage for the OCR to run. No business record is created.",
+    readOnly: true,
+    inputSchema: external_exports.object({
+      file_path: external_exports.string().describe("Absolute path to the receipt, readable by this server.")
+    }),
+    run: async (args) => {
+      const a = args;
+      assertServerCanRead(a.file_path);
+      const upload = await uploadReceiptFile({
+        filePath: a.file_path,
+        isThumbnail: false
+      });
+      const scanned = await scanInvoiceImage([upload.fullKey]);
+      return {
+        file: upload.filename,
+        read: {
+          merchant: scanned.merchantName ?? scanned.vendorName ?? null,
+          amount: scanned.amount ?? null,
+          date: scanned.purchaseDate ?? null,
+          category: scanned.categoryName ?? null,
+          categoryId: scanned.categoryId ?? null,
+          invoiceNumber: scanned.invoiceNumber ?? null,
+          ...scanned.notes ? { notes: scanned.notes } : {}
+        },
+        ...scanned.errorMessage ? { ocrError: scanned.errorMessage } : {},
+        action: "NOTHING WAS SAVED. Show these fields to the user and ask them to confirm the AMOUNT especially, then call create_expense with what they agree to."
+      };
+    }
+  },
+  {
+    name: "expense_categories",
+    group: "expenses",
+    title: "The categories an expense can be filed under",
+    description: "The category list for logging an expense \u2014 the account's own custom categories when it has any, plus the defaults.\nReturns key and name per category. The KEY is what a create call wants; the name is for showing the user. Call this before filing a receipt rather than guessing a category name, which will be rejected.",
+    readOnly: true,
+    inputSchema: external_exports.object({}),
+    run: async () => projectExpenseCategories(await listExpenseCategories())
+  },
+  {
+    name: "paylink_status",
+    group: "payments",
+    title: "Whether one payment link has been paid",
+    description: "One payment link with the money that came through it \u2014 'did they pay the link', 'has that link been used', 'how much came in on it'.\nReturns `paid` as the headline, plus paymentCount, collected, and up to 10 individual payments. `found: false` means no link with that id.\nGet the id from list_paylinks. For every link at once, use list_paylinks \u2014 this is the detail view for one.",
+    readOnly: true,
+    inputSchema: external_exports.object({
+      paylink_id: external_exports.string().describe("Payment link id, as returned by list_paylinks.")
+    }),
+    run: async (args) => {
+      const a = args;
+      const linkId = a.paylink_id;
+      const [link, payments] = await Promise.all([
+        getPaymentLink(linkId),
+        getPaymentLinkPayments(linkId).catch(() => [])
+      ]);
+      return projectPaylinkStatus(link, payments);
+    }
+  }
+];
+
+// src/mcp/previewHandle.ts
+import { writeFileSync as writeFileSync4 } from "node:fs";
+import { tmpdir as tmpdir5 } from "node:os";
+import { join as join5 } from "node:path";
+function showInstruction(kind, note) {
+  const base = kind === "uri" ? "SHOW this to the user, do not just repeat the link. If you can run shell commands and publish artifacts: `curl -sL <uri> -o page.html` then publish that FILE as an artifact. Downloading is not reading \u2014 the bytes go to disk, never into this conversation." : "SHOW this to the user: publish this FILE path as an artifact. Do NOT read, cat or inline it.";
+  return `${base} The page is large \u2014 tens of thousands of tokens \u2014 which is why you were handed a handle instead of its contents.` + (note ? ` ${note}` : "");
+}
+function htmlPreviewHandle(html, opts) {
+  if (previewBaseUrl()) {
+    const handle = putPreview(html, opts.key ? { invoiceId: opts.key } : {});
+    return {
+      uri: handle.url,
+      action: showInstruction("uri", opts.note),
+      expiresInMs: handle.expiresInMs
+    };
+  }
+  const safeLabel = opts.label.replace(/[^a-zA-Z0-9._-]/g, "-").slice(0, 64);
+  const stamp = opts.key ? opts.key.replace(/[^a-zA-Z0-9]/g, "").slice(0, 32) : String(Date.now());
+  const file2 = join5(tmpdir5(), `bookipi-preview-${safeLabel}-${stamp}.html`);
+  writeFileSync4(file2, html);
+  sweepTempRenders({ keep: file2 });
+  return { file: file2, action: showInstruction("file", opts.note) };
+}
+
+// src/mcp/reads/reports.ts
+var reportReads = [
   {
     name: "report_summary",
     group: "reports",
     title: "Revenue totals over a date range",
     description: "Invoice totals for a date range, bucketed by cycle: created, paid, overdue and unpaid, plus aggregate metrics. This is the operation for 'show me revenue' and 'how did last quarter go'.\nReturns the aggregates as the API computes them (overviewCreated, overviewPaid, overviewOverdue, overviewUnpaid, totalCreatedMetrics, totalPaidMetrics). Amounts are in the company's currency \u2014 see whoami. For a written interpretation rather than numbers, use report_insights.",
-    keywords: [
-      "report",
-      "reports",
-      "revenue",
-      "sales",
-      "total",
-      "totals",
-      "earned",
-      "income",
-      "turnover",
-      "quarter",
-      "month",
-      "year",
-      "growth"
-    ],
     readOnly: true,
     inputSchema: external_exports.object({
       ...companyScope,
@@ -80527,22 +80332,6 @@ var registry2 = [
     group: "reports",
     title: "Written insights about the business",
     description: "Analyse a date range and return findings in words rather than numbers \u2014 growth or decline, concentration risk, overdue exposure, top customers and items. This is the operation behind 'insights', 'how is my business doing' and a morning brief.\nReturns period plus insights[], each with emoji, category, title, detail and severity (info | warning | critical | positive). Sort or filter on severity to lead with what matters. Use report_summary instead when the caller wants the underlying figures.",
-    keywords: [
-      "insight",
-      "insights",
-      "analysis",
-      "analyse",
-      "analyze",
-      "brief",
-      "briefing",
-      "digest",
-      "summary",
-      "health",
-      "doing",
-      "trend",
-      "trends",
-      "risk"
-    ],
     readOnly: true,
     inputSchema: external_exports.object({
       ...companyScope,
@@ -80559,30 +80348,12 @@ var registry2 = [
       });
     }
   },
-  // ----------------------------------------------------------------- website
   {
     name: "report_customers",
     group: "reports",
     title: "Top customers by what they were invoiced",
     description: "Rank customers by how much they were invoiced over a date window. This is the operation for 'who is my biggest customer', 'who are my top clients', 'who brings in the most'.\nReturns one row per customer with customerId, name, invoiced and invoiceCount, highest first. `invoiced` is what was BILLED in the window, not what was collected \u2014 for money actually received use customer_payments.\nScoped to the signed-in account's default company; it does not take a company_id.",
-    keywords: [
-      "top",
-      "biggest",
-      "best",
-      "rank",
-      "ranking",
-      "customer",
-      "customers",
-      "client",
-      "clients",
-      "valuable"
-      // NOT "revenue": that word belongs to report_summary, and claiming it
-      // here cost "show me revenue" its correct first place. A new operation's
-      // keywords should be what DISTINGUISHES it, never the shared noun the
-      // neighbouring operation already owns.
-    ],
     readOnly: true,
-    requiresArgs: true,
     inputSchema: external_exports.object({
       start: external_exports.string().describe("ISO start date, inclusive."),
       end: external_exports.string().describe("ISO end date, inclusive."),
@@ -80605,21 +80376,7 @@ var registry2 = [
     group: "reports",
     title: "Best-selling products and services",
     description: "Rank items by what they sold over a date window \u2014 'what sells best', 'my top products', 'which service earns most'.\nReturns name, quantity and revenue per item, highest first. Reflects what appeared on invoices in the window, so it measures billing rather than fulfilment or collection.\nScoped to the default company; it does not take a company_id.",
-    keywords: [
-      "item",
-      "items",
-      "product",
-      "products",
-      "service",
-      "services",
-      "selling",
-      "sells",
-      "best",
-      "top",
-      "popular"
-    ],
     readOnly: true,
-    requiresArgs: true,
     inputSchema: external_exports.object({
       start: external_exports.string().describe("ISO start date, inclusive."),
       end: external_exports.string().describe("ISO end date, inclusive."),
@@ -80638,106 +80395,10 @@ var registry2 = [
     }
   },
   {
-    name: "website_status",
-    group: "website",
-    title: "Whether the website exists and is public",
-    description: "Whether this company has a website and whether the public can reach it \u2014 'is my site live', 'did my website publish', 'what is my site URL'.\nReturns exists, published, slug, url, version and updatedAt. `exists` and `published` are different questions: a site can be fully built and still private, which is the usual reason someone cannot find it.\nUse website_content for what the pages actually say.",
-    keywords: [
-      "live",
-      "published",
-      "public",
-      "url",
-      "domain",
-      "online",
-      "status"
-      // NOT "website"/"site" — the group is already `website`, and claiming the
-      // bare noun outranked website_content on "what does my website say".
-    ],
-    readOnly: true,
-    inputSchema: external_exports.object({}),
-    run: async () => projectWebsiteStatus(await getWebsiteInfo())
-  },
-  {
-    name: "website_analytics",
-    group: "website",
-    title: "Website visits and enquiries",
-    description: "Traffic and enquiries for the company website over the last N days \u2014 'how many people visited', 'is anyone finding my site', 'any enquiries from the website'.\nReturns the analytics block as the builder reports it: visit counts, device split and inquiry totals. A site that is not published reports nothing, which is a publishing answer rather than a traffic answer \u2014 check website_status first when the numbers are all zero.",
-    keywords: [
-      "analytics",
-      "visits",
-      "visitors",
-      "traffic",
-      "views",
-      "enquiries",
-      "inquiries",
-      "leads"
-      // Same reason as website_status: the bare noun belongs to the group, and
-      // holding it here beat website_content on its own questions.
-    ],
-    readOnly: true,
-    inputSchema: external_exports.object({
-      days: external_exports.number().int().positive().max(365).optional().describe("Window in days. Defaults to 30.")
-    }),
-    run: async (args) => {
-      const a = args;
-      return projectWebsiteAnalytics(await getWebsiteAnalytics(a.days ?? 30));
-    }
-  },
-  {
-    name: "customer_emails",
-    group: "customers",
-    title: "Emails sent to one customer",
-    description: "The email history for a single customer \u2014 'did we email Wayne', 'what did I send them', 'have they opened it'.\nReturns id, subject, to, sentAt, status and opened per email, newest first. This is correspondence, NOT invoices: an invoice that was sent appears here as the email that carried it, and list_invoices is where its status lives.",
-    keywords: [
-      "email",
-      "emails",
-      "sent",
-      "correspondence",
-      "history",
-      "message",
-      "messages",
-      "opened",
-      "contacted"
-    ],
-    readOnly: true,
-    requiresArgs: true,
-    inputSchema: external_exports.object({
-      customer_id: external_exports.string().optional().describe("Required. Customer id, as returned by list_customers."),
-      id: external_exports.string().optional(),
-      ...paging
-    }),
-    run: async (args) => {
-      const a = args;
-      const customerId = a.customer_id ?? a.id;
-      if (!customerId) {
-        throw new Error("customer_id is required \u2014 the id from list_customers.");
-      }
-      return projectCustomerEmails(
-        await listCustomerEmails(
-          customerId,
-          compact({ page: a.page, perPage: a.per_page })
-        )
-      );
-    }
-  },
-  {
     name: "report_digest",
     group: "reports",
     title: "The period digest \u2014 money in, money owed, what moved",
     description: "One roll-up for a period: invoiced, paid, unpaid, overdue, top customers, recent activity and the deal pipeline. This is the operation for 'how did this week go', 'give me a summary', 'morning brief', 'weekly digest'.\nReturns exact counts and amounts. The overdue list is capped at the worst 10 by amount with `overdue.truncated` set when there are more \u2014 `overdue.count` is the real number, so report that rather than counting the rows you were given.\nPipeline stage counts come from the API's per-stage totals and are exact; the pipeline VALUE is summed over fetched deals, so it is a floor when `pipeline.valuesArePartial` is true.",
-    keywords: [
-      "digest",
-      "summary",
-      "brief",
-      "roundup",
-      "week",
-      "weekly",
-      "month",
-      "monthly",
-      "overview",
-      "recap",
-      "how"
-    ],
     readOnly: true,
     inputSchema: external_exports.object({
       period: external_exports.enum(["today", "yesterday", "week", "last-week", "month", "last-month"]).optional().describe("Which window. Defaults to `week`.")
@@ -80754,7 +80415,6 @@ var registry2 = [
     group: "reports",
     title: "Render the business dashboard as a page",
     description: "Build the same visual dashboard `bookipi report dashboard` produces \u2014 revenue over the period, top customers, top items, with charts \u2014 and return a LINK to it (or a file path when this server cannot host one).\nUse it when the user wants to LOOK at the business rather than be told one number. For a figure to quote in conversation, report_summary is far cheaper.\nNEVER read, print or inline the page: it is roughly 100 KB, about 25,000 tokens, which is why you get a handle. The handle is for showing the user \u2014 the link (or hosted copy of the file) is the deliverable, so they see charts rather than a URL description.\nDefaults to the current financial period when no dates are given.",
-    keywords: ["dashboard", "chart", "charts", "graph", "visual", "overview"],
     readOnly: true,
     inputSchema: external_exports.object({
       ...companyScope,
@@ -80784,20 +80444,7 @@ var registry2 = [
     group: "reports",
     title: "Prioritised suggestions \u2014 what to do next",
     description: "Ranked, specific actions derived from the account's own numbers: what to chase, what to follow up, where the money is leaking. The operation for 'what should I do', 'what needs my attention', 'any advice'.\nEach suggestion carries priority, title, why and impact. `why` and `impact` are the parts worth relaying \u2014 they cite the figures behind the advice, so the user can judge it instead of taking it on trust.",
-    keywords: [
-      "suggest",
-      "suggestions",
-      "advice",
-      "recommend",
-      "recommendations",
-      "priority",
-      "attention",
-      "next",
-      "should",
-      "todo"
-    ],
     readOnly: true,
-    requiresArgs: true,
     inputSchema: external_exports.object({
       start: external_exports.string().describe("ISO start date, inclusive."),
       end: external_exports.string().describe("ISO end date, inclusive.")
@@ -80810,70 +80457,55 @@ var registry2 = [
     }
   },
   {
-    name: "scan_receipt",
-    group: "expenses",
-    title: "Read a receipt photo and extract its fields",
-    description: "Run Bookipi's OCR over a receipt image or PDF and return what it read: amount, merchant, date, suggested category, invoice number.\nSAVES NOTHING. Show the extracted fields to the user, let them correct anything wrong, then call create_expense. Never log an expense straight from a scan without showing it first \u2014 OCR misreads amounts, and a wrong figure in the books is worse than no figure.\n`file_path` must be a path THIS SERVER can read: png, jpg, jpeg, pdf, heic or webp. That works when the server and your files are on the same machine (a local server, or stdio). A hosted connector cannot see your disk, and there is no way to send it the bytes yet \u2014 say so plainly rather than guessing at a path.\nThe file is uploaded to Bookipi's storage for the OCR to run. No business record is created.",
-    keywords: ["scan", "ocr", "receipt", "photo", "extract", "read"],
+    name: "open_reports",
+    group: "reports",
+    title: "Link to the Reports page in the web app",
+    description: "The URL of the Bookipi web app's Reports page, for a user who wants to look at the reports themselves rather than be told a number.\nCarries NO credentials \u2014 the user signs in normally. The CLI mints a one-click signed-in link instead; that link embeds a long-lived token and deliberately does not come through here.\nPrefer report_summary or report_dashboard when the user asked a question. This is for 'let me look at it myself'.",
     readOnly: true,
-    requiresArgs: true,
-    inputSchema: external_exports.object({
-      file_path: external_exports.string().optional().describe("Required. Absolute path to the receipt, readable by this server.")
-    }),
-    run: async (args) => {
-      const a = args;
-      if (!a.file_path) {
-        throw new Error(
-          "file_path is required \u2014 an absolute path to the receipt image or PDF, readable by this server."
-        );
-      }
-      assertServerCanRead(a.file_path);
-      const upload = await uploadReceiptFile({
-        filePath: a.file_path,
-        isThumbnail: false
-      });
-      const scanned = await scanInvoiceImage([upload.fullKey]);
-      return {
-        file: upload.filename,
-        read: {
-          merchant: scanned.merchantName ?? scanned.vendorName ?? null,
-          amount: scanned.amount ?? null,
-          date: scanned.purchaseDate ?? null,
-          category: scanned.categoryName ?? null,
-          categoryId: scanned.categoryId ?? null,
-          invoiceNumber: scanned.invoiceNumber ?? null,
-          ...scanned.notes ? { notes: scanned.notes } : {}
-        },
-        ...scanned.errorMessage ? { ocrError: scanned.errorMessage } : {},
-        action: "NOTHING WAS SAVED. Show these fields to the user and ask them to confirm the AMOUNT especially, then call create_expense with what they agree to."
-      };
+    inputSchema: external_exports.object({}).strict(),
+    run: async () => ({
+      reportsUrl: `${config.BOOKIPI_WEB_URL}/reports`,
+      note: "Sign-in required \u2014 this link carries no credentials."
+    })
+  }
+];
+
+// src/mcp/reads/website.ts
+var websiteReads = [
+  {
+    name: "website_status",
+    group: "website",
+    title: "Whether the website exists and is public",
+    description: "Whether this company has a website and whether the public can reach it \u2014 'is my site live', 'did my website publish', 'what is my site URL'.\nReturns exists, published, slug, url and updatedAt. `exists` and `published` are different questions: a site can be fully built and still private, which is the usual reason someone cannot find it.\nUse website_content for what the pages actually say.",
+    readOnly: true,
+    inputSchema: external_exports.object({}),
+    run: async () => {
+      const info = await getWebsiteInfo();
+      const site = info.website ? await getV4Site().catch(() => null) : null;
+      const slug = typeof site?.siteUrl === "string" && site.siteUrl ? site.siteUrl : null;
+      const url2 = slug && info.website?.isPublished ? `${await getBuilderOrigin()}/v4/pages/${slug}` : null;
+      return projectWebsiteStatus({ ...info, slug, url: url2 });
     }
   },
   {
-    name: "expense_categories",
-    group: "expenses",
-    title: "The categories an expense can be filed under",
-    description: "The category list for logging an expense \u2014 the account's own custom categories when it has any, plus the defaults.\nReturns key and name per category. The KEY is what a create call wants; the name is for showing the user. Call this before filing a receipt rather than guessing a category name, which will be rejected.",
-    keywords: [
-      "category",
-      "categories",
-      "expense",
-      "expenses",
-      "classify",
-      "filing",
-      "type",
-      "kind"
-    ],
+    name: "website_analytics",
+    group: "website",
+    title: "Website visits and enquiries",
+    description: "Traffic and enquiries for the company website over the last N days \u2014 'how many people visited', 'is anyone finding my site', 'any enquiries from the website'.\nReturns the analytics block as the builder reports it: visit counts, device split and inquiry totals. A site that is not published reports nothing, which is a publishing answer rather than a traffic answer \u2014 check website_status first when the numbers are all zero.",
     readOnly: true,
-    inputSchema: external_exports.object({}),
-    run: async () => projectExpenseCategories(await listExpenseCategories())
+    inputSchema: external_exports.object({
+      days: external_exports.number().int().positive().max(365).optional().describe("Window in days. Defaults to 30.")
+    }),
+    run: async (args) => {
+      const a = args;
+      return projectWebsiteAnalytics(await getWebsiteAnalytics(a.days ?? 30));
+    }
   },
   {
     name: "website_preview",
     group: "website",
-    title: "Render the website as the visitor sees it",
+    title: "Preview the website draft",
     description: 'Render the current website DRAFT into a self-contained page and return a LINK to it (or a file path when this server cannot host one).\nA multi-page site renders EVERY page into one navigable file by default \u2014 inter-page links become in-file anchors \u2014 so "show me my website" shows the site, not one page of it. Pass `page` for just one.\nThis is the DRAFT, not what visitors see. Publishing is a separate, deliberate act.\nNEVER read, print or inline the render \u2014 it is a whole website. The handle is for showing the user: share the link (or a hosted copy of the file) rather than describing the site.\nOnly AI-built (v4) sites have a page layout to render. A classic section-based site has none; use website_content to read what it says.',
-    keywords: ["preview", "render", "look", "see", "visitor", "mockup"],
     readOnly: true,
     inputSchema: external_exports.object({
       ...companyScope,
@@ -80911,24 +80543,10 @@ var registry2 = [
     }
   },
   {
-    name: "open_reports",
-    group: "reports",
-    title: "Link to the Reports page in the web app",
-    description: "The URL of the Bookipi web app's Reports page, for a user who wants to look at the reports themselves rather than be told a number.\nCarries NO credentials \u2014 the user signs in normally. The CLI mints a one-click signed-in link instead; that link embeds a long-lived token and deliberately does not come through here.\nPrefer report_summary or report_dashboard when the user asked a question. This is for 'let me look at it myself'.",
-    keywords: ["open", "link", "url", "webapp", "browser"],
-    readOnly: true,
-    inputSchema: external_exports.object({}).strict(),
-    run: async () => ({
-      reportsUrl: `${config.BOOKIPI_WEB_URL}/reports`,
-      note: "Sign-in required \u2014 this link carries no credentials."
-    })
-  },
-  {
     name: "website_builder_link",
     group: "website",
     title: "Link into the website builder",
     description: "Mint a link into the website builder, where the site is edited by hand and published.\n\u26A0 THE LINK IS A SHORT-LIVED CREDENTIAL issued by the backend \u2014 anyone holding it reaches this account's builder until it expires. Give it to the user once and do not repeat it, summarise it, or write it anywhere.\nUse edit_website to change copy without leaving the conversation, and website_preview to show the user what the site looks like. This is for the things only the builder can do \u2014 layout, images, publishing by hand.",
-    keywords: ["builder", "editor", "edit", "open", "manage"],
     readOnly: true,
     inputSchema: external_exports.object({}).strict(),
     run: async () => ({
@@ -80942,7 +80560,6 @@ var registry2 = [
     group: "website",
     title: "Read one page's markup, exactly as stored",
     description: "The raw HTML of one page of the AI-built (v4) draft \u2014 the source, not a render.\nEXPENSIVE AND USUALLY UNNECESSARY: a page is commonly 3,000-6,000 tokens and it all lands in this conversation. Reach for it only when you need the EXACT wording to change, which is the one thing the alternatives cannot give you:\n  \u2022 to show the user their site \u2192 website_preview (a link, costs nothing)\n  \u2022 to read what it says \u2192 website_content (a digest)\n  \u2022 to change something described loosely \u2192 edit_website\nThe reason to read markup is edit_website's `find` and `replace`, which swap exact text and need the exact text. Read the page, find the string, swap it \u2014 deterministic, where an AI instruction is a guess.\nClassic (section-based) sites have no page HTML; use website_content.",
-    keywords: ["html", "markup", "source", "raw", "exact", "wording"],
     readOnly: true,
     inputSchema: external_exports.object({
       page: external_exports.string().optional().describe("Slug or name. Defaults to the home page.")
@@ -80978,128 +80595,30 @@ var registry2 = [
     group: "website",
     title: "What pages the website has",
     description: "The page list for the company site \u2014 'what pages do I have', 'is there an about page', 'how many pages'.\nReturns id, name, path, visible, order, section count and seoTitle per page. `visible: false` means the page exists but is hidden from the site's navigation, which is a different thing from the site being unpublished \u2014 see website_status.\nThis is structure, not copy. For what a page SAYS, use website_content.",
-    keywords: [
-      "pages",
-      "page",
-      "structure",
-      "navigation",
-      "nav",
-      "menu",
-      "sitemap",
-      "about",
-      "how many"
-    ],
     readOnly: true,
     inputSchema: external_exports.object({}),
     run: async () => projectWebsitePages(listSitePages(await getWebsiteDraft()))
-  },
-  {
-    name: "paylink_status",
-    group: "payments",
-    title: "Whether one payment link has been paid",
-    description: "One payment link with the money that came through it \u2014 'did they pay the link', 'has that link been used', 'how much came in on it'.\nReturns `paid` as the headline, plus paymentCount, collected, and up to 10 individual payments. `found: false` means no link with that id.\nGet the id from list_paylinks. For every link at once, use list_paylinks \u2014 this is the detail view for one.",
-    keywords: [
-      "paylink",
-      "paid",
-      "link",
-      "bpay",
-      "collected",
-      "settled",
-      "status",
-      "used"
-    ],
-    readOnly: true,
-    requiresArgs: true,
-    inputSchema: external_exports.object({
-      paylink_id: external_exports.string().optional().describe("Required. Payment link id, as returned by list_paylinks."),
-      id: external_exports.string().optional()
-    }),
-    run: async (args) => {
-      const a = args;
-      const linkId = a.paylink_id ?? a.id;
-      if (!linkId) {
-        throw new Error("paylink_id is required \u2014 the id from list_paylinks.");
-      }
-      const [link, payments] = await Promise.all([
-        getPaymentLink(linkId),
-        getPaymentLinkPayments(linkId).catch(() => [])
-      ]);
-      return projectPaylinkStatus(link, payments);
-    }
   },
   {
     name: "website_content",
     group: "website",
     title: "Read the company's website content",
     description: "Load the full content of the company's AI-built website (every page and section \u2014 headings, copy, services, FAQs, SEO) as a readable digest. The source of truth for any question about what the site says.",
-    keywords: [
-      "site",
-      "pages",
-      "copy",
-      "seo",
-      // Added when website_analytics and website_status joined the group: all
-      // three titles contain "website", ties break alphabetically, and
-      // "analytics" sorts first — so "what does my website say" went to the
-      // wrong one. These are the words that are actually about COPY, which is
-      // what distinguishes this operation from its neighbours.
-      "say",
-      "says",
-      "text",
-      "wording",
-      "headline",
-      "content"
-    ],
     readOnly: true,
     inputSchema: external_exports.object({}),
     run: async () => summarizeWebsiteContent(await getWebsiteContent())
-  },
-  // ---------------------------------------------------------------- meetings
-  {
-    name: "calendar_status",
-    group: "meetings",
-    title: "Is Google Calendar connected",
-    description: "Check whether the user's Google Calendar is connected. Scheduling needs it; recorded meetings and transcripts do NOT \u2014 never gate list_meetings on this.",
-    readOnly: true,
-    inputSchema: external_exports.object({}),
-    run: async () => {
-      const result = await getCustomerWhoami();
-      return {
-        isGoogleCalendarConnected: result.isGoogleCalendarConnected,
-        ...result.isGoogleCalendarConnected ? {} : { setupUrl: `${config.BOOKIPI_WEB_URL}/calendar-scheduling` }
-      };
-    }
-  },
-  {
-    name: "list_meetings",
-    group: "meetings",
-    title: "List meetings with summaries",
-    description: `List meetings in a time window (defaults to today). For 'recent' or 'past' meetings pass a \`from\` in the past with sort START_DESC. Recorded meetings and transcripts do NOT require Google Calendar to be connected: always call this for meeting / notes / transcript questions and never gate it on calendar_status. Gating it caused the field-test false negative 'I have meetings but it said I don't have any'.
-Returns per meeting: id, title, start, end, status, location, customerId and customerName (when a customer is linked), guests, guestCount, notes, hasAiSummary, and the AI summary as aiSummary / aiActions / aiNotes / aiSummaryStatus \u2014 plus pageInfo. \`guests\` is capped at ${MAX_GUESTS} addresses; when it is cut, guestsTruncated is set and guestCount still gives the true total \u2014 so do NOT answer 'X is not attending' from a truncated list. Set include_transcript only when the user asks for the verbatim transcript: it adds a \`transcript\` array of {speaker, text} and is a large payload.`,
-    keywords: ["calendar", "notes", "transcript", "calls", "bookings"],
-    readOnly: true,
-    inputSchema: external_exports.object({
-      from: external_exports.string().optional().describe("ISO datetime \u2014 window start."),
-      to: external_exports.string().optional().describe("ISO datetime \u2014 window end."),
-      sort: external_exports.enum(["START_ASC", "START_DESC"]).optional().describe("START_DESC for most-recent-first."),
-      include_transcript: external_exports.boolean().optional().describe("Include full verbatim transcripts (large)."),
-      ...paging
-    }),
-    run: async (args) => {
-      const a = args;
-      return projectMeetingList(
-        await listMeetings(
-          compact({
-            from: a.from,
-            to: a.to,
-            sort: a.sort,
-            includeTranscript: a.include_transcript,
-            page: a.page,
-            pageSize: a.per_page
-          })
-        )
-      );
-    }
   }
+];
+
+// src/mcp/registry.ts
+var registry2 = [
+  ...accountReads,
+  ...invoiceReads,
+  ...customerReads,
+  ...salesReads,
+  ...catalogReads,
+  ...reportReads,
+  ...websiteReads
 ];
 
 // src/mcp/result.ts
@@ -81166,17 +80685,21 @@ var DEFAULT_LABELS = {
   depositDue: "deposit_due"
 };
 async function draftInvoiceUpdate(input) {
+  const invoice = await getInvoice(
+    input.invoiceId,
+    input.companyId
+  );
+  return buildInvoiceUpdate(invoice, input);
+}
+function buildInvoiceUpdate(invoice, input) {
   const labels = { ...DEFAULT_LABELS, ...input.labels };
   if (input.deposit && input.removeDeposit) {
     throw new Error(
       `${labels.deposit} and remove_deposit cannot both be set.`
     );
   }
-  const invoice = await getInvoice(
-    input.invoiceId,
-    input.companyId
-  );
   const record2 = {};
+  const warnings = [];
   const changes = [];
   const note = (field, from, to) => {
     if (JSON.stringify(from) === JSON.stringify(to)) return;
@@ -81231,36 +80754,38 @@ async function draftInvoiceUpdate(input) {
     record2["depositType"] = spec.depositType;
     record2["depositPercentage"] = spec.depositPercentage;
     record2["depositAmount"] = amount;
-    record2["depositDue"] = depositDueEndOfDay(
-      input.depositDue ?? isoDay(invoice["date"]),
-      labels.depositDue
-    );
+    record2["depositDue"] = input.depositDue ? depositDueEndOfDay(input.depositDue, labels.depositDue) : defaultDepositDue(invoice["date"], labels.depositDue);
     note("depositAmount", invoice["depositAmount"], amount);
   } else if (input.depositDue) {
     throw new Error(`${labels.depositDue} requires ${labels.deposit}`);
   } else if (input.removeDeposit) {
     Object.assign(record2, removedDepositFields());
     note("depositAmount", invoice["depositAmount"], 0);
+  } else if (input.items) {
+    const amount = recomputePercentageDeposit(invoice, Number(record2["total"]));
+    const total = Number(record2["total"]);
+    if (amount !== null) {
+      record2["depositAmount"] = amount;
+      note("depositAmount", invoice["depositAmount"], amount);
+    } else if (invoice["depositType"] !== "percentage" && Number(invoice["depositAmount"] ?? 0) > total) {
+      warnings.push(
+        `The fixed deposit (${invoice["depositAmount"]}) now exceeds the invoice total (${total}). Adjust it with \`deposit\` or \`remove_deposit\`.`
+      );
+    }
   }
   return {
     record: record2,
     invoiceNumber: invoice["no"] ?? null,
     changes,
-    noop: changes.length === 0
+    noop: changes.length === 0,
+    warnings
   };
 }
 function asRows2(v) {
   return Array.isArray(v) ? v : [];
 }
-function isoDay(value) {
-  if (typeof value === "string" && value.length >= 10) return value.slice(0, 10);
-  throw new Error(
-    "Cannot default the deposit due date \u2014 the invoice has no readable date. Pass deposit_due explicitly."
-  );
-}
 
-// src/mcp/writeTools.ts
-var DUPLICATE_WINDOW_MS = 10 * 60 * 1e3;
+// src/mcp/writes/shared.ts
 function compact2(obj) {
   const out = {};
   for (const [k, v] of Object.entries(obj)) {
@@ -81282,16 +80807,13 @@ var lineItem = external_exports.object({
   enableTax: external_exports.boolean().optional(),
   discount: external_exports.number().optional()
 });
-function registerWriteTools(mcp, options = {}) {
-  if (options.allowWrites === false) return;
-  const register = mcp.registerTool.bind(mcp);
-  const server = {
-    registerTool: ((name, config3, handler) => {
-      const c = config3;
-      const strict = c.inputSchema && !(c.inputSchema instanceof external_exports.ZodType) ? { ...c, inputSchema: external_exports.strictObject(c.inputSchema) } : c;
-      return register(name, strict, handler);
-    })
-  };
+function planArg(description) {
+  return external_exports.boolean().optional().describe(description);
+}
+
+// src/mcp/writes/invoices.ts
+var DUPLICATE_WINDOW_MS = 10 * 60 * 1e3;
+function registerInvoiceWrites(server) {
   server.registerTool(
     "create_invoice",
     {
@@ -81311,7 +80833,7 @@ function registerWriteTools(mcp, options = {}) {
         note: external_exports.string().optional().describe("Note shown on the invoice."),
         deposit: external_exports.string().optional().describe('Deposit request \u2014 a percentage ("10%") or an amount ("50").'),
         deposit_due: external_exports.string().optional().describe("When the deposit is due, YYYY-MM-DD. Requires `deposit`."),
-        plan: external_exports.boolean().optional().describe(
+        plan: planArg(
           "Preview only. Returns what would be created \u2014 assigned number, total, deposit \u2014 and writes nothing. Use it to confirm with the user before creating."
         ),
         preview: external_exports.boolean().optional().describe(
@@ -81341,68 +80863,64 @@ function registerWriteTools(mcp, options = {}) {
       }
     },
     async (args) => {
-      try {
-        const draft = await draftInvoice({
-          companyId: args.company_id,
-          customerId: args.customer_id,
-          date: args.date,
-          items: args.items.map(compact2),
-          ...args.number ? { number: args.number } : {},
-          ...args.due_date ? { dueDate: args.due_date } : {},
-          ...args.note ? { note: args.note } : {},
-          ...args.deposit ? { deposit: args.deposit } : {},
-          ...args.deposit_due ? { depositDue: args.deposit_due } : {}
-        });
-        const existing = args.number ? null : await recentDuplicate(
-          args.company_id,
-          args.customer_id,
-          draft.record
-        );
-        const duplicateMessage = existing ? `This looks like a duplicate of ${existing.no} (id ${existing._id}) \u2014 same customer, same total, same line items, created in the last ${DUPLICATE_WINDOW_MS / 6e4} minutes, in case the first call succeeded and only its response was lost.
+      const draft = await draftInvoice({
+        companyId: args.company_id,
+        customerId: args.customer_id,
+        date: args.date,
+        items: args.items.map(compact2),
+        ...args.number ? { number: args.number } : {},
+        ...args.due_date ? { dueDate: args.due_date } : {},
+        ...args.note ? { note: args.note } : {},
+        ...args.deposit ? { deposit: args.deposit } : {},
+        ...args.deposit_due ? { depositDue: args.deposit_due } : {}
+      });
+      const existing = args.number ? null : await recentDuplicate(
+        args.company_id,
+        args.customer_id,
+        draft.record
+      );
+      const duplicateMessage = existing ? `This looks like a duplicate of ${existing.no} (id ${existing._id}) \u2014 same customer, same total, same line items, created in the last ${DUPLICATE_WINDOW_MS / 6e4} minutes, in case the first call succeeded and only its response was lost.
 If this is genuinely a second invoice, pass an explicit \`number\` to say so \u2014 that skips this check.` : null;
-        if (args.plan === true) {
-          const preview2 = args.preview === false ? null : await buildInvoicePreview(
-            draft.record,
-            args.company_id,
-            String(draft.record.no ?? "draft")
-          );
-          return ok({
-            plan: projectPlannedInvoice(draft.record),
-            number_assigned: draft.numberAssigned,
-            ...preview2 ? { preview: preview2 } : {},
-            note: duplicateMessage ? `WOULD BE REFUSED. ${duplicateMessage}` : "Nothing was created. Call again without `plan` to create this invoice."
-          });
-        }
-        if (duplicateMessage) {
-          return fail(`Not creating a second one. ${duplicateMessage}`);
-        }
-        const data = await createInvoice(draft.record);
-        const created = data.invoicesCreateOne?.record;
-        if (!created) {
-          return fail(
-            "The create returned no record, so it is unclear whether the invoice was written. Call list_invoices for this customer before retrying."
-          );
-        }
-        const preview = args.preview === false ? null : await buildInvoicePreview(
-          created,
+      if (args.plan === true) {
+        const preview2 = args.preview === false ? null : await buildInvoicePreview(
+          draft.record,
           args.company_id,
-          String(created["no"] ?? "invoice"),
-          // Saved now, so the preview id is pinned to this invoice and a
-          // later update replaces the content behind the same URL.
-          { invoiceId: String(created["_id"] ?? "") }
+          String(draft.record.no ?? "draft")
         );
         return ok({
-          created: projectCreatedInvoice(created),
-          // Say when the number was not the caller's choice. Without this an
-          // agent reports the number it planned rather than the one the company
-          // sequence gave it, and the user is told about an invoice that does
-          // not exist under that name.
+          plan: projectPlannedInvoice(draft.record),
           number_assigned: draft.numberAssigned,
-          ...preview ? { preview } : {}
+          ...preview2 ? { preview: preview2 } : {},
+          note: duplicateMessage ? `WOULD BE REFUSED. ${duplicateMessage}` : "Nothing was created. Call again without `plan` to create this invoice."
         });
-      } catch (err2) {
-        return fail(err2);
       }
+      if (duplicateMessage) {
+        return fail(`Not creating a second one. ${duplicateMessage}`);
+      }
+      const data = await createInvoice(draft.record);
+      const created = data.invoicesCreateOne?.record;
+      if (!created) {
+        return fail(
+          "The create returned no record, so it is unclear whether the invoice was written. Call list_invoices for this customer before retrying."
+        );
+      }
+      const preview = args.preview === false ? null : await buildInvoicePreview(
+        created,
+        args.company_id,
+        String(created["no"] ?? "invoice"),
+        // Saved now, so the preview id is pinned to this invoice and a
+        // later update replaces the content behind the same URL.
+        { invoiceId: String(created["_id"] ?? "") }
+      );
+      return ok({
+        created: projectCreatedInvoice(created),
+        // Say when the number was not the caller's choice. Without this an
+        // agent reports the number it planned rather than the one the company
+        // sequence gave it, and the user is told about an invoice that does
+        // not exist under that name.
+        number_assigned: draft.numberAssigned,
+        ...preview ? { preview } : {}
+      });
     }
   );
   server.registerTool(
@@ -81423,7 +80941,7 @@ If this is genuinely a second invoice, pass an explicit \`number\` to say so \u2
         ),
         deposit_due: external_exports.string().optional().describe("When the deposit is due, YYYY-MM-DD. Requires `deposit`."),
         remove_deposit: external_exports.boolean().optional().describe("Clear an existing deposit request."),
-        plan: external_exports.boolean().optional().describe(
+        plan: planArg(
           "Preview only. Returns the before/after of every field this would change, and writes nothing."
         ),
         preview: external_exports.boolean().optional().describe(
@@ -81443,59 +80961,57 @@ If this is genuinely a second invoice, pass an explicit \`number\` to say so \u2
       }
     },
     async (args) => {
-      try {
-        const draft = await draftInvoiceUpdate({
-          invoiceId: args.invoice_id,
-          ...args.company_id ? { companyId: args.company_id } : {},
-          ...args.items ? { items: args.items.map(compact2) } : {},
-          ...args.due_date ? { dueDate: args.due_date } : {},
-          ...args.note !== void 0 ? { note: args.note } : {},
-          ...args.deposit ? { deposit: args.deposit } : {},
-          ...args.deposit_due ? { depositDue: args.deposit_due } : {},
-          ...args.remove_deposit ? { removeDeposit: true } : {}
-        });
-        if (draft.noop) {
-          return ok({
-            invoiceNumber: draft.invoiceNumber,
-            changes: [],
-            note: "Nothing to change \u2014 the invoice already matches these values."
-          });
-        }
-        if (args.plan === true) {
-          return ok({
-            plan: {
-              invoiceNumber: draft.invoiceNumber,
-              changes: draft.changes
-            },
-            note: "Nothing was changed. Call again without `plan` to apply this."
-          });
-        }
-        await updateInvoice(args.invoice_id, draft.record);
-        let preview = null;
-        if (args.preview !== false) {
-          try {
-            const fresh = await getInvoice(args.invoice_id, args.company_id);
-            preview = await buildInvoicePreview(
-              fresh,
-              String(
-                fresh?.company ?? args.company_id ?? ""
-              ),
-              String(fresh?.no ?? "invoice"),
-              { invoiceId: args.invoice_id }
-            );
-          } catch {
-          }
-        }
+      const draft = await draftInvoiceUpdate({
+        invoiceId: args.invoice_id,
+        ...args.company_id ? { companyId: args.company_id } : {},
+        ...args.items ? { items: args.items.map(compact2) } : {},
+        ...args.due_date ? { dueDate: args.due_date } : {},
+        ...args.note !== void 0 ? { note: args.note } : {},
+        ...args.deposit ? { deposit: args.deposit } : {},
+        ...args.deposit_due ? { depositDue: args.deposit_due } : {},
+        ...args.remove_deposit ? { removeDeposit: true } : {}
+      });
+      if (draft.noop) {
         return ok({
-          updated: {
-            invoiceNumber: draft.invoiceNumber,
-            changes: draft.changes
-          },
-          ...preview ? { preview } : {}
+          invoiceNumber: draft.invoiceNumber,
+          changes: [],
+          note: "Nothing to change \u2014 the invoice already matches these values."
         });
-      } catch (err2) {
-        return fail(err2);
       }
+      if (args.plan === true) {
+        return ok({
+          plan: {
+            invoiceNumber: draft.invoiceNumber,
+            changes: draft.changes,
+            ...draft.warnings.length ? { warnings: draft.warnings } : {}
+          },
+          note: "Nothing was changed. Call again without `plan` to apply this."
+        });
+      }
+      await updateInvoice(args.invoice_id, draft.record);
+      let preview = null;
+      if (args.preview !== false) {
+        try {
+          const fresh = await getInvoice(args.invoice_id, args.company_id);
+          preview = await buildInvoicePreview(
+            fresh,
+            String(
+              fresh?.company ?? args.company_id ?? ""
+            ),
+            String(fresh?.no ?? "invoice"),
+            { invoiceId: args.invoice_id }
+          );
+        } catch {
+        }
+      }
+      return ok({
+        updated: {
+          invoiceNumber: draft.invoiceNumber,
+          changes: draft.changes,
+          ...draft.warnings.length ? { warnings: draft.warnings } : {}
+        },
+        ...preview ? { preview } : {}
+      });
     }
   );
   server.registerTool(
@@ -81506,7 +81022,7 @@ If this is genuinely a second invoice, pass an explicit \`number\` to say so \u2
       inputSchema: {
         invoice_id: external_exports.string().describe("Invoice id, as returned by list_invoices or get_invoice."),
         ...companyScopeArg,
-        plan: external_exports.boolean().optional().describe(
+        plan: planArg(
           "Preview only. Returns which invoice would be deleted \u2014 number, customer, amount, status \u2014 and deletes nothing."
         )
       },
@@ -81521,335 +81037,160 @@ If this is genuinely a second invoice, pass an explicit \`number\` to say so \u2
       }
     },
     async (args) => {
-      try {
-        const invoice = await getInvoice(
-          args.invoice_id,
-          args.company_id
+      const invoice = await getInvoice(
+        args.invoice_id,
+        args.company_id
+      );
+      const target = {
+        invoiceNumber: invoice["no"] ?? null,
+        customerName: invoice["customer"]?.["companyName"] ?? null,
+        total: invoice["total"] ?? null,
+        amountDue: invoice["amountDue"] ?? null,
+        status: invoice["status"] ?? null,
+        paymentStatus: invoice["paymentStatus"] ?? null
+      };
+      const paid = Number(invoice["paymentAmount"] ?? 0);
+      const paymentStatus = String(invoice["paymentStatus"] ?? "");
+      if (paid > 0 || paymentStatus && paymentStatus !== "not_paid") {
+        return fail(
+          `${target.invoiceNumber} has payments recorded against it (${paymentStatus || "paid"}${paid > 0 ? `, ${paid} received` : ""}). Deleting it would destroy the payment history. Void the payments first if that is genuinely what the user wants.`
         );
-        const target = {
-          invoiceNumber: invoice["no"] ?? null,
-          customerName: invoice["customer"]?.["companyName"] ?? null,
-          total: invoice["total"] ?? null,
-          amountDue: invoice["amountDue"] ?? null,
-          status: invoice["status"] ?? null,
-          paymentStatus: invoice["paymentStatus"] ?? null
-        };
-        const paid = Number(invoice["paymentAmount"] ?? 0);
-        const paymentStatus = String(invoice["paymentStatus"] ?? "");
-        if (paid > 0 || paymentStatus && paymentStatus !== "not_paid") {
-          return fail(
-            `${target.invoiceNumber} has payments recorded against it (${paymentStatus || "paid"}${paid > 0 ? `, ${paid} received` : ""}). Deleting it would destroy the payment history. Void the payments first if that is genuinely what the user wants.`
-          );
-        }
-        if (args.plan === true) {
-          return ok({
-            plan: { wouldDelete: target },
-            note: "Nothing was deleted. Confirm this is the right invoice with the user, then call again without `plan`. This cannot be undone."
-          });
-        }
-        await deleteInvoice(args.invoice_id, args.company_id);
-        return ok({ deleted: target });
-      } catch (err2) {
-        return fail(err2);
       }
-    }
-  );
-  server.registerTool(
-    "manage_customer",
-    {
-      title: "Create, update or email a customer",
-      description: "`action` picks the operation:\n  create \u2014 needs a name or an email. `email` is where invoices go; without it, send_invoice on their invoices has no recipient.\n  update \u2014 needs customer_id. Only the fields passed change. A new email affects FUTURE invoices, not ones already sent.\n  email  \u2014 sends a plain email to the customer. THIS LEAVES THE BUILDING. \u26A0 It may fail with a recaptcha error: the mutation requires a token and the server-side bypass for authenticated agent requests has not shipped. If it does, say so and point the user at the web app rather than retrying.\nDeleting a customer is delete_customer, its own tool.\nBefore create, search list_customers: create_invoice will not make a customer, but a second record for someone who already exists splits their history and nothing merges them afterwards.",
-      inputSchema: {
-        action: external_exports.enum(["create", "update", "email"]),
-        to: external_exports.array(external_exports.string()).optional().describe("email: recipients. Defaults to the customer's own address."),
-        subject: external_exports.string().optional().describe("email: subject line."),
-        body: external_exports.string().optional().describe("email: the message, plain text."),
-        company_id: external_exports.string().optional().describe("create only. Company to create under, from whoami."),
-        customer_id: external_exports.string().optional().describe("Required for update and delete."),
-        name: external_exports.string().optional().describe("Business or person name."),
-        email: external_exports.string().optional().describe("Where invoices are sent."),
-        phone: external_exports.string().optional(),
-        mobile: external_exports.string().optional(),
-        business_number: external_exports.string().optional(),
-        notes: external_exports.string().optional(),
-        plan: external_exports.boolean().optional().describe("Preview only; writes nothing.")
-      },
-      annotations: {
-        readOnlyHint: false,
-        // `delete` lives in delete_customer, but `email` still makes this
-        // destructive: OpenAI's review defines destructiveHint as "irreversible
-        // or difficult to reverse", and a sent email cannot be recalled. The
-        // same email reaching a third party is what makes it open-world.
-        destructiveHint: true,
-        idempotentHint: false,
-        openWorldHint: true
-      }
-    },
-    async (args) => {
-      try {
-        if (args.action === "create") {
-          if (!args.name && !args.email) {
-            return fail(
-              "A customer needs at least a name or an email. Pass one of them."
-            );
-          }
-          const record3 = {
-            ...args.name ? { companyName: args.name } : {},
-            ...args.email ? { email: args.email } : {},
-            ...args.phone ? { phone: args.phone } : {},
-            ...args.mobile ? { mobile: args.mobile } : {},
-            ...args.business_number ? { businessNumber: args.business_number } : {},
-            ...args.notes ? { notes: args.notes } : {}
-          };
-          if (args.plan === true) {
-            return ok({
-              plan: { action: "create", name: args.name ?? null, email: args.email ?? null },
-              note: "Nothing was created. Call again without `plan`."
-            });
-          }
-          const data = await createCustomer(record3, args.company_id);
-          const created = data.customersCreateOne?.record;
-          if (!created) {
-            return fail(
-              "The create returned no record, so it is unclear whether the customer was written. Call list_customers before retrying."
-            );
-          }
-          return ok({
-            created: {
-              id: created["_id"] ?? null,
-              name: created["companyName"] ?? created["individualCompanyName"] ?? null,
-              email: created["email"] ?? null
-            },
-            next: "Use `created.id` as `customer_id` on create_invoice."
-          });
-        }
-        if (!args.customer_id) {
-          return fail(`action "${args.action}" needs customer_id.`);
-        }
-        if (args.action === "email") {
-          if (!args.customer_id) {
-            return fail('action "email" needs `customer_id`. Nothing was sent.');
-          }
-          if (!args.subject || !args.body) {
-            return fail(
-              'action "email" needs `subject` and `body`. Nothing was sent.'
-            );
-          }
-          const who = await getCustomerById(args.customer_id);
-          const to = args.to && args.to.length > 0 ? args.to : typeof who?.["email"] === "string" && who["email"] ? [who["email"]] : [];
-          if (to.length === 0) {
-            return fail(
-              "That customer has no email address on record and none was passed, so there is nobody to send to."
-            );
-          }
-          if (args.plan === true) {
-            return ok({
-              plan: { wouldEmail: to, subject: args.subject },
-              action: "Nothing was sent. SHOW the user the recipients and the subject, get a yes, then call again without `plan`."
-            });
-          }
-          const sent = await sendCustomerEmail({
-            customerId: args.customer_id,
-            to,
-            cc: [],
-            bcc: [],
-            subject: args.subject,
-            html: args.body,
-            text: args.body,
-            replyTo: null,
-            projectPipelineId: null
-          });
-          const payload = sent?.customersSendEmail ?? {};
-          return ok({
-            sent: { to, subject: args.subject },
-            server: payload.message ?? null
-          });
-        }
-        const record2 = {
-          ...args.name ? { companyName: args.name } : {},
-          ...args.email ? { email: args.email } : {},
-          ...args.phone ? { phone: args.phone } : {},
-          ...args.mobile ? { mobile: args.mobile } : {},
-          ...args.notes ? { notes: args.notes } : {}
-        };
-        if (Object.keys(record2).length === 0) {
-          return fail("Nothing to change \u2014 pass at least one field to update.");
-        }
-        if (args.plan === true) {
-          return ok({
-            plan: { action: "update", customer_id: args.customer_id, changing: Object.keys(record2) },
-            note: "Nothing was changed. Call again without `plan`."
-          });
-        }
-        await updateCustomer(args.customer_id, record2);
+      if (args.plan === true) {
         return ok({
-          updated: { id: args.customer_id, fields: Object.keys(record2) }
+          plan: { wouldDelete: target },
+          note: "Nothing was deleted. Confirm this is the right invoice with the user, then call again without `plan`. This cannot be undone."
         });
-      } catch (err2) {
-        return fail(err2);
       }
+      await deleteInvoice(args.invoice_id, args.company_id);
+      return ok({ deleted: target });
     }
   );
   server.registerTool(
-    "delete_customer",
+    "record_invoice_payment",
     {
-      title: "Delete a customer",
-      description: "Delete a customer permanently. \u{1F534} Not recoverable from here, and their invoices are left behind pointing at a customer that no longer exists.\nALWAYS PREVIEW FIRST. Call with `plan: true`, show the user the name and email that came back, and only call again without `plan` once they have confirmed that specific customer. Read customer_payments first \u2014 a customer with payment history is usually one to keep.",
+      title: "Record a payment on an invoice",
+      description: "Record money that arrived for an invoice. Omit `amount` to settle the full balance, pass it for a partial.\nThis APPENDS: calling it twice records two payments and can overpay. Read `paymentStatus` in the result rather than retrying on a timeout.\nNothing here moves money \u2014 it documents a payment that already happened outside Bookipi (cash, bank transfer). It emails nobody: send_payment_receipt does that. Removing recorded payments is clear_invoice_payments.",
       inputSchema: {
-        customer_id: external_exports.string().describe("Customer id, as returned by list_customers."),
-        plan: external_exports.boolean().optional().describe(
-          "Preview only. Returns which customer would be deleted \u2014 name and email \u2014 and deletes nothing."
-        )
+        invoice_id: external_exports.string().describe("Invoice id from list_invoices."),
+        amount: external_exports.number().optional().describe("Amount received. Omit to settle the full balance."),
+        method: external_exports.enum(["cash", "check", "credit", "transfer", "card", "unknown"]).optional().describe("`transfer` is a bank transfer. Defaults to cash."),
+        date: external_exports.string().optional().describe("YYYY-MM-DD."),
+        note: external_exports.string().optional(),
+        plan: planArg("Preview only; writes nothing.")
       },
-      // Split out of manage_customer so the destructive flag sits on the one
-      // action that earns it, the same shape as delete_invoice.
+      // Additive and reversible (clear_invoice_payments removes it), and it
+      // reaches no one outside the account.
       annotations: {
         readOnlyHint: false,
-        destructiveHint: true,
+        destructiveHint: false,
         idempotentHint: false,
         openWorldHint: false
       }
     },
     async (args) => {
-      try {
-        const who = await getCustomerById(args.customer_id);
-        if (!who) {
-          return fail(`No customer found with id ${args.customer_id}.`);
-        }
-        const target = {
-          id: args.customer_id,
-          name: who["companyName"] ?? who["individualCompanyName"] ?? null,
-          email: who["email"] ?? null
-        };
-        if (args.plan === true) {
-          return ok({
-            plan: { wouldDelete: target },
-            note: "Nothing was deleted. Their invoices will remain, pointing at a customer that no longer exists. Confirm this is the right customer with the user, then call again without `plan`. This cannot be undone."
-          });
-        }
-        const gone = await deleteCustomer(args.customer_id);
-        return ok({ deleted: { ...target, record: gone } });
-      } catch (err2) {
-        return fail(err2);
+      const inv = await getInvoice(args.invoice_id);
+      const due = Number(inv?.["amountDue"] ?? 0);
+      if (args.plan === true) {
+        return ok({
+          plan: {
+            invoiceNumber: inv?.["no"] ?? null,
+            outstanding: due,
+            wouldRecord: args.amount ?? due,
+            settlesInvoice: (args.amount ?? due) >= due
+          },
+          note: "Nothing was recorded. Call again without `plan` to apply it."
+        });
       }
+      const result = await markInvoicePaid(args.invoice_id, {
+        ...args.amount !== void 0 ? { amount: args.amount } : {},
+        ...args.method ? { method: args.method } : {},
+        ...args.date ? { date: args.date } : {},
+        ...args.note ? { note: args.note } : {}
+      });
+      return ok({
+        recorded: {
+          invoiceNumber: result.invoiceNo,
+          amount: result.recordedAmount ?? null,
+          paymentStatus: result.paymentStatus,
+          amountDue: result.amountDue,
+          total: result.total
+        }
+      });
     }
   );
   server.registerTool(
-    "manage_invoice_payment",
+    "send_payment_receipt",
     {
-      title: "Record or receipt payments on an invoice",
-      description: "`action` picks the operation:\n  record \u2014 money arrived. Omit `amount` to settle the full balance, pass it for a partial.\n  receipt \u2014 EMAILS a payment receipt to the invoice's recipient for an amount already received. This LEAVES THE BUILDING and cannot be recalled. It records nothing; use `record` for that.\n`record` APPENDS: calling it twice records two payments and can overpay. Read `paymentStatus` in the result rather than retrying on a timeout. Confirm with the user before `receipt`.\nNothing here moves money \u2014 `record` documents a payment that already happened outside Bookipi (cash, bank transfer). Removing recorded payments is clear_invoice_payments, its own tool.",
+      title: "Email a payment receipt",
+      description: "EMAIL a payment receipt to the invoice's recipient for an amount already received. This LEAVES THE BUILDING and cannot be recalled \u2014 preview with `plan: true` and confirm the recipient and amount with the user first.\nIt records nothing: use record_invoice_payment for that. Nothing here moves money.",
       inputSchema: {
-        action: external_exports.enum(["record", "receipt"]),
         invoice_id: external_exports.string().describe("Invoice id from list_invoices."),
-        amount: external_exports.number().optional().describe(
-          "record: omit to settle the full balance. receipt: REQUIRED \u2014 the amount the receipt is for."
-        ),
-        card_brand: external_exports.string().optional().describe("receipt only. Card brand to show, e.g. Visa."),
-        card_last4: external_exports.string().optional().describe("receipt only. Last four digits, for the customer's records."),
-        method: external_exports.enum(["cash", "check", "credit", "transfer", "card", "unknown"]).optional().describe("record only. `transfer` is a bank transfer. Defaults to cash."),
-        date: external_exports.string().optional().describe("record only. YYYY-MM-DD."),
-        note: external_exports.string().optional(),
-        plan: external_exports.boolean().optional().describe("Preview only; writes nothing.")
+        amount: external_exports.number().describe("The amount the receipt is for."),
+        date: external_exports.string().optional().describe("Payment date, YYYY-MM-DD."),
+        card_brand: external_exports.string().optional().describe("Card brand to show, e.g. Visa."),
+        card_last4: external_exports.string().optional().describe("Last four digits, for the customer's records."),
+        plan: planArg(
+          "Preview only. Returns the recipient and amount; sends nothing."
+        )
       },
+      // A receipt is an email to the customer: irreversible and open-world.
       annotations: {
         readOnlyHint: false,
-        // `clear` lives in clear_invoice_payments, but `receipt` emails the
-        // customer and cannot be recalled — destructive and open-world under
-        // OpenAI's definitions (see manage_customer).
         destructiveHint: true,
         idempotentHint: false,
         openWorldHint: true
       }
     },
     async (args) => {
-      try {
-        const inv = await getInvoice(args.invoice_id);
-        if (args.action === "receipt") {
-          if (args.amount === void 0) {
-            return fail(
-              'action "receipt" needs `amount` \u2014 the payment the receipt is for. Nothing was sent.'
-            );
-          }
-          const customer = inv?.["customer"];
-          const to = typeof customer?.["email"] === "string" && customer["email"] || typeof inv?.["recipientEmail"] === "string" && inv["recipientEmail"] || null;
-          const target = {
-            invoiceNumber: inv?.["no"] ?? null,
-            to,
-            amount: args.amount,
-            ...args.card_brand ? { cardBrand: args.card_brand } : {},
-            ...args.card_last4 ? { cardLast4: args.card_last4 } : {}
-          };
-          if (!to) {
-            return fail(
-              `${inv?.["no"] ?? "This invoice"} has no email address on its customer record, so there is nobody to send a receipt to.`
-            );
-          }
-          if (args.plan === true) {
-            return ok({
-              plan: { wouldSendReceipt: target },
-              action: "Nothing was sent. SHOW the user the recipient and the amount, get an explicit yes, then call again without `plan`. A receipt is an email and cannot be recalled."
-            });
-          }
-          const sent = await sendPaymentReceipt(args.invoice_id, {
-            amount: args.amount,
-            ...args.date ? { date: args.date } : {},
-            ...args.card_brand ? { brand: args.card_brand } : {},
-            ...args.card_last4 ? { last4: args.card_last4 } : {}
-          });
-          return ok({
-            receiptSent: target,
-            // Records nothing, and saying so stops an agent reporting the
-            // invoice as paid because it emailed a receipt.
-            note: 'A receipt was emailed. No payment was recorded \u2014 use action "record" for that.',
-            ...sent && typeof sent === "object" && "message" in sent ? { server: sent.message } : {}
-          });
-        }
-        const due = Number(inv?.["amountDue"] ?? 0);
-        if (args.plan === true) {
-          return ok({
-            plan: {
-              action: "record",
-              invoiceNumber: inv?.["no"] ?? null,
-              outstanding: due,
-              wouldRecord: args.amount ?? due,
-              settlesInvoice: (args.amount ?? due) >= due
-            },
-            note: "Nothing was recorded. Call again without `plan` to apply it."
-          });
-        }
-        const result = await markInvoicePaid(args.invoice_id, {
-          ...args.amount !== void 0 ? { amount: args.amount } : {},
-          ...args.method ? { method: args.method } : {},
-          ...args.date ? { date: args.date } : {},
-          ...args.note ? { note: args.note } : {}
-        });
-        return ok({
-          recorded: {
-            invoiceNumber: result.invoiceNo,
-            amount: result.recordedAmount ?? null,
-            paymentStatus: result.paymentStatus,
-            amountDue: result.amountDue,
-            total: result.total
-          }
-        });
-      } catch (err2) {
-        return fail(err2);
+      const inv = await getInvoice(args.invoice_id);
+      const customer = inv?.["customer"];
+      const to = typeof customer?.["email"] === "string" && customer["email"] || typeof inv?.["recipientEmail"] === "string" && inv["recipientEmail"] || null;
+      const target = {
+        invoiceNumber: inv?.["no"] ?? null,
+        to,
+        amount: args.amount,
+        ...args.card_brand ? { cardBrand: args.card_brand } : {},
+        ...args.card_last4 ? { cardLast4: args.card_last4 } : {}
+      };
+      if (!to) {
+        return fail(
+          `${inv?.["no"] ?? "This invoice"} has no email address on its customer record, so there is nobody to send a receipt to.`
+        );
       }
+      if (args.plan === true) {
+        return ok({
+          plan: { wouldSendReceipt: target },
+          action: "Nothing was sent. SHOW the user the recipient and the amount, get an explicit yes, then call again without `plan`. A receipt is an email and cannot be recalled."
+        });
+      }
+      const sent = await sendPaymentReceipt(args.invoice_id, {
+        amount: args.amount,
+        ...args.date ? { date: args.date } : {},
+        ...args.card_brand ? { brand: args.card_brand } : {},
+        ...args.card_last4 ? { last4: args.card_last4 } : {}
+      });
+      return ok({
+        receiptSent: target,
+        // Records nothing, and saying so stops an agent reporting the
+        // invoice as paid because it emailed a receipt.
+        note: "A receipt was emailed. No payment was recorded \u2014 use record_invoice_payment for that.",
+        ...sent && typeof sent === "object" && "message" in sent ? { server: sent.message } : {}
+      });
     }
   );
   server.registerTool(
     "clear_invoice_payments",
     {
       title: "Clear every payment on an invoice",
-      description: "\u{1F534} Removes EVERY payment recorded on the invoice, putting it back to unpaid. For an entry made by mistake or a payment that bounced. It does not reverse one payment, and the amounts are not recoverable here.\nALWAYS PREVIEW FIRST. Call with `plan: true`, show the user the invoice number and how many payments would go, and only call again without `plan` once they have confirmed. Recording money is manage_invoice_payment.",
+      description: "\u{1F534} Removes EVERY payment recorded on the invoice, putting it back to unpaid. For an entry made by mistake or a payment that bounced. It does not reverse one payment, and the amounts are not recoverable here.\nALWAYS PREVIEW FIRST. Call with `plan: true`, show the user the invoice number and how many payments would go, and only call again without `plan` once they have confirmed. Recording money is record_invoice_payment.",
       inputSchema: {
         invoice_id: external_exports.string().describe("Invoice id from list_invoices."),
-        plan: external_exports.boolean().optional().describe(
+        plan: planArg(
           "Preview only. Returns the invoice number and how many payments would be cleared; clears nothing."
         )
       },
-      // Split out of manage_invoice_payment so the destructive flag sits on
+      // Its own tool so the destructive flag sits on
       // the one action that can wipe payment history — same shape as
       // delete_invoice.
       annotations: {
@@ -81860,616 +81201,27 @@ If this is genuinely a second invoice, pass an explicit \`number\` to say so \u2
       }
     },
     async (args) => {
-      try {
-        const inv = await getInvoice(args.invoice_id);
-        const payments = Array.isArray(inv?.["payments"]) ? inv["payments"] : [];
-        if (args.plan === true) {
-          return ok({
-            plan: {
-              invoiceNumber: inv?.["no"] ?? null,
-              paymentsToClear: payments.length,
-              amountDueAfter: inv?.["total"] ?? null
-            },
-            note: payments.length === 0 ? "This invoice has no payments \u2014 clearing would change nothing." : "Nothing was cleared. Confirm with the user, then call again without `plan`. The amounts are not recoverable here."
-          });
-        }
-        const r = await voidInvoicePayments(args.invoice_id);
+      const inv = await getInvoice(args.invoice_id);
+      const payments = Array.isArray(inv?.["payments"]) ? inv["payments"] : [];
+      if (args.plan === true) {
         return ok({
-          cleared: {
-            invoiceNumber: r.invoiceNo,
-            paymentStatus: r.paymentStatus,
-            amountDue: r.amountDue,
-            total: r.total
-          }
-        });
-      } catch (err2) {
-        return fail(err2);
-      }
-    }
-  );
-  server.registerTool(
-    "create_expense",
-    {
-      title: "Log an expense",
-      description: "Record money spent \u2014 'log this receipt', 'I spent 500 on fuel'.\n`category` is the KEY from expense_categories, not a display name: a name is rejected. Call that first when the category is not already known.\nThis records the figures only. Attaching a receipt image is a CLI flow (upload then scan) and is not available here.",
-      inputSchema: {
-        amount: external_exports.number().describe("Amount spent, in the company's currency."),
-        merchant: external_exports.string().optional().describe("Who was paid."),
-        category: external_exports.string().optional().describe("Category KEY from expense_categories, e.g. Office_Supplies."),
-        date: external_exports.string().optional().describe("Purchase date, YYYY-MM-DD."),
-        notes: external_exports.string().optional(),
-        plan: external_exports.boolean().optional().describe("Preview only; writes nothing.")
-      },
-      annotations: {
-        readOnlyHint: false,
-        destructiveHint: false,
-        idempotentHint: false,
-        openWorldHint: false
-      }
-    },
-    async (args) => {
-      try {
-        if (args.plan === true) {
-          return ok({
-            plan: {
-              amount: args.amount,
-              merchant: args.merchant ?? null,
-              category: args.category ?? null
-            },
-            note: "Nothing was logged. Call again without `plan` to record it."
-          });
-        }
-        const data = await createExpense({
-          amount: args.amount,
-          ...args.merchant ? { merchantName: args.merchant } : {},
-          ...args.category ? { categoryName: args.category } : {},
-          ...args.date ? { purchaseDate: args.date } : {},
-          ...args.notes ? { notes: args.notes } : {}
-        });
-        const res = data;
-        if (!res?.recordId) {
-          return fail(
-            "The create returned no id, so it is unclear whether the expense was logged. Call list_expenses to check BEFORE retrying \u2014 a second call logs a second expense."
-          );
-        }
-        return ok({
-          logged: {
-            id: res.recordId,
-            amount: args.amount,
-            merchant: args.merchant ?? null,
-            category: args.category ?? null
-          }
-        });
-      } catch (err2) {
-        return fail(err2);
-      }
-    }
-  );
-  server.registerTool(
-    "manage_deal",
-    {
-      title: "Create, update or advance a deal",
-      description: "Pipeline edits. `action` picks the operation:\n  create  \u2014 needs customer_id and name. value and due_date optional.\n  update  \u2014 needs deal_id, plus whatever is changing.\n  advance \u2014 needs deal_id and status; moves it to that stage.\nStages: leads, qualified, meeting, proposal, contract, closed_win, closed_lose. `advance` is the one to use for 'we won it' \u2014 set status to closed_win rather than editing fields.\nDeals are internal, so nothing here emails anyone.",
-      inputSchema: {
-        action: external_exports.enum(["create", "update", "advance"]).describe("Which operation. See the description for required fields."),
-        deal_id: external_exports.string().optional().describe("Required for update and advance."),
-        customer_id: external_exports.string().optional().describe("Required for create."),
-        name: external_exports.string().optional().describe("Required for create."),
-        description: external_exports.string().optional(),
-        value: external_exports.number().optional().describe("Deal value in company currency."),
-        due_date: external_exports.string().optional().describe("YYYY-MM-DD."),
-        status: external_exports.enum(DEAL_STATUSES).optional().describe("Required for advance."),
-        plan: external_exports.boolean().optional().describe("Preview only; writes nothing.")
-      },
-      annotations: {
-        readOnlyHint: false,
-        // `update` changes only the fields explicitly passed and nothing here
-        // deletes, so this stopped claiming destructive when the delete-bearing
-        // tools were split (delete_customer et al). The line drawn across this
-        // surface: destructive = can destroy data the caller did NOT hand it —
-        // deletes, wholesale replacements (update_invoice's line items),
-        // clearing payment history. Field-level edits are not that.
-        destructiveHint: false,
-        idempotentHint: false,
-        openWorldHint: false
-      }
-    },
-    async (args) => {
-      try {
-        const need = (field, value) => {
-          if (value === void 0 || value === null || value === "") {
-            throw new Error(
-              `action "${args.action}" needs ${field}. See the tool description.`
-            );
-          }
-        };
-        if (args.action === "create") {
-          need("customer_id", args.customer_id);
-          need("name", args.name);
-          if (args.plan === true) {
-            return ok({
-              plan: { action: "create", name: args.name, value: args.value ?? null },
-              note: "Nothing was created. Call again without `plan`."
-            });
-          }
-          const data = await createDeal({
-            customerId: args.customer_id,
-            name: args.name,
-            ...args.description ? { description: args.description } : {},
-            ...args.value !== void 0 ? { value: args.value } : {},
-            ...args.due_date ? { dueDate: args.due_date } : {},
-            ...args.status ? { status: args.status } : {}
-          });
-          const rec = data.projectPipelinesCreateOne?.record;
-          return ok({
-            created: {
-              id: rec?.["_id"] ?? null,
-              name: rec?.["name"] ?? args.name,
-              status: rec?.["status"] ?? args.status ?? "leads"
-            }
-          });
-        }
-        if (args.action === "advance") {
-          need("deal_id", args.deal_id);
-          need("status", args.status);
-          if (args.plan === true) {
-            return ok({
-              plan: { action: "advance", deal_id: args.deal_id, to: args.status },
-              note: "Nothing was moved. Call again without `plan`."
-            });
-          }
-          const r = await advanceDealStage(args.deal_id, args.status);
-          return ok({ advanced: r });
-        }
-        need("deal_id", args.deal_id);
-        const record2 = {
-          ...args.name ? { name: args.name } : {},
-          ...args.description ? { description: args.description } : {},
-          ...args.value !== void 0 ? { value: args.value } : {},
-          ...args.due_date ? { dueDate: args.due_date } : {},
-          ...args.status ? { status: args.status } : {}
-        };
-        if (Object.keys(record2).length === 0) {
-          return fail("Nothing to change \u2014 pass at least one field to update.");
-        }
-        if (args.plan === true) {
-          return ok({
-            plan: { action: "update", deal_id: args.deal_id, changing: Object.keys(record2) },
-            note: "Nothing was changed. Call again without `plan`."
-          });
-        }
-        await updateDeal(args.deal_id, record2);
-        return ok({ updated: { id: args.deal_id, fields: Object.keys(record2) } });
-      } catch (err2) {
-        return fail(err2);
-      }
-    }
-  );
-  server.registerTool(
-    "manage_proposal",
-    {
-      title: "Draft, send, update, duplicate or convert a proposal",
-      description: "`action` picks the operation:\n  send      \u2014 needs proposal_id and recipients. THIS EMAILS THE CLIENT and cannot be unsent.\n  duplicate \u2014 needs proposal_id. Copies it as a fresh draft.\n  update    \u2014 needs proposal_id. Link a customer, set the title, or toggle draft. Only the fields you pass change.\n  to_invoice \u2014 needs proposal_id. Creates an INVOICE from the accepted proposal, carrying its line items over. This is the quote-to-cash step; the proposal itself is unchanged.\n  draft     \u2014 AI-writes a NEW proposal from `describe` plus at least one item. Returns an editor link and sends nothing.\nGet ids from list_proposals. Deleting is delete_proposal, its own tool.\nConfirm with the user before send \u2014 it leaves the building.",
-      inputSchema: {
-        action: external_exports.enum([
-          "send",
-          "duplicate",
-          "update",
-          "to_invoice",
-          "draft"
-        ]),
-        proposal_id: external_exports.string().optional().describe("Proposal id from list_proposals. Not used by draft."),
-        describe: external_exports.string().optional().describe("draft: who the proposal is for and what it covers."),
-        items: external_exports.array(
-          external_exports.union([
-            external_exports.string(),
-            external_exports.object({
-              name: external_exports.string(),
-              price: external_exports.number(),
-              quantity: external_exports.number().optional(),
-              description: external_exports.string().optional()
-            })
-          ])
-        ).optional().describe(
-          "draft: an item id from list_items, or a line as {name, price, quantity}."
-        ),
-        expires_in_days: external_exports.number().optional().describe("draft: defaults to 30."),
-        customer_id: external_exports.string().optional().describe("update: link this customer, as returned by list_customers."),
-        title: external_exports.string().optional().describe("update: the proposal's title."),
-        is_draft: external_exports.boolean().optional().describe(
-          "update: false marks it ready to send, true puts it back to draft."
-        ),
-        recipients: external_exports.array(external_exports.string()).optional().describe("Required for send. Email addresses."),
-        subject: external_exports.string().optional(),
-        message: external_exports.string().optional(),
-        plan: external_exports.boolean().optional().describe("Preview only; writes nothing.")
-      },
-      annotations: {
-        readOnlyHint: false,
-        // `delete` lives in delete_proposal, but `send` emails the client and
-        // cannot be unsent — destructive and open-world under OpenAI's
-        // definitions (see manage_customer).
-        destructiveHint: true,
-        idempotentHint: false,
-        openWorldHint: true
-      }
-    },
-    async (args) => {
-      try {
-        if (args.action === "draft") {
-          if (!args.describe || !args.items || args.items.length === 0) {
-            return fail(
-              'action "draft" needs `describe` and at least one item in `items` \u2014 a proposal with no items has nothing to accept. Nothing was created.'
-            );
-          }
-          const { proposal, editUrlPlain } = await draftProposal({
-            description: args.describe,
-            items: args.items,
-            ...args.customer_id ? { customerId: args.customer_id } : {},
-            ...args.expires_in_days ? { expiresInDays: args.expires_in_days } : {}
-          });
-          return ok({
-            draft: {
-              id: proposal["_id"] ?? null,
-              title: proposal["title"] ?? null,
-              no: proposal["no"] ?? null,
-              editUrl: editUrlPlain
-            },
-            action: 'NOTHING WAS SENT \u2014 this is a draft. Give the user the editUrl to review it; they will be asked to sign in, as the link carries no credentials. Then action "send" emails it.'
-          });
-        }
-        if (!args.proposal_id) {
-          return fail(
-            `action "${args.action}" needs \`proposal_id\`. Nothing was done.`
-          );
-        }
-        if (args.action === "send") {
-          if (!args.recipients || args.recipients.length === 0) {
-            return fail(
-              'action "send" needs at least one recipient. Nothing was sent.'
-            );
-          }
-          if (args.plan === true) {
-            return ok({
-              plan: { action: "send", to: args.recipients },
-              note: "Nothing was sent. Call again without `plan` to send it."
-            });
-          }
-          await sendProposal({
-            id: args.proposal_id,
-            recipients: args.recipients,
-            ...args.subject ? { subject: args.subject } : {},
-            ...args.message ? { message: args.message } : {}
-          });
-          return ok({ sent: { proposalId: args.proposal_id, to: args.recipients } });
-        }
-        if (args.action === "duplicate") {
-          if (args.plan === true) {
-            return ok({
-              plan: { action: "duplicate", proposal_id: args.proposal_id },
-              note: "Nothing was copied. Call again without `plan`."
-            });
-          }
-          const data = await duplicateProposal(args.proposal_id);
-          const rec = data.proposalsDuplicate?.record;
-          return ok({ duplicated: { id: rec?.["_id"] ?? null, no: rec?.["no"] ?? null } });
-        }
-        if (args.action === "update") {
-          const record2 = {
-            ...args.customer_id ? { customerId: args.customer_id } : {},
-            ...args.title !== void 0 ? { title: args.title } : {},
-            ...args.is_draft !== void 0 ? { isDraft: args.is_draft } : {}
-          };
-          if (Object.keys(record2).length === 0) {
-            return fail(
-              'action "update" needs at least one of customer_id, title or is_draft. Nothing was changed.'
-            );
-          }
-          if (args.plan === true) {
-            return ok({
-              plan: { action: "update", proposal_id: args.proposal_id, changes: record2 },
-              note: "Nothing was changed. Call again without `plan` to apply it."
-            });
-          }
-          await updateProposal(args.proposal_id, record2);
-          return ok({ updated: { id: args.proposal_id, changed: record2 } });
-        }
-        if (args.plan === true) {
-          return ok({
-            plan: { action: "to_invoice", proposal_id: args.proposal_id },
-            note: "Nothing was created. Call again without `plan` to create the invoice. Creating a document consumes subscription quota."
-          });
-        }
-        const made = await createInvoiceFromProposal(args.proposal_id);
-        const inv = made.invoicesCreateOneFromProposal?.record;
-        return ok({
-          invoice: {
-            id: inv?.["_id"] ?? null,
+          plan: {
             invoiceNumber: inv?.["no"] ?? null,
-            total: inv?.["total"] ?? null
+            paymentsToClear: payments.length,
+            amountDueAfter: inv?.["total"] ?? null
           },
-          // The raw envelope key is not guaranteed across backend versions;
-          // say so rather than reporting nulls as if they were the answer.
-          ...inv ? {} : { note: "Created, but the response shape was unexpected \u2014 call list_invoices to confirm." }
+          note: payments.length === 0 ? "This invoice has no payments \u2014 clearing would change nothing." : "Nothing was cleared. Confirm with the user, then call again without `plan`. The amounts are not recoverable here."
         });
-      } catch (err2) {
-        return fail(err2);
       }
-    }
-  );
-  server.registerTool(
-    "delete_proposal",
-    {
-      title: "Delete a proposal",
-      description: "Delete a proposal permanently. Not recoverable from here.\nALWAYS PREVIEW FIRST. Call with `plan: true`, show the user the title and number that came back, and only call again without `plan` once they have confirmed that specific proposal. If the intent is to revise or resend, manage_proposal's update and duplicate do that without destroying anything.",
-      inputSchema: {
-        proposal_id: external_exports.string().describe("Proposal id, as returned by list_proposals."),
-        plan: external_exports.boolean().optional().describe(
-          "Preview only. Returns which proposal would be deleted \u2014 title and number \u2014 and deletes nothing."
-        )
-      },
-      // Split out of manage_proposal so the destructive flag sits on the one
-      // action that earns it, the same shape as delete_invoice.
-      annotations: {
-        readOnlyHint: false,
-        destructiveHint: true,
-        idempotentHint: false,
-        openWorldHint: false
-      }
-    },
-    async (args) => {
-      try {
-        const prop = await getProposalById(args.proposal_id);
-        if (!prop) {
-          return fail(`No proposal found with id ${args.proposal_id}.`);
+      const r = await voidInvoicePayments(args.invoice_id);
+      return ok({
+        cleared: {
+          invoiceNumber: r.invoiceNo,
+          paymentStatus: r.paymentStatus,
+          amountDue: r.amountDue,
+          total: r.total
         }
-        const target = {
-          id: args.proposal_id,
-          title: prop["title"] ?? null,
-          no: prop["no"] ?? null,
-          status: prop["status"] ?? null
-        };
-        if (args.plan === true) {
-          return ok({
-            plan: { wouldDelete: target },
-            note: "Nothing was deleted. Confirm this is the right proposal with the user, then call again without `plan`. This cannot be undone."
-          });
-        }
-        const gone = await deleteProposal(args.proposal_id);
-        return ok({ deleted: { ...target, record: gone } });
-      } catch (err2) {
-        return fail(err2);
-      }
-    }
-  );
-  server.registerTool(
-    "manage_item",
-    {
-      title: "Create or update a product or service",
-      description: "The catalogue an invoice draws line items from. `action` picks:\n  create \u2014 needs name and price.\n  update \u2014 needs item_id, plus whatever is changing.\nPrice is in the company's currency, NOT cents. Attaching a product photo is a CLI flow and is not available here.\ncreate_invoice takes free-text line items, so a catalogue entry is only needed when the item should be reusable \u2014 do not create one just to invoice something once.",
-      inputSchema: {
-        action: external_exports.enum(["create", "update"]),
-        company_id: external_exports.string().describe("Company the item belongs to, as returned by whoami."),
-        item_id: external_exports.string().optional().describe("Required for update."),
-        name: external_exports.string().optional().describe("Required for create."),
-        price: external_exports.number().optional().describe("Required for create. Not cents."),
-        description: external_exports.string().optional(),
-        product_code: external_exports.string().optional(),
-        plan: external_exports.boolean().optional().describe("Preview only; writes nothing.")
-      },
-      annotations: {
-        readOnlyHint: false,
-        // `update` changes only the fields explicitly passed; nothing here
-        // deletes. Same line as manage_deal — see the comment there.
-        destructiveHint: false,
-        idempotentHint: false,
-        openWorldHint: false
-      }
-    },
-    async (args) => {
-      try {
-        if (args.action === "create") {
-          if (!args.name || args.price === void 0) {
-            return fail(
-              'action "create" needs name and price. Nothing was created.'
-            );
-          }
-          if (args.plan === true) {
-            return ok({
-              plan: { action: "create", name: args.name, price: args.price },
-              note: "Nothing was created. Call again without `plan`."
-            });
-          }
-          const data = await createItem({
-            name: args.name,
-            price: args.price,
-            company: args.company_id,
-            ...args.description ? { description: args.description } : {},
-            ...args.product_code ? { productCode: args.product_code } : {}
-          });
-          const rec = data.itemsCreateOne?.record;
-          return ok({
-            created: {
-              id: rec?.["_id"] ?? null,
-              name: rec?.["name"] ?? args.name,
-              price: rec?.["price"] ?? args.price
-            }
-          });
-        }
-        if (!args.item_id) {
-          return fail('action "update" needs item_id. Nothing was changed.');
-        }
-        const record2 = {
-          ...args.name ? { name: args.name } : {},
-          ...args.price !== void 0 ? { price: args.price } : {},
-          ...args.description ? { description: args.description } : {},
-          ...args.product_code ? { productCode: args.product_code } : {}
-        };
-        if (Object.keys(record2).length === 0) {
-          return fail("Nothing to change \u2014 pass at least one field to update.");
-        }
-        if (args.plan === true) {
-          return ok({
-            plan: { action: "update", item_id: args.item_id, changing: Object.keys(record2) },
-            note: "Nothing was changed. Call again without `plan`."
-          });
-        }
-        await updateItem(args.item_id, record2);
-        return ok({ updated: { id: args.item_id, fields: Object.keys(record2) } });
-      } catch (err2) {
-        return fail(err2);
-      }
-    }
-  );
-  server.registerTool(
-    "manage_paylink",
-    {
-      title: "Create a payment link, or email one",
-      description: "A shareable link that takes a card payment \u2014 for money owed without an invoice, or a deposit before work starts.\nThis tool never moves money: funds move only on Bookipay's hosted checkout, in the customer's own browser, when they choose to pay.\n`amount` is in the company's CURRENCY, not cents; this converts. Omit it and pass `let_customer_choose` to let the payer decide the amount, which is the shape for tips or open donations.\n`create` does NOT send it \u2014 the result carries the URL to give the user. `send` emails an existing link to a customer, which LEAVES THE BUILDING; it needs paylink_id and customer_id.\n\u26A0 send may fail with a recaptcha error: the mutation requires a token and the server-side bypass for authenticated agent requests has not shipped. If it does, say so and let the user share the URL themselves rather than retrying.\ncreate requires the account's card payments to be set up; if it fails on that, say so rather than retrying.",
-      inputSchema: {
-        action: external_exports.enum(["create", "send"]).default("create"),
-        paylink_id: external_exports.string().optional().describe("send: the link to email, from list_paylinks."),
-        customer_id: external_exports.string().optional().describe("send: who it is for, from list_customers."),
-        to: external_exports.array(external_exports.string()).optional().describe("send: recipients. Defaults to the customer's address."),
-        title: external_exports.string().optional().describe("create: what the payer sees they are paying for."),
-        amount: external_exports.number().optional().describe("In the company's currency. Omit with let_customer_choose."),
-        currency: external_exports.string().optional().describe("ISO code, e.g. PHP. Defaults to the company's."),
-        description: external_exports.string().optional(),
-        let_customer_choose: external_exports.boolean().optional().describe("Let the payer enter their own amount."),
-        plan: external_exports.boolean().optional().describe("Preview only; writes nothing.")
-      },
-      annotations: {
-        readOnlyHint: false,
-        destructiveHint: true,
-        idempotentHint: false,
-        openWorldHint: true
-      }
-    },
-    async (args) => {
-      try {
-        if (args.action === "send") {
-          if (!args.paylink_id || !args.customer_id) {
-            return fail(
-              'action "send" needs `paylink_id` and `customer_id`. Nothing was sent.'
-            );
-          }
-          const link2 = await getPaymentLink(args.paylink_id);
-          if (!link2) {
-            return fail(`No payment link found with id ${args.paylink_id}.`);
-          }
-          const url2 = paymentLinkUrl(link2.shortCode);
-          if (!url2) {
-            return fail(
-              "That link has no shareable URL \u2014 it is missing a short code, so there is nothing to send."
-            );
-          }
-          const who = await getCustomerById(args.customer_id);
-          const to = args.to && args.to.length > 0 ? args.to : typeof who?.["email"] === "string" && who["email"] ? [who["email"]] : [];
-          if (to.length === 0) {
-            return fail(
-              "That customer has no email address on record and none was passed, so there is nobody to send the link to."
-            );
-          }
-          const cur = link2.currency ? link2.currency.toUpperCase() : void 0;
-          const amountStr = link2.allowCustomerToInputAmount ? "" : link2.price != null ? formatCents(link2.price, cur) : "";
-          const built = buildPaymentLinkEmail({
-            title: link2.title ?? "",
-            amountStr,
-            url: url2
-          });
-          if (args.plan === true) {
-            return ok({
-              plan: {
-                wouldSend: { to, link: url2, amount: amountStr || "payer chooses" }
-              },
-              action: "Nothing was sent. SHOW the user the recipients and the amount, get a yes, then call again without `plan`."
-            });
-          }
-          const sent = await sendCustomerEmail({
-            customerId: args.customer_id,
-            to,
-            cc: [],
-            bcc: [],
-            subject: built.subject,
-            html: built.html,
-            text: built.text,
-            replyTo: null,
-            projectPipelineId: null
-          });
-          return ok({
-            sent: { to, url: url2, amount: amountStr || "payer chooses" },
-            server: sent?.customersSendEmail?.message ?? null
-          });
-        }
-        if (!args.title) {
-          return fail('action "create" needs `title`. Nothing was created.');
-        }
-        const open2 = args.let_customer_choose === true;
-        if (!open2 && args.amount === void 0) {
-          return fail(
-            "Pass an amount, or let_customer_choose to let the payer decide."
-          );
-        }
-        if (args.plan === true) {
-          return ok({
-            plan: {
-              title: args.title,
-              amount: open2 ? "payer decides" : args.amount
-            },
-            note: "Nothing was created. Call again without `plan`."
-          });
-        }
-        const link = await createPaymentLink({
-          title: args.title,
-          description: args.description ?? "",
-          allowCustomerToInputAmount: open2,
-          price: open2 ? 0 : Math.round((args.amount ?? 0) * 100),
-          currency: args.currency ?? ""
-        });
-        return ok({
-          created: {
-            id: link?._id ?? null,
-            title: link?.title ?? args.title,
-            amount: open2 ? null : args.amount,
-            shortCode: link?.shortCode ?? null
-          },
-          action: "Give the user the link. Check paylink_status later to see whether it was paid."
-        });
-      } catch (err2) {
-        return fail(err2);
-      }
-    }
-  );
-  server.registerTool(
-    "delete_expense",
-    {
-      title: "Delete a logged expense",
-      description: "Remove an expense \u2014 a duplicate, or one logged against the wrong account. Not recoverable here.\nGet the id from list_expenses. There is no update: a wrong amount means deleting this and logging it again.",
-      inputSchema: {
-        expense_id: external_exports.string().describe("Expense id from list_expenses."),
-        plan: external_exports.boolean().optional().describe("Preview only; deletes nothing.")
-      },
-      annotations: {
-        readOnlyHint: false,
-        destructiveHint: true,
-        // False, the same as every other delete_* on this surface.
-        idempotentHint: false,
-        openWorldHint: false
-      }
-    },
-    async (args) => {
-      try {
-        if (args.plan === true) {
-          return ok({
-            plan: { expense_id: args.expense_id },
-            note: "Nothing was deleted. Call again without `plan` to delete it."
-          });
-        }
-        const gone = await removeExpense(args.expense_id);
-        return ok({ deleted: { id: args.expense_id, record: gone } });
-      } catch (err2) {
-        return fail(err2);
-      }
+      });
     }
   );
   server.registerTool(
@@ -82479,13 +81231,13 @@ If this is genuinely a second invoice, pass an explicit \`number\` to say so \u2
       description: "Chase money owed. THIS EMAILS CUSTOMERS and cannot be unsent.\nTarget one invoice with `invoice_id`, or leave it out to sweep every overdue invoice \u2014 which emails MANY customers in one call, so use `plan` first and show the user the list.\nFilters for the sweep: `min_days_overdue` skips the recently-late, `max_days_overdue` avoids reopening ancient accounts, `customer` matches a name or email. An invoice that is unpaid but not yet overdue gets gentler wording automatically.\nThe result reports sent, skipped and failed separately \u2014 report those numbers rather than saying 'done'.",
       inputSchema: {
         invoice_id: external_exports.string().optional().describe("Remind just this invoice. Omit to sweep all overdue."),
-        min_days_overdue: external_exports.number().int().optional(),
-        max_days_overdue: external_exports.number().int().optional(),
+        min_days_overdue: external_exports.number().int().optional().describe("Only invoices at least this many days overdue. Defaults to 0."),
+        max_days_overdue: external_exports.number().int().optional().describe("Skip invoices more than this many days overdue."),
         customer: external_exports.string().optional().describe("Only invoices for customers matching this name or email."),
         limit: external_exports.number().int().positive().max(200).optional().describe("Cap the sweep. Defaults to 50."),
         subject: external_exports.string().optional(),
         message: external_exports.string().optional(),
-        plan: external_exports.boolean().optional().describe(
+        plan: planArg(
           "Preview only \u2014 returns who WOULD be emailed and sends nothing. Do this before any sweep."
         )
       },
@@ -82497,386 +81249,49 @@ If this is genuinely a second invoice, pass an explicit \`number\` to say so \u2
       }
     },
     async (args) => {
-      try {
-        const result = await remindInvoices({
-          ...args.invoice_id ? { invoiceId: args.invoice_id } : {},
-          ...args.min_days_overdue !== void 0 ? { minDaysOverdue: args.min_days_overdue } : {},
-          ...args.max_days_overdue !== void 0 ? { maxDaysOverdue: args.max_days_overdue } : {},
-          ...args.customer ? { customer: args.customer } : {},
-          ...args.limit !== void 0 ? { limit: args.limit } : {},
-          ...args.subject ? { subject: args.subject } : {},
-          ...args.message ? { message: args.message } : {},
-          dryRun: args.plan === true
-        });
-        const who = result.plan.map((e) => ({
-          invoiceNo: e.invoiceNo,
-          customer: e.customerName,
-          to: e.customerEmail,
-          daysOverdue: e.daysOverdue,
-          amount: e.amountDue,
-          ...e.status !== "planned" ? { status: e.status } : {},
-          ...e.skipReason ? { skipReason: e.skipReason } : {}
-        }));
-        if (result.dryRun) {
-          const willSend = who.filter((e) => !e.status);
-          const skipped = who.filter((e) => e.status === "skipped");
-          return ok({
-            plan: {
-              wouldEmail: willSend.length,
-              recipients: willSend.slice(0, 25),
-              ...skipped.length > 0 ? {
-                skipped: skipped.length,
-                // One reason is enough — they share it.
-                skippedBecause: skipped[0]?.skipReason ?? null
-              } : {}
-            },
-            totalCandidates: result.totalCandidates,
-            note: willSend.length === 0 ? "Nothing would be sent \u2014 every candidate was skipped." : "Nothing was sent. Show the user this list, then call again without `plan`."
-          });
-        }
+      const result = await remindInvoices({
+        ...args.invoice_id ? { invoiceId: args.invoice_id } : {},
+        ...args.min_days_overdue !== void 0 ? { minDaysOverdue: args.min_days_overdue } : {},
+        ...args.max_days_overdue !== void 0 ? { maxDaysOverdue: args.max_days_overdue } : {},
+        ...args.customer ? { customer: args.customer } : {},
+        ...args.limit !== void 0 ? { limit: args.limit } : {},
+        ...args.subject ? { subject: args.subject } : {},
+        ...args.message ? { message: args.message } : {},
+        dryRun: args.plan === true
+      });
+      const who = result.plan.map((e) => ({
+        invoiceNo: e.invoiceNo,
+        customer: e.customerName,
+        to: e.customerEmail,
+        daysOverdue: e.daysOverdue,
+        amount: e.amountDue,
+        ...e.status !== "planned" ? { status: e.status } : {},
+        ...e.skipReason ? { skipReason: e.skipReason } : {}
+      }));
+      if (result.dryRun) {
+        const willSend = who.filter((e) => !e.status);
+        const skipped = who.filter((e) => e.status === "skipped");
         return ok({
-          sent: result.sent,
-          skipped: result.skipped,
-          failed: result.failed,
-          totalCandidates: result.totalCandidates,
-          reminded: who.slice(0, 25)
-        });
-      } catch (err2) {
-        return fail(err2);
-      }
-    }
-  );
-  server.registerTool(
-    "manage_contract",
-    {
-      title: "Draft, finalize or send a contract",
-      description: '`action` picks the operation:\n  draft \u2014 AI-writes a contract from a description, e.g. "mutual NDA with Acme". TAKES 15-30 SECONDS; tell the user before waiting. Returns an editor link where clauses are tweaked, a signer attached and the signature placed. It sends nothing.\n  send  \u2014 moves an EXISTING contract to pending_signature. THIS EMAILS THE SIGNERS and cannot be unsent. The contract must already have recipients; this does not add them, and sending one with none leaves it stuck with nobody to sign.\n  from_proposal \u2014 same as draft, but built from an ACCEPTED proposal: its dates, value and customer become the terms, and the customer becomes the suggested signer. Needs proposal_id.\n  finalize \u2014 turns an AI draft into a real contract record and renders its PDF. Needs contract_id (the DRAFT\'s id). Also slow. Still sends nothing.\nGet ids from list_contracts. Confirm before send, and report who it went to.',
-      inputSchema: {
-        action: external_exports.enum(["send", "draft", "from_proposal", "finalize"]),
-        contract_id: external_exports.string().optional().describe(
-          "send: contract id from list_contracts. finalize: the AI DRAFT's id."
-        ),
-        proposal_id: external_exports.string().optional().describe("from_proposal: an accepted proposal, from list_proposals."),
-        describe: external_exports.string().optional().describe(
-          'draft: what to create, e.g. "service agreement for a 6-month SEO retainer". Say what it covers and with whom.'
-        ),
-        jurisdiction: external_exports.string().optional().describe("draft: country slug. Inferred from the company if omitted."),
-        industry: external_exports.string().optional().describe("draft: the clauses adapt to it. Pass the real industry."),
-        signer_name: external_exports.string().optional().describe("draft: pre-fills the editor."),
-        signer_email: external_exports.string().optional().describe("draft: with signer_name."),
-        plan: external_exports.boolean().optional().describe("send: reports who it would go to; sends nothing.")
-      },
-      annotations: {
-        readOnlyHint: false,
-        destructiveHint: true,
-        idempotentHint: false,
-        openWorldHint: true
-      }
-    },
-    async (args) => {
-      try {
-        if (args.action === "draft") {
-          if (!args.describe) {
-            return fail(
-              'action "draft" needs `describe` \u2014 what the contract should cover and with whom. Nothing was created.'
-            );
-          }
-          const drafted = await draftContract({
-            whatToCreate: args.describe,
-            ...args.jurisdiction ? { jurisdiction: args.jurisdiction } : {},
-            ...args.industry ? { industry: args.industry } : {},
-            ...args.signer_name && args.signer_email ? {
-              signer: {
-                fullName: args.signer_name,
-                email: args.signer_email
-              }
+          plan: {
+            wouldEmail: willSend.length,
+            recipients: willSend.slice(0, 25),
+            ...skipped.length > 0 ? {
+              skipped: skipped.length,
+              // One reason is enough — they share it.
+              skippedBecause: skipped[0]?.skipReason ?? null
             } : {}
-          });
-          return ok({
-            draft: {
-              id: drafted.aiDocId,
-              title: drafted.title,
-              clauses: drafted.clauseCount,
-              jurisdiction: drafted.jurisdiction,
-              industry: drafted.industry,
-              editUrl: drafted.editUrlPlain
-            },
-            ...drafted.jurisdictionNote ? { note: drafted.jurisdictionNote } : {},
-            action: 'NOTHING WAS SENT \u2014 this is an AI draft. Give the user the editUrl: clauses are edited, a signer attached and the signature placed there. They will be asked to sign in, because this link deliberately carries no credentials. Once they have added a signer, action "send" emails it.'
-          });
-        }
-        if (args.action === "from_proposal") {
-          if (!args.proposal_id) {
-            return fail(
-              'action "from_proposal" needs `proposal_id`. Nothing was created.'
-            );
-          }
-          const built = await contractFromProposal({
-            proposalId: args.proposal_id,
-            ...args.jurisdiction ? { jurisdiction: args.jurisdiction } : {},
-            ...args.industry ? { industry: args.industry } : {}
-          });
-          return ok({
-            draft: {
-              id: built.aiDocId,
-              title: built.title,
-              clauses: built.clauseCount,
-              editUrl: built.editUrlPlain,
-              suggestedSigner: built.signer?.email ?? null
-            },
-            source: built.source,
-            action: 'NOTHING WAS SENT. Give the user the editUrl to review the clauses; they will be asked to sign in, as the link carries no credentials. Then action "finalize", then "send".'
-          });
-        }
-        if (args.action === "finalize") {
-          if (!args.contract_id) {
-            return fail(
-              'action "finalize" needs `contract_id` \u2014 the AI draft to finalize. Nothing was created.'
-            );
-          }
-          const done = await finalizeContract({ aiDocId: args.contract_id });
-          return ok({
-            contract: {
-              id: done.contractId,
-              title: done.title,
-              status: done.status,
-              pdfUploaded: done.pdfUploaded,
-              signerAttached: done.signerAttached,
-              editorUrl: done.editorUrlPlain
-            },
-            // Non-fatal: the contract exists. Reporting these as failure would
-            // send the user hunting for a record that is already there.
-            ...done.warnings.length ? { warnings: done.warnings } : {},
-            action: 'The contract record exists and NOTHING WAS SENT. If signerAttached is false, the user must attach a signer in the editor before action "send" will work.'
-          });
-        }
-        if (!args.contract_id) {
-          return fail('action "send" needs `contract_id`. Nothing was sent.');
-        }
-        const doc = await getDocument(args.contract_id);
-        if (!doc) return fail(`No contract found with id ${args.contract_id}.`);
-        const recipients = Array.isArray(doc["recipients"]) ? doc["recipients"] : [];
-        const signers = recipients.filter((r) => r["mySelf"] !== true);
-        if (signers.length === 0) {
-          return fail(
-            `${String(doc["title"] ?? "That contract")} has no signer to send to. Add a recipient in the app first \u2014 moving it to pending_signature with nobody to sign leaves it stuck.`
-          );
-        }
-        const to = signers.map((r) => String(r["email"] ?? r["_id"] ?? "?"));
-        if (args.plan === true) {
-          return ok({
-            plan: { title: doc["title"] ?? null, wouldSendTo: to },
-            note: "Nothing was sent. Call again without `plan` to send it."
-          });
-        }
-        await updateDocument({
-          documentId: args.contract_id,
-          record: {
-            title: String(doc["title"] ?? "Untitled Contract"),
-            category: String(doc["category"] ?? "Finance"),
-            recipients: recipients.map((r) => ({
-              _id: String(r["_id"] ?? ""),
-              role: String(r["role"] ?? "signer"),
-              mySelf: r["mySelf"] === true
-            })),
-            status: "pending_signature"
-          }
-        });
-        return ok({ sent: { contractId: args.contract_id, to } });
-      } catch (err2) {
-        return fail(err2);
-      }
-    }
-  );
-  server.registerTool(
-    "edit_website",
-    {
-      title: "Change the website \u2014 by exact text, or by describing it",
-      description: "TWO WAYS, and prefer the first:\n  find + replace \u2014 swaps EXACT text on one page, changing that and nothing else. Get the string from website_page. Right for a phone number, price or name \u2014 anything with a known answer.\n  instruction \u2014 natural language ('make the hero punchier'); the builder's AI works it out. For changes of judgement only.\nINSTRUCTION proposes by default: without `apply: true` you get what the AI intends to change, and that proposal IS the preview \u2014 show it, get a yes, call again. find/replace applies at once and refuses if the text is absent.\nIt may come back with a `clarify` question instead of a proposal. Ask the user that question and call again with their answer folded into the instruction; do not guess.\nEdits change the DRAFT. They are not live until publish_website, so editing is safe and publishing is the step that needs confirming.",
-      inputSchema: {
-        instruction: external_exports.string().optional().describe("What to change, in plain language. Omit when using find."),
-        find: external_exports.string().optional().describe(
-          "Exact text to replace, copied from website_page. Needs `replace`."
-        ),
-        replace: external_exports.string().optional().describe("What to put in its place. Needs `find`."),
-        page: external_exports.string().optional().describe("find/replace only: slug or name. Defaults to home."),
-        page_id: external_exports.string().optional().describe(
-          "Scope the edit to one page, from website_pages. Omit to let the builder decide, which is right for site-wide changes."
-        ),
-        apply: external_exports.boolean().optional().describe(
-          "Actually make the change. Without this, the proposal is returned and nothing is written."
-        )
-      },
-      annotations: {
-        readOnlyHint: false,
-        // The draft is overwritten, but nothing goes public — publish_website
-        // is the step that exposes anything.
-        destructiveHint: true,
-        idempotentHint: false,
-        openWorldHint: false
-      }
-    },
-    async (args) => {
-      try {
-        if (args.find === void 0 !== (args.replace === void 0)) {
-          return fail(
-            "`find` and `replace` go together \u2014 pass both, or use `instruction` instead. Nothing was changed."
-          );
-        }
-        const swap = args.find !== void 0 && args.replace !== void 0 ? { find: args.find, replace: args.replace } : null;
-        if (!swap && !args.instruction) {
-          return fail(
-            "Pass `instruction` to describe a change, or `find` and `replace` to swap exact text. Nothing was changed."
-          );
-        }
-        const site = await getV4Site();
-        const siteId = String(site?.["_id"] ?? "");
-        if (!siteId) {
-          return fail(
-            "There is no AI-built website to edit. This company's site is a classic one, which is edited in the builder rather than through here \u2014 website_status and website_content still read it. Building an AI site is a CLI flow."
-          );
-        }
-        if (swap) {
-          const page = pickPage(site, args.page);
-          if (!page?._id) {
-            return fail(
-              `No page matching "${args.page ?? "home"}". Call website_pages to see what this site has.`
-            );
-          }
-          const current = String(page.html ?? "");
-          if (!current.includes(swap.find)) {
-            return fail(
-              `That exact text is not on the ${page.name ?? page.slug ?? "page"} page. It must match character for character \u2014 call website_page and copy the string from the markup. Nothing was changed.`
-            );
-          }
-          const occurrences = current.split(swap.find).length - 1;
-          const next = current.split(swap.find).join(swap.replace);
-          if (next === current) {
-            return fail("That swap produces no change. Nothing was written.");
-          }
-          await updatePageHtml(
-            siteId,
-            String(page._id),
-            next,
-            site
-          );
-          return ok({
-            replaced: {
-              page: page.name ?? page.slug ?? "page",
-              occurrences,
-              from: swap.find,
-              to: swap.replace
-            },
-            action: "Changed in the DRAFT \u2014 not live until publish_website. Use website_preview to show the user the result."
-          });
-        }
-        const instruction = args.instruction;
-        const outcome = await askWebsiteChat(siteId, instruction, {
-          ...args.page_id ? { activePageId: args.page_id } : {}
-        });
-        if (outcome.clarify) {
-          return ok({
-            clarify: outcome.clarify,
-            action: "The builder needs an answer before it can change anything. Ask the user this question, then call again with their answer in the instruction."
-          });
-        }
-        const proposals = outcome.proposals.map((p) => ({
-          change: p.summary || p.tool
-        }));
-        if (args.apply !== true) {
-          return ok({
-            proposed: proposals,
-            comment: outcome.text || null,
-            note: proposals.length === 0 ? "The builder proposed no change. Its answer is in `comment`." : "Nothing was changed. Show the user these, then call again with `apply: true`."
-          });
-        }
-        if (outcome.proposals.length === 0) {
-          return fail(
-            `There is nothing to apply \u2014 the builder proposed no change. Its answer was: ${outcome.text || "(none)"}`
-          );
-        }
-        const jobs = [];
-        for (const proposal of outcome.proposals) {
-          jobs.push(
-            await applyChatProposal(siteId, proposal, {
-              ...args.page_id ? { pageId: args.page_id } : {}
-            })
-          );
-        }
-        return ok({
-          applied: proposals,
-          jobs: jobs.length,
-          action: "The DRAFT changed; the live site has not. Tell the user, and ask whether to publish. Use website_content to read the new copy."
-        });
-      } catch (err2) {
-        return fail(err2);
-      }
-    }
-  );
-  server.registerTool(
-    "publish_website",
-    {
-      title: "Make the website public",
-      description: "\u{1F534} PUBLISHES the company website to the open internet at <builder>/v4/pages/<slug>. Anyone with the URL can read it, and search engines can index it.\nALWAYS confirm with the user before calling this without `plan`. It is the only operation here that exposes anything publicly, and 'unpublish' is not available through this server.\nRe-publishing pushes later edits live at the SAME url. Check website_status first: `published: true` means it is already live and this is an update rather than a first exposure. Use website_content to read what would go out.",
-      inputSchema: {
-        slug: external_exports.string().optional().describe(
-          "URL slug. Omit to keep the slug it is already live under, which is what you want for a re-publish \u2014 a new slug moves the site to a new address and leaves the old one stale."
-        ),
-        plan: external_exports.boolean().optional().describe("Preview only. Reports what would go live; publishes nothing.")
-      },
-      annotations: {
-        readOnlyHint: false,
-        // Not destructive in the delete sense — nothing is lost — but this is
-        // the one write here that cannot be walked back from this server, so it
-        // claims destructive rather than understate what it does.
-        destructiveHint: true,
-        idempotentHint: true,
-        openWorldHint: true
-      }
-    },
-    async (args) => {
-      try {
-        const draft = await getV4Site();
-        const siteId = String(draft?.["_id"] ?? "");
-        if (!siteId) {
-          return fail(
-            "There is no AI-built website to publish. This company's site is a classic one, published from the builder rather than here."
-          );
-        }
-        let slug = args.slug || String(draft?.["siteUrl"] ?? "");
-        if (!slug) {
-          const info = await getWebsiteInfo();
-          slug = toSiteUrlSlug(
-            String(info?.website?.businessName ?? info?.companyName ?? "")
-          );
-        }
-        if (!slug) {
-          return fail(
-            "Could not work out a URL for this site. Pass `slug` explicitly."
-          );
-        }
-        const pages = listSitePages(draft);
-        if (args.plan === true) {
-          return ok({
-            plan: {
-              slug,
-              pages: pages.length,
-              alreadyLive: !!draft?.["siteUrl"]
-            },
-            note: "Nothing was published. This makes the site PUBLIC \u2014 confirm with the user, then call again without `plan`."
-          });
-        }
-        const result = await publishSite(siteId, slug);
-        return ok({
-          published: {
-            slug: result["siteUrl"] ?? slug,
-            pages: pages.length
           },
-          action: "Tell the user the site is now public and give them the slug. website_status confirms it."
+          totalCandidates: result.totalCandidates,
+          note: willSend.length === 0 ? "Nothing would be sent \u2014 every candidate was skipped." : "Nothing was sent. Show the user this list, then call again without `plan`."
         });
-      } catch (err2) {
-        return fail(err2);
       }
+      return ok({
+        sent: result.sent,
+        skipped: result.skipped,
+        failed: result.failed,
+        totalCandidates: result.totalCandidates,
+        reminded: who.slice(0, 25)
+      });
     }
   );
   server.registerTool(
@@ -82892,7 +81307,7 @@ If this is genuinely a second invoice, pass an explicit \`number\` to say so \u2
         ),
         subject: external_exports.string().optional().describe("Override the email subject."),
         message: external_exports.string().optional().describe("Message shown in the email body."),
-        plan: external_exports.boolean().optional().describe(
+        plan: planArg(
           "Preview only. Returns who would receive it, which invoice, and when it was last sent. Sends nothing."
         )
       },
@@ -82910,47 +81325,43 @@ If this is genuinely a second invoice, pass an explicit \`number\` to say so \u2
       }
     },
     async (args) => {
-      try {
-        const invoice = await getInvoice(
-          args.invoice_id,
-          args.company_id
+      const invoice = await getInvoice(
+        args.invoice_id,
+        args.company_id
+      );
+      const customer = invoice["customer"];
+      const onRecord = typeof customer?.["email"] === "string" && customer["email"] || typeof invoice["recipientEmail"] === "string" && invoice["recipientEmail"] || null;
+      const recipients = args.recipients ?? (onRecord ? [onRecord] : []);
+      if (recipients.length === 0) {
+        return fail(
+          `${invoice["no"] ?? "This invoice"} has no email address on its customer record, so there is nobody to send it to. Add one to the customer, or pass \`recipients\` with an address the user gave you \u2014 do not guess.`
         );
-        const customer = invoice["customer"];
-        const onRecord = typeof customer?.["email"] === "string" && customer["email"] || typeof invoice["recipientEmail"] === "string" && invoice["recipientEmail"] || null;
-        const recipients = args.recipients ?? (onRecord ? [onRecord] : []);
-        if (recipients.length === 0) {
-          return fail(
-            `${invoice["no"] ?? "This invoice"} has no email address on its customer record, so there is nobody to send it to. Add one to the customer, or pass \`recipients\` with an address the user gave you \u2014 do not guess.`
-          );
-        }
-        const target = {
-          invoiceNumber: invoice["no"] ?? null,
-          customerName: customer?.["companyName"] ?? null,
-          total: invoice["total"] ?? null,
-          recipients,
-          // Whether the address came from the record or from the caller. An
-          // overridden address is the risky case and the user should see that
-          // it was overridden, not just what it is.
-          recipientSource: args.recipients ? "provided by caller" : "customer record",
-          lastSent: invoice["sent"] ?? null
-        };
-        if (args.plan === true) {
-          return ok({
-            plan: { wouldSend: target },
-            note: "Nothing was sent. Confirm the recipient with the user, then call again without `plan`. An email cannot be recalled." + (target.lastSent ? " Note this invoice was already sent once." : "")
-          });
-        }
-        await sendInvoice({
-          id: args.invoice_id,
-          recipients,
-          ...args.company_id ? { companyId: args.company_id } : {},
-          ...args.subject ? { subject: args.subject } : {},
-          ...args.message ? { message: args.message } : {}
-        });
-        return ok({ sent: target });
-      } catch (err2) {
-        return fail(err2);
       }
+      const target = {
+        invoiceNumber: invoice["no"] ?? null,
+        customerName: customer?.["companyName"] ?? null,
+        total: invoice["total"] ?? null,
+        recipients,
+        // Whether the address came from the record or from the caller. An
+        // overridden address is the risky case and the user should see that
+        // it was overridden, not just what it is.
+        recipientSource: args.recipients ? "provided by caller" : "customer record",
+        lastSent: invoice["sent"] ?? null
+      };
+      if (args.plan === true) {
+        return ok({
+          plan: { wouldSend: target },
+          note: "Nothing was sent. Confirm the recipient with the user, then call again without `plan`. An email cannot be recalled." + (target.lastSent ? " Note this invoice was already sent once." : "")
+        });
+      }
+      await sendInvoice({
+        id: args.invoice_id,
+        recipients,
+        ...args.company_id ? { companyId: args.company_id } : {},
+        ...args.subject ? { subject: args.subject } : {},
+        ...args.message ? { message: args.message } : {}
+      });
+      return ok({ sent: target });
     }
   );
   server.registerTool(
@@ -82966,7 +81377,7 @@ If this is genuinely a second invoice, pass an explicit \`number\` to say so \u2
         document_type: external_exports.enum(["estimate", "credit-note", "delivery-note", "purchase-order"]).optional().describe("Convert the copy to this document type."),
         to_company_id: external_exports.string().optional().describe("Copy into a different company you own, from whoami."),
         company_id: external_exports.string().optional().describe("Company the source belongs to. Omit for the default."),
-        plan: external_exports.boolean().optional().describe("Preview only; writes nothing.")
+        plan: planArg("Preview only; writes nothing.")
       },
       annotations: {
         // Additive: it creates a new draft and changes nothing existing. Not
@@ -82978,209 +81389,38 @@ If this is genuinely a second invoice, pass an explicit \`number\` to say so \u2
       }
     },
     async (args) => {
-      try {
-        if (args.plan === true) {
-          return ok({
-            plan: {
-              copies: args.invoice_id,
-              ...args.document_type ? { asType: args.document_type } : {},
-              ...args.customer_id ? { toCustomer: args.customer_id } : {},
-              ...args.to_company_id ? { intoCompany: args.to_company_id } : {}
-            },
-            note: "Nothing was created. Call again without `plan`. The copy is a DRAFT \u2014 it is not sent to anyone."
-          });
-        }
-        const { record: record2, converted, crossCompany } = await copyInvoice(
-          args.invoice_id,
-          {
-            ...args.customer_id ? { customer: args.customer_id } : {},
-            ...args.to_company_id ? { toCompanyId: args.to_company_id } : {},
-            ...args.document_type ? { type: args.document_type } : {},
-            ...args.company_id ? { companyId: args.company_id } : {}
-          }
-        );
+      if (args.plan === true) {
         return ok({
-          copy: {
-            id: record2["_id"] ?? null,
-            invoiceNumber: record2["no"] ?? null,
-            documentType: documentTypeByCode(record2["type"]).label,
-            total: record2["total"] ?? null,
-            status: record2["status"] ?? null
+          plan: {
+            copies: args.invoice_id,
+            ...args.document_type ? { asType: args.document_type } : {},
+            ...args.customer_id ? { toCustomer: args.customer_id } : {},
+            ...args.to_company_id ? { intoCompany: args.to_company_id } : {}
           },
-          converted,
-          crossCompany,
-          action: "This is a DRAFT copy and has been sent to nobody. Report the new number, which is not the one you copied from."
+          note: "Nothing was created. Call again without `plan`. The copy is a DRAFT \u2014 it is not sent to anyone."
         });
-      } catch (err2) {
-        return fail(err2);
       }
-    }
-  );
-  server.registerTool(
-    "build_website",
-    {
-      title: "Create a website, AI-build one, or add a page",
-      description: "`action` picks the operation:\n  create \u2014 sets up an EMPTY website record for this company and returns a builder link. Do this once, before `site`. Fast.\n  site \u2014 builds a WHOLE website from a business name: infers the profile, picks a template, generates the content. Needs `name`. TAKES ABOUT 90 SECONDS.\n  page \u2014 adds ONE new page to the existing site from a description, e.g. an FAQ or a services page. Needs `describe`. About a minute.\nTell the user it will take a moment before you call either.\nBoth produce a DRAFT and neither publishes. Nothing is public until publish_website, so building is safe and publishing is the step that needs confirming. The result carries a preview handle for showing the user the site rather than a status line.",
-      inputSchema: {
-        action: external_exports.enum(["create", "site", "page"]),
-        name: external_exports.string().optional().describe("site: the business name."),
-        describe: external_exports.string().optional().describe(
-          "site: one line about the business, which skips the infer step. page: what the new page should cover."
-        ),
-        from_url: external_exports.string().optional().describe("site: an existing site to take the profile from.")
-      },
-      annotations: {
-        // Additive: it creates a draft and publishes nothing.
-        readOnlyHint: false,
-        destructiveHint: false,
-        idempotentHint: false,
-        openWorldHint: false
-      }
-    },
-    async (args) => {
-      try {
-        if (args.action === "create") {
-          const builderUrl = await createWebsiteLink();
-          return ok({
-            created: true,
-            builderUrl,
-            action: 'The website exists but is EMPTY. Either run action "site" to have it built from the business name, or give the user this link to set it up by hand. The link is a short-lived credential \u2014 hand it over once and do not repeat it.'
-          });
+      const { record: record2, converted, crossCompany } = await copyInvoice(
+        args.invoice_id,
+        {
+          ...args.customer_id ? { customer: args.customer_id } : {},
+          ...args.to_company_id ? { toCompanyId: args.to_company_id } : {},
+          ...args.document_type ? { type: args.document_type } : {},
+          ...args.company_id ? { companyId: args.company_id } : {}
         }
-        if (args.action === "site") {
-          if (!args.name) {
-            return fail('action "site" needs `name` \u2014 the business name.');
-          }
-          const built = await generateSite({
-            name: args.name,
-            ...args.describe ? { description: args.describe } : {},
-            ...args.from_url ? { fromUrl: args.from_url } : {}
-          });
-          const preview2 = built.draft ? await renderSitePreview(built.draft, { all: true }) : null;
-          return ok({
-            site: {
-              id: built.siteId,
-              template: built.templateName,
-              status: built.status,
-              ready: built.done
-            },
-            ...preview2 ? htmlPreviewHandle(preview2.html, {
-              label: "website",
-              key: "website-draft",
-              note: "Every page is in this one file."
-            }) : {},
-            action: "NOTHING IS PUBLIC \u2014 this is a draft. Show the preview as an artifact, then publish_website when the user says so."
-          });
-        }
-        if (!args.describe) {
-          return fail(
-            'action "page" needs `describe` \u2014 what the new page should cover.'
-          );
-        }
-        const added = await addSitePage({ description: args.describe });
-        const preview = added.draft ? await renderSitePreview(added.draft, {
-          ...added.pageSlug ? { pageSlug: added.pageSlug } : {}
-        }) : null;
-        return ok({
-          page: {
-            name: added.pageName,
-            slug: added.pageSlug,
-            status: added.status,
-            ready: added.done
-          },
-          siteId: added.siteId,
-          ...preview ? htmlPreviewHandle(preview.html, { label: `page-${added.pageSlug || "new"}` }) : {},
-          action: "NOTHING IS PUBLIC \u2014 the page is in the draft. Show the preview, then publish_website to put it live."
-        });
-      } catch (err2) {
-        return fail(err2);
-      }
-    }
-  );
-  server.registerTool(
-    "attach_photo",
-    {
-      title: "Attach a photo to an invoice or an item",
-      description: "Upload an image and attach it to a record. `target` picks which:\n  invoice \u2014 appends to the invoice's photos, and the photo APPEARS ON THE CUSTOMER-FACING DOCUMENT. Pass `replace: true` to swap all existing photos for this one.\n  item    \u2014 sets the product photo, replacing any existing one.\n`file_path` must be a path THIS SERVER can read. That holds for a local server or stdio; a hosted connector cannot see your disk and there is no way to send it the bytes yet \u2014 say so rather than guessing at a path.\nCheck what the photo is before attaching. An image on an invoice is sent to the customer.",
-      inputSchema: {
-        target: external_exports.enum(["invoice", "item"]),
-        id: external_exports.string().describe("Invoice id from list_invoices, or item id from list_items."),
-        file_path: external_exports.string().describe("Absolute path to the image, readable by this server."),
-        title: external_exports.string().optional().describe("invoice only. Caption."),
-        description: external_exports.string().optional().describe("invoice only."),
-        replace: external_exports.boolean().optional().describe(
-          "invoice only. Replaces EVERY existing photo instead of appending."
-        )
-      },
-      annotations: {
-        readOnlyHint: false,
-        // Replacing an invoice's photos discards the previous ones and they are
-        // not recoverable here, so this can destroy something.
-        destructiveHint: true,
-        idempotentHint: false,
-        openWorldHint: false
-      }
-    },
-    async (args) => {
-      try {
-        assertServerCanRead(args.file_path);
-        if (args.target === "item") {
-          const item = await getItemById(args.id);
-          if (!item) return fail(`No item found with id ${args.id}.`);
-          const { filename: filename2 } = await uploadItemImage(args.file_path);
-          const record2 = {
-            name: item["name"] ?? "",
-            description: item["description"] ?? "",
-            price: item["price"] ?? 0,
-            productCode: item["productCode"] ?? "",
-            unitType: item["unitType"] ?? "none",
-            taxCode: item["taxCode"] ?? null,
-            taxRate: item["taxRate"] ?? null,
-            quickbooksId: item["quickbooksId"] ?? null,
-            photos: [{ filename: filename2 }]
-          };
-          const data2 = await updateItem(args.id, record2);
-          const updated = data2.itemsUpdateOne?.record;
-          if (!updated) {
-            return fail(
-              "The photo uploaded but the item update returned no record \u2014 call list_items to check whether it took."
-            );
-          }
-          return ok({
-            item: { id: args.id, name: updated["name"] ?? null, photo: filename2 }
-          });
-        }
-        const invoice = await getInvoice(args.id);
-        if (!invoice) return fail(`No invoice found with id ${args.id}.`);
-        const { filename } = await uploadInvoiceImage(args.file_path);
-        const existing = (Array.isArray(invoice["photos"]) ? invoice["photos"] : []).map((raw) => {
-          const p = raw;
-          return {
-            title: p["title"] ?? "",
-            description: p["description"] ?? "",
-            filename: p["filename"] ?? ""
-          };
-        });
-        const added = {
-          title: args.title ?? "",
-          description: args.description ?? "",
-          filename
-        };
-        const photos = args.replace === true ? [added] : [...existing, added];
-        const data = await updateInvoice(args.id, { photos });
-        const rec = data.invoicesUpdateOne?.record;
-        return ok({
-          invoice: {
-            id: args.id,
-            invoiceNumber: rec?.["no"] ?? invoice["no"] ?? null,
-            photos: photos.length
-          },
-          ...args.replace === true && existing.length > 0 ? { discarded: existing.length } : {},
-          action: "This photo is on the customer-facing document. Use invoice_preview to show the user how it looks before they send it."
-        });
-      } catch (err2) {
-        return fail(err2);
-      }
+      );
+      return ok({
+        copy: {
+          id: record2["_id"] ?? null,
+          invoiceNumber: record2["no"] ?? null,
+          documentType: documentTypeByCode(record2["type"]).label,
+          total: record2["total"] ?? null,
+          status: record2["status"] ?? null
+        },
+        converted,
+        crossCompany,
+        action: "This is a DRAFT copy and has been sent to nobody. Report the new number, which is not the one you copied from."
+      });
     }
   );
 }
@@ -83223,6 +81463,1379 @@ function lineSignature(items) {
   }).join("");
 }
 
+// src/mcp/writes/customers.ts
+function registerCustomerWrites(server) {
+  const customerFields = {
+    name: external_exports.string().optional().describe("Business or person name."),
+    email: external_exports.string().optional().describe("Where invoices are sent."),
+    phone: external_exports.string().optional(),
+    mobile: external_exports.string().optional(),
+    notes: external_exports.string().optional()
+  };
+  server.registerTool(
+    "create_customer",
+    {
+      title: "Create a customer",
+      description: "Add a customer. Needs a name or an email. `email` is where invoices go; without it, send_invoice on their invoices has no recipient.\nSearch list_customers first: create_invoice will not make a customer, but a second record for someone who already exists splits their history and nothing merges them afterwards.",
+      inputSchema: {
+        company_id: external_exports.string().optional().describe("Company to create under, from whoami."),
+        ...customerFields,
+        business_number: external_exports.string().optional(),
+        plan: planArg("Preview only; writes nothing.")
+      },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false
+      }
+    },
+    async (args) => {
+      if (!args.name && !args.email) {
+        return fail(
+          "A customer needs at least a name or an email. Pass one of them."
+        );
+      }
+      const record2 = {
+        ...args.name ? { companyName: args.name } : {},
+        ...args.email ? { email: args.email } : {},
+        ...args.phone ? { phone: args.phone } : {},
+        ...args.mobile ? { mobile: args.mobile } : {},
+        ...args.business_number ? { businessNumber: args.business_number } : {},
+        ...args.notes ? { notes: args.notes } : {}
+      };
+      if (args.plan === true) {
+        return ok({
+          plan: { name: args.name ?? null, email: args.email ?? null },
+          note: "Nothing was created. Call again without `plan`."
+        });
+      }
+      const data = await createCustomer(record2, args.company_id);
+      const created = data.customersCreateOne?.record;
+      if (!created) {
+        return fail(
+          "The create returned no record, so it is unclear whether the customer was written. Call list_customers before retrying."
+        );
+      }
+      return ok({
+        created: {
+          id: created["_id"] ?? null,
+          name: created["companyName"] ?? created["individualCompanyName"] ?? null,
+          email: created["email"] ?? null
+        },
+        next: "Use `created.id` as `customer_id` on create_invoice."
+      });
+    }
+  );
+  server.registerTool(
+    "update_customer",
+    {
+      title: "Update a customer",
+      description: "Change a customer's details. Only the fields passed change. A new email affects FUTURE invoices, not ones already sent.",
+      inputSchema: {
+        customer_id: external_exports.string().describe("Customer id, as returned by list_customers."),
+        ...customerFields,
+        plan: planArg("Preview only; writes nothing.")
+      },
+      annotations: {
+        readOnlyHint: false,
+        // OpenAI: destructive covers "overwriting", and false is "only for
+        // additive writes" — undo-ability does not change that. An edit
+        // overwrites the values it replaces.
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: false
+      }
+    },
+    async (args) => {
+      const record2 = {
+        ...args.name ? { companyName: args.name } : {},
+        ...args.email ? { email: args.email } : {},
+        ...args.phone ? { phone: args.phone } : {},
+        ...args.mobile ? { mobile: args.mobile } : {},
+        ...args.notes ? { notes: args.notes } : {}
+      };
+      if (Object.keys(record2).length === 0) {
+        return fail("Nothing to change \u2014 pass at least one field to update.");
+      }
+      if (args.plan === true) {
+        return ok({
+          plan: { customer_id: args.customer_id, changing: Object.keys(record2) },
+          note: "Nothing was changed. Call again without `plan`."
+        });
+      }
+      await updateCustomer(args.customer_id, record2);
+      return ok({
+        updated: { id: args.customer_id, fields: Object.keys(record2) }
+      });
+    }
+  );
+  server.registerTool(
+    "email_customer",
+    {
+      title: "Email a customer",
+      description: "Send a plain email to a customer. THIS LEAVES THE BUILDING and cannot be recalled \u2014 preview with `plan: true` and confirm the recipients and subject with the user first.\n\u26A0 It may fail with a recaptcha error: the mutation requires a token and the server-side bypass for authenticated agent requests has not shipped. If it does, say so and point the user at the web app rather than retrying.",
+      inputSchema: {
+        customer_id: external_exports.string().describe("Customer id, as returned by list_customers."),
+        subject: external_exports.string().describe("Subject line."),
+        body: external_exports.string().describe("The message, plain text."),
+        to: external_exports.array(external_exports.string()).optional().describe("Recipients. Defaults to the customer's own address."),
+        plan: planArg(
+          "Preview only. Returns the recipients and subject; sends nothing."
+        )
+      },
+      // A sent email cannot be recalled (destructive, by OpenAI's definition:
+      // irreversible) and it reaches a person outside the account (open world).
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: true
+      }
+    },
+    async (args) => {
+      const who = await getCustomerById(args.customer_id);
+      const to = args.to && args.to.length > 0 ? args.to : typeof who?.["email"] === "string" && who["email"] ? [who["email"]] : [];
+      if (to.length === 0) {
+        return fail(
+          "That customer has no email address on record and none was passed, so there is nobody to send to."
+        );
+      }
+      if (args.plan === true) {
+        return ok({
+          plan: { wouldEmail: to, subject: args.subject },
+          action: "Nothing was sent. SHOW the user the recipients and the subject, get a yes, then call again without `plan`."
+        });
+      }
+      const sent = await sendCustomerEmail({
+        customerId: args.customer_id,
+        to,
+        cc: [],
+        bcc: [],
+        subject: args.subject,
+        html: args.body,
+        text: args.body,
+        replyTo: null,
+        projectPipelineId: null
+      });
+      const payload = sent?.customersSendEmail ?? {};
+      return ok({
+        sent: { to, subject: args.subject },
+        server: payload.message ?? null
+      });
+    }
+  );
+  server.registerTool(
+    "delete_customer",
+    {
+      title: "Delete a customer",
+      description: "Delete a customer permanently. \u{1F534} Not recoverable from here, and their invoices are left behind pointing at a customer that no longer exists.\nALWAYS PREVIEW FIRST. Call with `plan: true`, show the user the name and email that came back, and only call again without `plan` once they have confirmed that specific customer. Read customer_payments first \u2014 a customer with payment history is usually one to keep.",
+      inputSchema: {
+        customer_id: external_exports.string().describe("Customer id, as returned by list_customers."),
+        plan: planArg(
+          "Preview only. Returns which customer would be deleted \u2014 name and email \u2014 and deletes nothing."
+        )
+      },
+      // Its own tool so the destructive flag sits on the one
+      // action that earns it, the same shape as delete_invoice.
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: false
+      }
+    },
+    async (args) => {
+      const who = await getCustomerById(args.customer_id);
+      if (!who) {
+        return fail(`No customer found with id ${args.customer_id}.`);
+      }
+      const target = {
+        id: args.customer_id,
+        name: who["companyName"] ?? who["individualCompanyName"] ?? null,
+        email: who["email"] ?? null
+      };
+      if (args.plan === true) {
+        return ok({
+          plan: { wouldDelete: target },
+          note: "Nothing was deleted. Their invoices will remain, pointing at a customer that no longer exists. Confirm this is the right customer with the user, then call again without `plan`. This cannot be undone."
+        });
+      }
+      const gone = await deleteCustomer(args.customer_id);
+      return ok({ deleted: { ...target, record: gone } });
+    }
+  );
+}
+
+// src/mcp/writes/sales.ts
+function registerSalesWrites(server) {
+  const dealAnnotations = {
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: false,
+    openWorldHint: false
+  };
+  const dealEdit = { ...dealAnnotations, destructiveHint: true };
+  const STAGES = "Stages: leads, qualified, meeting, proposal, contract, closed_win, closed_lose.";
+  server.registerTool(
+    "create_deal",
+    {
+      title: "Create a deal",
+      description: "Start a deal in the sales pipeline for an existing customer. It begins at `leads` unless `status` says otherwise. " + STAGES + "\nDeals are internal: this emails nobody.",
+      inputSchema: {
+        customer_id: external_exports.string().describe("Customer id, as returned by list_customers."),
+        name: external_exports.string().describe('What the deal is, e.g. "Kitchen renovation".'),
+        description: external_exports.string().optional(),
+        value: external_exports.number().optional().describe("Deal value in company currency."),
+        due_date: external_exports.string().optional().describe("YYYY-MM-DD."),
+        status: external_exports.enum(DEAL_STATUSES).optional().describe("Starting stage."),
+        plan: planArg("Preview only; writes nothing.")
+      },
+      annotations: dealAnnotations
+    },
+    async (args) => {
+      if (args.plan === true) {
+        return ok({
+          plan: { name: args.name, value: args.value ?? null },
+          note: "Nothing was created. Call again without `plan`."
+        });
+      }
+      const data = await createDeal({
+        customerId: args.customer_id,
+        name: args.name,
+        ...args.description ? { description: args.description } : {},
+        ...args.value !== void 0 ? { value: args.value } : {},
+        ...args.due_date ? { dueDate: args.due_date } : {},
+        ...args.status ? { status: args.status } : {}
+      });
+      const rec = data.projectPipelinesCreateOne?.record;
+      return ok({
+        created: {
+          id: rec?.["_id"] ?? null,
+          name: rec?.["name"] ?? args.name,
+          status: rec?.["status"] ?? args.status ?? "leads"
+        }
+      });
+    }
+  );
+  server.registerTool(
+    "update_deal",
+    {
+      title: "Update a deal",
+      description: "Change a deal's name, description, value, due date or stage. Only the fields passed change. `status` sets the stage directly, in any direction \u2014 use it to move a deal back or reopen a closed one; advance_deal is the forward-only move for progressing it. " + STAGES,
+      inputSchema: {
+        deal_id: external_exports.string().describe("Deal id, as returned by list_deals."),
+        name: external_exports.string().optional().describe("New name for the deal."),
+        description: external_exports.string().optional(),
+        value: external_exports.number().optional().describe("Deal value in company currency."),
+        due_date: external_exports.string().optional().describe("YYYY-MM-DD."),
+        status: external_exports.enum(DEAL_STATUSES).optional().describe("Set the stage directly, backwards or forwards."),
+        plan: planArg("Preview only; writes nothing.")
+      },
+      annotations: dealEdit
+    },
+    async (args) => {
+      const record2 = {
+        ...args.name ? { name: args.name } : {},
+        ...args.description ? { description: args.description } : {},
+        ...args.value !== void 0 ? { value: args.value } : {},
+        ...args.due_date ? { dueDate: args.due_date } : {},
+        ...args.status ? { status: args.status } : {}
+      };
+      if (Object.keys(record2).length === 0) {
+        return fail("Nothing to change \u2014 pass at least one field to update.");
+      }
+      if (args.plan === true) {
+        return ok({
+          plan: { deal_id: args.deal_id, changing: Object.keys(record2) },
+          note: "Nothing was changed. Call again without `plan`."
+        });
+      }
+      await updateDeal(args.deal_id, record2);
+      return ok({ updated: { id: args.deal_id, fields: Object.keys(record2) } });
+    }
+  );
+  server.registerTool(
+    "advance_deal",
+    {
+      title: "Move a deal to another stage",
+      description: "Move a deal FORWARD to a later pipeline stage \u2014 the one to use for 'we won it' (closed_win) or 'we lost it' (closed_lose). It never moves a deal backwards or out of a closed stage; it refuses instead, and update_deal with `status` does that. " + STAGES,
+      inputSchema: {
+        deal_id: external_exports.string().describe("Deal id, as returned by list_deals."),
+        status: external_exports.enum(DEAL_STATUSES).describe("The stage to move it to."),
+        plan: planArg("Preview only; moves nothing.")
+      },
+      annotations: dealEdit
+    },
+    async (args) => {
+      if (args.plan === true) {
+        return ok({
+          plan: { deal_id: args.deal_id, to: args.status },
+          note: "Nothing was moved. Call again without `plan`."
+        });
+      }
+      const r = await advanceDealStage(args.deal_id, args.status);
+      if (!r.advanced) {
+        return fail(
+          `The deal was not moved (${r.reason}${r.from ? `, currently ${r.from}` : ""}). advance_deal only moves forward; use update_deal with \`status\` to move it back or reopen it.`
+        );
+      }
+      return ok({ advanced: r });
+    }
+  );
+  const proposalEdit = {
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: false,
+    openWorldHint: false
+  };
+  const proposalOverwrite = { ...proposalEdit, destructiveHint: true };
+  const proposalId = external_exports.string().describe("Proposal id, as returned by list_proposals.");
+  server.registerTool(
+    "draft_proposal",
+    {
+      title: "AI-draft a proposal",
+      description: "AI-write a NEW proposal from a description plus at least one item. Returns an editor link and sends nothing \u2014 send_proposal emails it once the user has reviewed it.",
+      inputSchema: {
+        describe: external_exports.string().describe("Who the proposal is for and what it covers."),
+        items: external_exports.array(
+          external_exports.union([
+            external_exports.string(),
+            external_exports.object({
+              name: external_exports.string(),
+              price: external_exports.number(),
+              quantity: external_exports.number().optional(),
+              description: external_exports.string().optional()
+            })
+          ])
+        ).min(1).describe(
+          "At least one: an item id from list_items, or a line as {name, price, quantity}."
+        ),
+        customer_id: external_exports.string().optional().describe("Customer to address it to, as returned by list_customers."),
+        expires_in_days: external_exports.number().optional().describe("Defaults to 30.")
+      },
+      annotations: proposalEdit
+    },
+    async (args) => {
+      const { proposal, editUrlPlain } = await draftProposal({
+        description: args.describe,
+        items: args.items,
+        ...args.customer_id ? { customerId: args.customer_id } : {},
+        ...args.expires_in_days ? { expiresInDays: args.expires_in_days } : {}
+      });
+      return ok({
+        draft: {
+          id: proposal["_id"] ?? null,
+          title: proposal["title"] ?? null,
+          no: proposal["no"] ?? null,
+          editUrl: editUrlPlain
+        },
+        action: "NOTHING WAS SENT \u2014 this is a draft. Give the user the editUrl to review it; they will be asked to sign in, as the link carries no credentials. Then send_proposal emails it."
+      });
+    }
+  );
+  server.registerTool(
+    "update_proposal",
+    {
+      title: "Update a proposal",
+      description: "Link a customer, set the title, or toggle draft. Only the fields passed change.",
+      inputSchema: {
+        proposal_id: proposalId,
+        customer_id: external_exports.string().optional().describe("Link this customer, as returned by list_customers."),
+        title: external_exports.string().optional().describe("The proposal's title."),
+        is_draft: external_exports.boolean().optional().describe("false marks it ready to send, true puts it back to draft."),
+        plan: planArg("Preview only; writes nothing.")
+      },
+      annotations: proposalOverwrite
+    },
+    async (args) => {
+      const record2 = {
+        ...args.customer_id ? { customerId: args.customer_id } : {},
+        ...args.title !== void 0 ? { title: args.title } : {},
+        ...args.is_draft !== void 0 ? { isDraft: args.is_draft } : {}
+      };
+      if (Object.keys(record2).length === 0) {
+        return fail(
+          "Pass at least one of customer_id, title or is_draft. Nothing was changed."
+        );
+      }
+      if (args.plan === true) {
+        return ok({
+          plan: { proposal_id: args.proposal_id, changes: record2 },
+          note: "Nothing was changed. Call again without `plan` to apply it."
+        });
+      }
+      await updateProposal(args.proposal_id, record2);
+      return ok({ updated: { id: args.proposal_id, changed: record2 } });
+    }
+  );
+  server.registerTool(
+    "duplicate_proposal",
+    {
+      title: "Duplicate a proposal",
+      description: "Copy an existing proposal as a fresh draft.",
+      inputSchema: {
+        proposal_id: proposalId,
+        plan: planArg("Preview only; copies nothing.")
+      },
+      annotations: proposalEdit
+    },
+    async (args) => {
+      if (args.plan === true) {
+        return ok({
+          plan: { proposal_id: args.proposal_id },
+          note: "Nothing was copied. Call again without `plan`."
+        });
+      }
+      const data = await duplicateProposal(args.proposal_id);
+      const rec = data.proposalsDuplicate?.record;
+      return ok({ duplicated: { id: rec?.["_id"] ?? null, no: rec?.["no"] ?? null } });
+    }
+  );
+  server.registerTool(
+    "convert_proposal_to_invoice",
+    {
+      title: "Turn a proposal into an invoice",
+      description: "Create an INVOICE from an accepted proposal, carrying its line items over \u2014 the quote-to-cash step. The proposal itself is unchanged, and the invoice is not sent. Creating a document consumes the account's subscription quota.",
+      inputSchema: {
+        proposal_id: proposalId,
+        plan: planArg("Preview only; creates nothing.")
+      },
+      annotations: proposalEdit
+    },
+    async (args) => {
+      if (args.plan === true) {
+        return ok({
+          plan: { proposal_id: args.proposal_id },
+          note: "Nothing was created. Call again without `plan` to create the invoice. Creating a document consumes subscription quota."
+        });
+      }
+      const made = await createInvoiceFromProposal(args.proposal_id);
+      const inv = made.invoicesCreateOneFromProposal?.record;
+      return ok({
+        invoice: {
+          id: inv?.["_id"] ?? null,
+          invoiceNumber: inv?.["no"] ?? null,
+          total: inv?.["total"] ?? null
+        },
+        // The raw envelope key is not guaranteed across backend versions;
+        // say so rather than reporting nulls as if they were the answer.
+        ...inv ? {} : { note: "Created, but the response shape was unexpected \u2014 call list_invoices to confirm." }
+      });
+    }
+  );
+  server.registerTool(
+    "send_proposal",
+    {
+      title: "Email a proposal to the client",
+      description: "Email a proposal to its recipients. THIS EMAILS THE CLIENT and cannot be unsent \u2014 preview with `plan: true` and confirm the recipients with the user first.",
+      inputSchema: {
+        proposal_id: proposalId,
+        recipients: external_exports.array(external_exports.string()).min(1).describe("Email addresses to send it to."),
+        subject: external_exports.string().optional(),
+        message: external_exports.string().optional(),
+        plan: planArg("Preview only. Returns the recipients; sends nothing.")
+      },
+      // An email to the client: irreversible and open-world.
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: true
+      }
+    },
+    async (args) => {
+      if (args.plan === true) {
+        return ok({
+          plan: { proposal_id: args.proposal_id, to: args.recipients },
+          note: "Nothing was sent. Call again without `plan` to send it."
+        });
+      }
+      await sendProposal({
+        id: args.proposal_id,
+        recipients: args.recipients,
+        ...args.subject ? { subject: args.subject } : {},
+        ...args.message ? { message: args.message } : {}
+      });
+      return ok({ sent: { proposalId: args.proposal_id, to: args.recipients } });
+    }
+  );
+  server.registerTool(
+    "delete_proposal",
+    {
+      title: "Delete a proposal",
+      description: "Delete a proposal permanently. Not recoverable from here.\nALWAYS PREVIEW FIRST. Call with `plan: true`, show the user the title and number that came back, and only call again without `plan` once they have confirmed that specific proposal. If the intent is to revise or resend, update_proposal and duplicate_proposal do that without destroying anything.",
+      inputSchema: {
+        proposal_id: external_exports.string().describe("Proposal id, as returned by list_proposals."),
+        plan: planArg(
+          "Preview only. Returns which proposal would be deleted \u2014 title and number \u2014 and deletes nothing."
+        )
+      },
+      // Its own tool so the destructive flag sits on the one
+      // action that earns it, the same shape as delete_invoice.
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: false
+      }
+    },
+    async (args) => {
+      const prop = await getProposalById(args.proposal_id);
+      if (!prop) {
+        return fail(`No proposal found with id ${args.proposal_id}.`);
+      }
+      const target = {
+        id: args.proposal_id,
+        title: prop["title"] ?? null,
+        no: prop["no"] ?? null,
+        status: prop["status"] ?? null
+      };
+      if (args.plan === true) {
+        return ok({
+          plan: { wouldDelete: target },
+          note: "Nothing was deleted. Confirm this is the right proposal with the user, then call again without `plan`. This cannot be undone."
+        });
+      }
+      const gone = await deleteProposal(args.proposal_id);
+      return ok({ deleted: { ...target, record: gone } });
+    }
+  );
+  const contractBuild = {
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: false,
+    openWorldHint: false
+  };
+  const draftOptions = {
+    jurisdiction: external_exports.string().optional().describe("Country slug. Inferred from the company if omitted."),
+    industry: external_exports.string().optional().describe("The clauses adapt to it. Pass the real industry.")
+  };
+  server.registerTool(
+    "draft_contract",
+    {
+      title: "AI-draft a contract",
+      description: 'AI-write an eSign contract from a description, e.g. "mutual NDA with Acme". TAKES 15-30 SECONDS; tell the user before waiting. Returns an editor link where clauses are tweaked, a signer attached and the signature placed. It sends nothing \u2014 finalize_contract, then send_contract, come after the user has reviewed it.',
+      inputSchema: {
+        describe: external_exports.string().describe(
+          'What to create, e.g. "service agreement for a 6-month SEO retainer". Say what it covers and with whom.'
+        ),
+        ...draftOptions,
+        signer_name: external_exports.string().optional().describe("Pre-fills the editor."),
+        signer_email: external_exports.string().optional().describe("With signer_name.")
+      },
+      annotations: contractBuild
+    },
+    async (args) => {
+      const drafted = await draftContract({
+        whatToCreate: args.describe,
+        ...args.jurisdiction ? { jurisdiction: args.jurisdiction } : {},
+        ...args.industry ? { industry: args.industry } : {},
+        ...args.signer_name && args.signer_email ? { signer: { fullName: args.signer_name, email: args.signer_email } } : {}
+      });
+      return ok({
+        draft: {
+          id: drafted.aiDocId,
+          title: drafted.title,
+          clauses: drafted.clauseCount,
+          jurisdiction: drafted.jurisdiction,
+          industry: drafted.industry,
+          editUrl: drafted.editUrlPlain
+        },
+        ...drafted.jurisdictionNote ? { note: drafted.jurisdictionNote } : {},
+        action: "NOTHING WAS SENT \u2014 this is an AI draft. Give the user the editUrl: clauses are edited, a signer attached and the signature placed there. They will be asked to sign in, because this link deliberately carries no credentials. Then finalize_contract, then send_contract."
+      });
+    }
+  );
+  server.registerTool(
+    "draft_contract_from_proposal",
+    {
+      title: "AI-draft a contract from a proposal",
+      description: "Like draft_contract, but built from an ACCEPTED proposal: its dates, value and customer become the terms, and the customer becomes the suggested signer. Slow, like draft_contract. Sends nothing.",
+      inputSchema: {
+        proposal_id: external_exports.string().describe("An accepted proposal, from list_proposals."),
+        ...draftOptions
+      },
+      annotations: contractBuild
+    },
+    async (args) => {
+      const built = await contractFromProposal({
+        proposalId: args.proposal_id,
+        ...args.jurisdiction ? { jurisdiction: args.jurisdiction } : {},
+        ...args.industry ? { industry: args.industry } : {}
+      });
+      return ok({
+        draft: {
+          id: built.aiDocId,
+          title: built.title,
+          clauses: built.clauseCount,
+          editUrl: built.editUrlPlain,
+          suggestedSigner: built.signer?.email ?? null
+        },
+        source: built.source,
+        action: "NOTHING WAS SENT. Give the user the editUrl to review the clauses; they will be asked to sign in, as the link carries no credentials. Then finalize_contract, then send_contract."
+      });
+    }
+  );
+  server.registerTool(
+    "finalize_contract",
+    {
+      title: "Finalize an AI-drafted contract",
+      description: "Turn an AI draft into a real contract record and render its PDF. Slow. Sends nothing \u2014 send_contract does that once a signer is attached.",
+      inputSchema: {
+        contract_id: external_exports.string().describe(
+          "The AI DRAFT's id, from draft_contract or draft_contract_from_proposal."
+        )
+      },
+      annotations: contractBuild
+    },
+    async (args) => {
+      const done = await finalizeContract({ aiDocId: args.contract_id });
+      return ok({
+        contract: {
+          id: done.contractId,
+          title: done.title,
+          status: done.status,
+          pdfUploaded: done.pdfUploaded,
+          signerAttached: done.signerAttached,
+          editorUrl: done.editorUrlPlain
+        },
+        // Non-fatal: the contract exists. Reporting these as failure would
+        // send the user hunting for a record that is already there.
+        ...done.warnings.length ? { warnings: done.warnings } : {},
+        action: "The contract record exists and NOTHING WAS SENT. If signerAttached is false, the user must attach a signer in the editor before send_contract will work."
+      });
+    }
+  );
+  server.registerTool(
+    "send_contract",
+    {
+      title: "Send a contract for signature",
+      description: "Move an EXISTING contract to pending_signature. THIS EMAILS THE SIGNERS and cannot be unsent \u2014 preview with `plan: true`, confirm with the user, and report who it went to. The contract must already have recipients; this does not add them.",
+      inputSchema: {
+        contract_id: external_exports.string().describe("Contract id, as returned by list_contracts."),
+        plan: planArg("Preview only. Reports who it would go to; sends nothing.")
+      },
+      // An email to outside signers: irreversible and open-world.
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: true
+      }
+    },
+    async (args) => {
+      const doc = await getDocument(args.contract_id);
+      if (!doc) return fail(`No contract found with id ${args.contract_id}.`);
+      const recipients = Array.isArray(doc["recipients"]) ? doc["recipients"] : [];
+      const signers = recipients.filter((r) => r["mySelf"] !== true);
+      if (signers.length === 0) {
+        return fail(
+          `${String(doc["title"] ?? "That contract")} has no signer to send to. Add a recipient in the app first \u2014 moving it to pending_signature with nobody to sign leaves it stuck.`
+        );
+      }
+      const to = signers.map((r) => String(r["email"] ?? r["_id"] ?? "?"));
+      if (args.plan === true) {
+        return ok({
+          plan: { title: doc["title"] ?? null, wouldSendTo: to },
+          note: "Nothing was sent. Call again without `plan` to send it."
+        });
+      }
+      await updateDocument({
+        documentId: args.contract_id,
+        record: {
+          title: String(doc["title"] ?? "Untitled Contract"),
+          category: String(doc["category"] ?? "Finance"),
+          recipients: recipients.map((r) => ({
+            _id: String(r["_id"] ?? ""),
+            role: String(r["role"] ?? "signer"),
+            mySelf: r["mySelf"] === true
+          })),
+          status: "pending_signature"
+        }
+      });
+      return ok({ sent: { contractId: args.contract_id, to } });
+    }
+  );
+}
+
+// src/mcp/writes/catalog.ts
+function registerCatalogWrites(server) {
+  const itemEdit = {
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: false,
+    openWorldHint: false
+  };
+  const itemOverwrite = { ...itemEdit, destructiveHint: true };
+  const CATALOGUE_NOTE = "Price is in the company's currency, NOT cents. Attaching a product photo is a CLI flow and is not available here.";
+  server.registerTool(
+    "create_item",
+    {
+      title: "Create a product or service",
+      description: "Add a product or service to the catalogue an invoice draws line items from. " + CATALOGUE_NOTE + "\ncreate_invoice takes free-text line items, so a catalogue entry is only needed when the item should be reusable \u2014 do not create one just to invoice something once.",
+      inputSchema: {
+        company_id: external_exports.string().describe("Company the item belongs to, as returned by whoami."),
+        name: external_exports.string().describe("The item's name."),
+        price: external_exports.number().describe("Unit price. Not cents."),
+        description: external_exports.string().optional(),
+        product_code: external_exports.string().optional(),
+        plan: planArg("Preview only; writes nothing.")
+      },
+      annotations: itemEdit
+    },
+    async (args) => {
+      if (args.plan === true) {
+        return ok({
+          plan: { name: args.name, price: args.price },
+          note: "Nothing was created. Call again without `plan`."
+        });
+      }
+      const data = await createItem({
+        name: args.name,
+        price: args.price,
+        company: args.company_id,
+        ...args.description ? { description: args.description } : {},
+        ...args.product_code ? { productCode: args.product_code } : {}
+      });
+      const rec = data.itemsCreateOne?.record;
+      return ok({
+        created: {
+          id: rec?.["_id"] ?? null,
+          name: rec?.["name"] ?? args.name,
+          price: rec?.["price"] ?? args.price
+        }
+      });
+    }
+  );
+  server.registerTool(
+    "update_item",
+    {
+      title: "Update a product or service",
+      description: "Change a catalogue item. Only the fields passed change. " + CATALOGUE_NOTE,
+      inputSchema: {
+        item_id: external_exports.string().describe("Item id, as returned by list_items."),
+        name: external_exports.string().optional().describe("New name for the item."),
+        price: external_exports.number().optional().describe("Unit price. Not cents."),
+        description: external_exports.string().optional(),
+        product_code: external_exports.string().optional(),
+        plan: planArg("Preview only; writes nothing.")
+      },
+      annotations: itemOverwrite
+    },
+    async (args) => {
+      const record2 = {
+        ...args.name ? { name: args.name } : {},
+        ...args.price !== void 0 ? { price: args.price } : {},
+        ...args.description ? { description: args.description } : {},
+        ...args.product_code ? { productCode: args.product_code } : {}
+      };
+      if (Object.keys(record2).length === 0) {
+        return fail("Nothing to change \u2014 pass at least one field to update.");
+      }
+      if (args.plan === true) {
+        return ok({
+          plan: { item_id: args.item_id, changing: Object.keys(record2) },
+          note: "Nothing was changed. Call again without `plan`."
+        });
+      }
+      await updateItem(args.item_id, record2);
+      return ok({ updated: { id: args.item_id, fields: Object.keys(record2) } });
+    }
+  );
+  const NO_MONEY_MOVES = "This tool never moves money: funds move only on Bookipay's hosted checkout, in the customer's own browser, when they choose to pay.";
+  server.registerTool(
+    "create_paylink",
+    {
+      title: "Create a payment link",
+      description: "A shareable link that takes a card payment \u2014 for money owed without an invoice, or a deposit before work starts. " + NO_MONEY_MOVES + "\n`amount` is in the company's CURRENCY, not cents; this converts. Omit it and pass `let_customer_choose` to let the payer decide the amount, which is the shape for tips or open donations.\nIt does NOT send the link \u2014 the result carries the URL to give the user, and send_paylink emails it.\nRequires the account's card payments to be set up; if it fails on that, say so rather than retrying.",
+      inputSchema: {
+        title: external_exports.string().describe("What the payer sees they are paying for."),
+        amount: external_exports.number().optional().describe("In the company's currency. Omit with let_customer_choose."),
+        currency: external_exports.string().optional().describe("ISO code, e.g. PHP. Defaults to the company's."),
+        description: external_exports.string().optional(),
+        let_customer_choose: external_exports.boolean().optional().describe("Let the payer enter their own amount."),
+        plan: planArg("Preview only; creates nothing.")
+      },
+      // Creates a public checkout page anyone with the URL can reach (open
+      // world), but sends it to nobody and moves no money (not destructive).
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: true
+      }
+    },
+    async (args) => {
+      const open2 = args.let_customer_choose === true;
+      if (!open2 && args.amount === void 0) {
+        return fail(
+          "Pass an amount, or let_customer_choose to let the payer decide."
+        );
+      }
+      if (args.plan === true) {
+        return ok({
+          plan: {
+            title: args.title,
+            amount: open2 ? "payer decides" : args.amount
+          },
+          note: "Nothing was created. Call again without `plan`."
+        });
+      }
+      const link = await createPaymentLink({
+        title: args.title,
+        description: args.description ?? "",
+        allowCustomerToInputAmount: open2,
+        price: open2 ? 0 : Math.round((args.amount ?? 0) * 100),
+        currency: args.currency ?? ""
+      });
+      return ok({
+        created: {
+          id: link?._id ?? null,
+          title: link?.title ?? args.title,
+          amount: open2 ? null : args.amount,
+          shortCode: link?.shortCode ?? null,
+          url: paymentLinkUrl(link?.shortCode)
+        },
+        action: "Give the user the url. Check paylink_status later to see whether it was paid."
+      });
+    }
+  );
+  server.registerTool(
+    "send_paylink",
+    {
+      title: "Email a payment link",
+      description: "Email an existing payment link to a customer. This LEAVES THE BUILDING and cannot be recalled \u2014 preview with `plan: true` and confirm the recipients with the user first. " + NO_MONEY_MOVES + "\n\u26A0 It may fail with a recaptcha error: the mutation requires a token and the server-side bypass for authenticated agent requests has not shipped. If it does, say so and let the user share the URL themselves rather than retrying.",
+      inputSchema: {
+        paylink_id: external_exports.string().describe("The link to email, from list_paylinks."),
+        customer_id: external_exports.string().describe("Who it is for, from list_customers."),
+        to: external_exports.array(external_exports.string()).optional().describe("Recipients. Defaults to the customer's address."),
+        plan: planArg(
+          "Preview only. Returns the recipients, link and amount; sends nothing."
+        )
+      },
+      // An email to the customer: irreversible and open-world.
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: true
+      }
+    },
+    async (args) => {
+      const link = await getPaymentLink(args.paylink_id);
+      if (!link) {
+        return fail(`No payment link found with id ${args.paylink_id}.`);
+      }
+      const url2 = paymentLinkUrl(link.shortCode);
+      if (!url2) {
+        return fail(
+          "That link has no shareable URL \u2014 it is missing a short code, so there is nothing to send."
+        );
+      }
+      const who = await getCustomerById(args.customer_id);
+      const to = args.to && args.to.length > 0 ? args.to : typeof who?.["email"] === "string" && who["email"] ? [who["email"]] : [];
+      if (to.length === 0) {
+        return fail(
+          "That customer has no email address on record and none was passed, so there is nobody to send the link to."
+        );
+      }
+      const cur = link.currency ? link.currency.toUpperCase() : void 0;
+      const amountStr = link.allowCustomerToInputAmount ? "" : link.price != null ? formatCents(link.price, cur) : "";
+      const built = buildPaymentLinkEmail({ title: link.title ?? "", amountStr, url: url2 });
+      if (args.plan === true) {
+        return ok({
+          plan: {
+            wouldSend: { to, link: url2, amount: amountStr || "payer chooses" }
+          },
+          action: "Nothing was sent. SHOW the user the recipients and the amount, get a yes, then call again without `plan`."
+        });
+      }
+      const sent = await sendCustomerEmail({
+        customerId: args.customer_id,
+        to,
+        cc: [],
+        bcc: [],
+        subject: built.subject,
+        html: built.html,
+        text: built.text,
+        replyTo: null,
+        projectPipelineId: null
+      });
+      return ok({
+        sent: { to, url: url2, amount: amountStr || "payer chooses" },
+        server: sent?.customersSendEmail?.message ?? null
+      });
+    }
+  );
+  server.registerTool(
+    "create_expense",
+    {
+      title: "Log an expense",
+      description: "Record money spent \u2014 'log this receipt', 'I spent 500 on fuel'.\n`category` is the KEY from expense_categories, not a display name: a name is rejected. Call that first when the category is not already known.\nThis records the figures only. Attaching a receipt image is a CLI flow (upload then scan) and is not available here.",
+      inputSchema: {
+        amount: external_exports.number().describe("Amount spent, in the company's currency."),
+        merchant: external_exports.string().optional().describe("Who was paid."),
+        category: external_exports.string().optional().describe("Category KEY from expense_categories, e.g. Office_Supplies."),
+        date: external_exports.string().optional().describe("Purchase date, YYYY-MM-DD."),
+        notes: external_exports.string().optional(),
+        plan: planArg("Preview only; writes nothing.")
+      },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false
+      }
+    },
+    async (args) => {
+      if (args.plan === true) {
+        return ok({
+          plan: {
+            amount: args.amount,
+            merchant: args.merchant ?? null,
+            category: args.category ?? null
+          },
+          note: "Nothing was logged. Call again without `plan` to record it."
+        });
+      }
+      const data = await createExpense({
+        amount: args.amount,
+        ...args.merchant ? { merchantName: args.merchant } : {},
+        ...args.category ? { categoryName: args.category } : {},
+        ...args.date ? { purchaseDate: args.date } : {},
+        ...args.notes ? { notes: args.notes } : {}
+      });
+      const res = data;
+      if (!res?.recordId) {
+        return fail(
+          "The create returned no id, so it is unclear whether the expense was logged. Call list_expenses to check BEFORE retrying \u2014 a second call logs a second expense."
+        );
+      }
+      return ok({
+        logged: {
+          id: res.recordId,
+          amount: args.amount,
+          merchant: args.merchant ?? null,
+          category: args.category ?? null
+        }
+      });
+    }
+  );
+  server.registerTool(
+    "delete_expense",
+    {
+      title: "Delete a logged expense",
+      description: "Remove an expense \u2014 a duplicate, or one logged against the wrong account. Not recoverable here.\nGet the id from list_expenses. There is no update: a wrong amount means deleting this and logging it again.",
+      inputSchema: {
+        expense_id: external_exports.string().describe("Expense id from list_expenses."),
+        plan: planArg("Preview only; deletes nothing.")
+      },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        // False, the same as every other delete_* on this surface.
+        idempotentHint: false,
+        openWorldHint: false
+      }
+    },
+    async (args) => {
+      if (args.plan === true) {
+        return ok({
+          plan: { expense_id: args.expense_id },
+          note: "Nothing was deleted. Call again without `plan` to delete it."
+        });
+      }
+      const gone = await removeExpense(args.expense_id);
+      return ok({ deleted: { id: args.expense_id, record: gone } });
+    }
+  );
+  server.registerTool(
+    "attach_photo",
+    {
+      title: "Attach a photo to an invoice or an item",
+      description: "Upload an image and attach it to a record. `target` picks which:\n  invoice \u2014 appends to the invoice's photos, and the photo APPEARS ON THE CUSTOMER-FACING DOCUMENT. Pass `replace: true` to swap all existing photos for this one.\n  item    \u2014 sets the product photo, replacing any existing one.\n`file_path` must be a path THIS SERVER can read. That holds for a local server or stdio; a hosted connector cannot see your disk and there is no way to send it the bytes yet \u2014 say so rather than guessing at a path.\nCheck what the photo is before attaching. An image on an invoice is sent to the customer.",
+      inputSchema: {
+        target: external_exports.enum(["invoice", "item"]),
+        id: external_exports.string().describe("Invoice id from list_invoices, or item id from list_items."),
+        file_path: external_exports.string().describe("Absolute path to the image, readable by this server."),
+        title: external_exports.string().optional().describe("invoice only. Caption."),
+        description: external_exports.string().optional().describe("invoice only."),
+        replace: external_exports.boolean().optional().describe(
+          "invoice only. Replaces EVERY existing photo instead of appending."
+        )
+      },
+      annotations: {
+        readOnlyHint: false,
+        // Replacing an invoice's photos discards the previous ones and they are
+        // not recoverable here, so this can destroy something.
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: false
+      }
+    },
+    async (args) => {
+      assertServerCanRead(args.file_path);
+      if (args.target === "item") {
+        const item = await getItemById(args.id);
+        if (!item) return fail(`No item found with id ${args.id}.`);
+        const { filename: filename2 } = await uploadItemImage(args.file_path);
+        const record2 = {
+          name: item["name"] ?? "",
+          description: item["description"] ?? "",
+          price: item["price"] ?? 0,
+          productCode: item["productCode"] ?? "",
+          unitType: item["unitType"] ?? "none",
+          taxCode: item["taxCode"] ?? null,
+          taxRate: item["taxRate"] ?? null,
+          quickbooksId: item["quickbooksId"] ?? null,
+          photos: [{ filename: filename2 }]
+        };
+        const data2 = await updateItem(args.id, record2);
+        const updated = data2.itemsUpdateOne?.record;
+        if (!updated) {
+          return fail(
+            "The photo uploaded but the item update returned no record \u2014 call list_items to check whether it took."
+          );
+        }
+        return ok({
+          item: { id: args.id, name: updated["name"] ?? null, photo: filename2 }
+        });
+      }
+      const invoice = await getInvoice(args.id);
+      if (!invoice) return fail(`No invoice found with id ${args.id}.`);
+      const { filename } = await uploadInvoiceImage(args.file_path);
+      const existing = (Array.isArray(invoice["photos"]) ? invoice["photos"] : []).map((raw) => {
+        const p = raw;
+        return {
+          title: p["title"] ?? "",
+          description: p["description"] ?? "",
+          filename: p["filename"] ?? ""
+        };
+      });
+      const added = {
+        title: args.title ?? "",
+        description: args.description ?? "",
+        filename
+      };
+      const photos = args.replace === true ? [added] : [...existing, added];
+      const data = await updateInvoice(args.id, { photos });
+      const rec = data.invoicesUpdateOne?.record;
+      return ok({
+        invoice: {
+          id: args.id,
+          invoiceNumber: rec?.["no"] ?? invoice["no"] ?? null,
+          photos: photos.length
+        },
+        ...args.replace === true && existing.length > 0 ? { discarded: existing.length } : {},
+        action: "This photo is on the customer-facing document. Use invoice_preview to show the user how it looks before they send it."
+      });
+    }
+  );
+}
+
+// src/mcp/writes/website.ts
+function registerWebsiteWrites(server) {
+  const draftOnly = {
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: false,
+    openWorldHint: false
+  };
+  server.registerTool(
+    "create_website",
+    {
+      title: "Create an empty website",
+      description: "Set up an EMPTY website record for this company and return a builder link. Do this once, before generate_website. Fast. Nothing is public until publish_website.",
+      inputSchema: {},
+      annotations: draftOnly
+    },
+    async () => {
+      const builderUrl = await createWebsiteLink();
+      return ok({
+        created: true,
+        builderUrl,
+        action: "The website exists but is EMPTY. Either run generate_website to have it built from the business name, or give the user this link to set it up by hand. The link is a short-lived credential \u2014 hand it over once and do not repeat it."
+      });
+    }
+  );
+  server.registerTool(
+    "generate_website",
+    {
+      title: "AI-build the whole website",
+      description: "Build a WHOLE website from a business name: infers the profile, picks a template, generates the content. TAKES ABOUT 90 SECONDS \u2014 tell the user it will take a moment before calling.\nIt produces a DRAFT and publishes nothing; publish_website is the step that needs confirming. The result carries a preview handle for showing the user the site rather than a status line.",
+      inputSchema: {
+        name: external_exports.string().describe("The business name."),
+        describe: external_exports.string().optional().describe("One line about the business, which skips the infer step."),
+        from_url: external_exports.string().optional().describe("An existing site to take the profile from.")
+      },
+      // Open world: `from_url` hands an arbitrary website to the builder, which
+      // fetches it — OpenAI counts "arbitrary destinations" as open-world.
+      // Still additive (a private draft, nothing published), so not destructive.
+      annotations: { ...draftOnly, openWorldHint: true }
+    },
+    async (args) => {
+      const built = await generateSite({
+        name: args.name,
+        ...args.describe ? { description: args.describe } : {},
+        ...args.from_url ? { fromUrl: args.from_url } : {}
+      });
+      const preview = built.draft ? await renderSitePreview(built.draft, { all: true }) : null;
+      return ok({
+        site: {
+          id: built.siteId,
+          template: built.templateName,
+          status: built.status,
+          ready: built.done
+        },
+        ...preview ? htmlPreviewHandle(preview.html, {
+          label: "website",
+          key: "website-draft",
+          note: "Every page is in this one file."
+        }) : {},
+        action: "NOTHING IS PUBLIC \u2014 this is a draft. Show the preview as an artifact, then publish_website when the user says so."
+      });
+    }
+  );
+  server.registerTool(
+    "add_website_page",
+    {
+      title: "AI-add a page to the website",
+      description: "Add ONE new page to the existing site from a description, e.g. an FAQ or a services page. About a minute \u2014 tell the user before calling. The page goes into the DRAFT; publish_website puts it live.",
+      inputSchema: {
+        describe: external_exports.string().describe("What the new page should cover.")
+      },
+      annotations: draftOnly
+    },
+    async (args) => {
+      const added = await addSitePage({ description: args.describe });
+      const preview = added.draft ? await renderSitePreview(added.draft, {
+        ...added.pageSlug ? { pageSlug: added.pageSlug } : {}
+      }) : null;
+      return ok({
+        page: {
+          name: added.pageName,
+          slug: added.pageSlug,
+          status: added.status,
+          ready: added.done
+        },
+        siteId: added.siteId,
+        ...preview ? htmlPreviewHandle(preview.html, { label: `page-${added.pageSlug || "new"}` }) : {},
+        action: "NOTHING IS PUBLIC \u2014 the page is in the draft. Show the preview, then publish_website to put it live."
+      });
+    }
+  );
+  server.registerTool(
+    "edit_website",
+    {
+      title: "Change the website \u2014 by exact text, or by describing it",
+      description: "TWO WAYS, and prefer the first:\n  find + replace \u2014 swaps EXACT text on one page, changing that and nothing else. Get the string from website_page. Right for a phone number, price or name \u2014 anything with a known answer.\n  instruction \u2014 natural language ('make the hero punchier'); the builder's AI works it out. For changes of judgement only.\nINSTRUCTION proposes by default: without `apply: true` you get what the AI intends to change, and that proposal IS the preview \u2014 show it, get a yes, call again. find/replace applies at once and refuses if the text is absent.\nIt may come back with a `clarify` question instead of a proposal. Ask the user that question and call again with their answer folded into the instruction; do not guess.\nEdits change the DRAFT. They are not live until publish_website, so editing is safe and publishing is the step that needs confirming.",
+      inputSchema: {
+        instruction: external_exports.string().optional().describe("What to change, in plain language. Omit when using find."),
+        find: external_exports.string().optional().describe(
+          "Exact text to replace, copied from website_page. Needs `replace`."
+        ),
+        replace: external_exports.string().optional().describe("What to put in its place. Needs `find`."),
+        page: external_exports.string().optional().describe("find/replace only: slug or name. Defaults to home."),
+        page_id: external_exports.string().optional().describe(
+          "Scope the edit to one page, from website_pages. Omit to let the builder decide, which is right for site-wide changes."
+        ),
+        apply: external_exports.boolean().optional().describe(
+          "Actually make the change. Without this, the proposal is returned and nothing is written."
+        )
+      },
+      annotations: {
+        readOnlyHint: false,
+        // The draft is overwritten, but nothing goes public — publish_website
+        // is the step that exposes anything.
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: false
+      }
+    },
+    async (args) => {
+      if (args.find === void 0 !== (args.replace === void 0)) {
+        return fail(
+          "`find` and `replace` go together \u2014 pass both, or use `instruction` instead. Nothing was changed."
+        );
+      }
+      const swap = args.find !== void 0 && args.replace !== void 0 ? { find: args.find, replace: args.replace } : null;
+      if (!swap && !args.instruction) {
+        return fail(
+          "Pass `instruction` to describe a change, or `find` and `replace` to swap exact text. Nothing was changed."
+        );
+      }
+      const site = await getV4Site();
+      const siteId = String(site?.["_id"] ?? "");
+      if (!siteId) {
+        return fail(
+          "There is no AI-built website to edit. This company's site is a classic one, which is edited in the builder rather than through here \u2014 website_status and website_content still read it. Building an AI site is a CLI flow."
+        );
+      }
+      if (swap) {
+        const page = pickPage(site, args.page);
+        if (!page?._id) {
+          return fail(
+            `No page matching "${args.page ?? "home"}". Call website_pages to see what this site has.`
+          );
+        }
+        const current = String(page.html ?? "");
+        if (!current.includes(swap.find)) {
+          return fail(
+            `That exact text is not on the ${page.name ?? page.slug ?? "page"} page. It must match character for character \u2014 call website_page and copy the string from the markup. Nothing was changed.`
+          );
+        }
+        const occurrences = current.split(swap.find).length - 1;
+        const next = current.split(swap.find).join(swap.replace);
+        if (next === current) {
+          return fail("That swap produces no change. Nothing was written.");
+        }
+        await updatePageHtml(
+          siteId,
+          String(page._id),
+          next,
+          site
+        );
+        return ok({
+          replaced: {
+            page: page.name ?? page.slug ?? "page",
+            occurrences,
+            from: swap.find,
+            to: swap.replace
+          },
+          action: "Changed in the DRAFT \u2014 not live until publish_website. Use website_preview to show the user the result."
+        });
+      }
+      const instruction = args.instruction;
+      const outcome = await askWebsiteChat(siteId, instruction, {
+        ...args.page_id ? { activePageId: args.page_id } : {}
+      });
+      if (outcome.clarify) {
+        return ok({
+          clarify: outcome.clarify,
+          action: "The builder needs an answer before it can change anything. Ask the user this question, then call again with their answer in the instruction."
+        });
+      }
+      const proposals = outcome.proposals.map((p) => ({
+        change: p.summary || p.tool
+      }));
+      if (args.apply !== true) {
+        return ok({
+          proposed: proposals,
+          comment: outcome.text || null,
+          note: proposals.length === 0 ? "The builder proposed no change. Its answer is in `comment`." : "Nothing was changed. Show the user these, then call again with `apply: true`."
+        });
+      }
+      if (outcome.proposals.length === 0) {
+        return fail(
+          `There is nothing to apply \u2014 the builder proposed no change. Its answer was: ${outcome.text || "(none)"}`
+        );
+      }
+      const jobs = [];
+      for (const proposal of outcome.proposals) {
+        jobs.push(
+          await applyChatProposal(siteId, proposal, {
+            ...args.page_id ? { pageId: args.page_id } : {}
+          })
+        );
+      }
+      return ok({
+        applied: proposals,
+        jobs: jobs.length,
+        action: "The DRAFT changed; the live site has not. Tell the user, and ask whether to publish. Use website_content to read the new copy."
+      });
+    }
+  );
+  server.registerTool(
+    "publish_website",
+    {
+      title: "Make the website public",
+      description: "\u{1F534} PUBLISHES the company website to the open internet at <builder>/v4/pages/<slug>. Anyone with the URL can read it, and search engines can index it.\nALWAYS confirm with the user before calling this without `plan`. It is the only operation here that exposes anything publicly, and 'unpublish' is not available through this server.\nRe-publishing pushes later edits live at the SAME url. Check website_status first: `published: true` means it is already live and this is an update rather than a first exposure. Use website_content to read what would go out.",
+      inputSchema: {
+        slug: external_exports.string().optional().describe(
+          "URL slug. Omit to keep the slug it is already live under, which is what you want for a re-publish \u2014 a new slug moves the site to a new address and leaves the old one stale."
+        ),
+        plan: planArg("Preview only. Reports what would go live; publishes nothing.")
+      },
+      annotations: {
+        readOnlyHint: false,
+        // Not destructive in the delete sense — nothing is lost — but this is
+        // the one write here that cannot be walked back from this server, so it
+        // claims destructive rather than understate what it does.
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: true
+      }
+    },
+    async (args) => {
+      const draft = await getV4Site();
+      const siteId = String(draft?.["_id"] ?? "");
+      if (!siteId) {
+        return fail(
+          "There is no AI-built website to publish. This company's site is a classic one, published from the builder rather than here."
+        );
+      }
+      let slug = args.slug || String(draft?.["siteUrl"] ?? "");
+      if (!slug) {
+        const info = await getWebsiteInfo();
+        slug = toSiteUrlSlug(
+          String(info?.website?.businessName ?? info?.companyName ?? "")
+        );
+      }
+      if (!slug) {
+        return fail(
+          "Could not work out a URL for this site. Pass `slug` explicitly."
+        );
+      }
+      const pages = listSitePages(draft);
+      if (args.plan === true) {
+        return ok({
+          plan: {
+            slug,
+            pages: pages.length,
+            alreadyLive: !!draft?.["siteUrl"]
+          },
+          note: "Nothing was published. This makes the site PUBLIC \u2014 confirm with the user, then call again without `plan`."
+        });
+      }
+      const result = await publishSite(siteId, slug);
+      return ok({
+        published: {
+          slug: result["siteUrl"] ?? slug,
+          pages: pages.length
+        },
+        action: "Tell the user the site is now public and give them the slug. website_status confirms it."
+      });
+    }
+  );
+}
+
+// src/mcp/writeTools.ts
+function registerWriteTools(mcp, options = {}) {
+  if (options.allowWrites === false) return;
+  const register = mcp.registerTool.bind(mcp);
+  const server = {
+    registerTool: ((name, config3, handler) => {
+      const c = config3;
+      const strict = c.inputSchema && !(c.inputSchema instanceof external_exports.ZodType) ? { ...c, inputSchema: external_exports.strictObject(c.inputSchema) } : c;
+      const run = handler;
+      const guarded = async (...args) => {
+        try {
+          return await run(...args);
+        } catch (err2) {
+          return fail(err2);
+        }
+      };
+      return register(name, strict, guarded);
+    })
+  };
+  registerInvoiceWrites(server);
+  registerCustomerWrites(server);
+  registerSalesWrites(server);
+  registerCatalogWrites(server);
+  registerWebsiteWrites(server);
+}
+
 // src/mcp/session.ts
 import { randomUUID } from "node:crypto";
 var processSessionId = randomUUID();
@@ -83240,6 +82853,7 @@ function fallbackSessionId() {
 }
 
 // src/mcp/server.ts
+var LOCAL_FILE_TOOLS = ["scan_receipt", "attach_photo"];
 function logToolFailure(tool, reason, detail) {
   let message;
   if (detail instanceof Error) {
@@ -83272,42 +82886,46 @@ function buildMcpServer(options = {}) {
     });
   };
   const register = server.registerTool.bind(server);
-  server.registerTool = ((name, meta3, handler) => register(name, meta3, (async (...args) => {
-    const report = (event, props) => {
-      void track(event, { ...clientProps(), ...props });
-    };
-    const session_id = sessionIdFrom(args);
-    try {
-      const result = await handler(...args);
-      const bytes = responseBytes(result);
-      const handled = result ?? {};
-      if (handled.isError === true) {
+  const localFiles = options.localFiles ?? true;
+  server.registerTool = ((name, meta3, handler) => {
+    if (!localFiles && LOCAL_FILE_TOOLS.includes(name)) return void 0;
+    return register(name, meta3, (async (...args) => {
+      const report = (event, props) => {
+        void track(event, { ...clientProps(), ...props });
+      };
+      const session_id = sessionIdFrom(args);
+      try {
+        const result = await handler(...args);
+        const bytes = responseBytes(result);
+        const handled = result ?? {};
+        if (handled.isError === true) {
+          report("MCP Tool Failed", {
+            tool: name,
+            session_id,
+            reason: "refused",
+            output_bytes: bytes
+          });
+          logToolFailure(name, "refused", result);
+          return result;
+        }
+        report("MCP Tool Completed", {
+          tool: name,
+          session_id,
+          output_bytes: bytes,
+          est_tokens: estTokens(bytes)
+        });
+        return result;
+      } catch (err2) {
         report("MCP Tool Failed", {
           tool: name,
           session_id,
-          reason: "refused",
-          output_bytes: bytes
+          reason: "threw"
         });
-        logToolFailure(name, "refused", result);
-        return result;
+        logToolFailure(name, "threw", err2);
+        throw err2;
       }
-      report("MCP Tool Completed", {
-        tool: name,
-        session_id,
-        output_bytes: bytes,
-        est_tokens: estTokens(bytes)
-      });
-      return result;
-    } catch (err2) {
-      report("MCP Tool Failed", {
-        tool: name,
-        session_id,
-        reason: "threw"
-      });
-      logToolFailure(name, "threw", err2);
-      throw err2;
-    }
-  })));
+    }));
+  });
   const writeOptions = { allowWrites };
   registerReadTools(server);
   registerWriteTools(server, writeOptions);
@@ -85320,8 +84938,31 @@ function authorizationServerMetadata() {
     scopes_supported: ["openid", "email", "profile"]
   };
 }
+var LOOPBACK_HOSTS = /* @__PURE__ */ new Set(["localhost", "127.0.0.1", "[::1]"]);
+var UNSAFE_SCHEMES = /* @__PURE__ */ new Set(["javascript", "data", "file", "vbscript", "blob", "about"]);
+function isAllowedRedirect(uri) {
+  let url2;
+  try {
+    url2 = new URL(uri);
+  } catch {
+    return false;
+  }
+  const scheme = url2.protocol.slice(0, -1);
+  if (scheme === "https") return true;
+  if (scheme === "http") return LOOPBACK_HOSTS.has(url2.hostname);
+  return !UNSAFE_SCHEMES.has(scheme);
+}
+function rejectRedirect(uri, where) {
+  console.warn(`[oauth] ${where}: refused redirect_uri ${uri}`);
+  return {
+    error: "invalid_redirect_uri",
+    description: "redirect_uri must be https, loopback, or an app scheme. If this is a real MCP client, ask Bookipi to allow it."
+  };
+}
 function registerClient(body) {
   const redirectUris = Array.isArray(body?.redirect_uris) ? body.redirect_uris : [];
+  const refused = redirectUris.find((u) => !isAllowedRedirect(String(u)));
+  if (refused !== void 0) return rejectRedirect(String(refused), "register");
   return {
     client_id: `mcp-${crypto7.randomBytes(12).toString("hex")}`,
     token_endpoint_auth_method: "none",
@@ -85338,6 +84979,7 @@ async function buildAuthorizeRedirect(query) {
   if (!redirectUri) {
     return { error: "invalid_request", description: "missing redirect_uri" };
   }
+  if (!isAllowedRedirect(redirectUri)) return rejectRedirect(redirectUri, "authorize");
   if (!codeChallenge || method !== "S256") {
     return {
       error: "invalid_request",
@@ -85464,6 +85106,12 @@ async function handleToken(body) {
     } catch {
       return err(400, "invalid_grant", "refresh token failed to decrypt");
     }
+    if (payload.typ === "access") {
+      return err(400, "invalid_grant", "not a refresh token");
+    }
+    if (payload.exp < now()) {
+      return err(400, "invalid_grant", "refresh token expired");
+    }
     try {
       return { status: 200, json: await renewTokens(payload) };
     } catch (e) {
@@ -85503,14 +85151,16 @@ var UpstreamRefreshError = class extends Error {
 function issueTokens(src) {
   const access = {
     bookipiToken: src.bookipiToken,
-    exp: now() + ACCESS_TTL
+    exp: now() + ACCESS_TTL,
+    typ: "access"
   };
   if (src.upstreamRefresh) access.upstreamRefresh = src.upstreamRefresh;
   const accessToken = seal(access);
   const refreshToken = seal({
     bookipiToken: src.bookipiToken,
     ...src.upstreamRefresh ? { upstreamRefresh: src.upstreamRefresh } : {},
-    exp: now() + REFRESH_TTL
+    exp: now() + REFRESH_TTL,
+    typ: "refresh"
   });
   return {
     access_token: accessToken,
@@ -85531,6 +85181,7 @@ function inspectAccessToken(token) {
     return { status: "unreadable" };
   }
   if (payload.exp < now()) return { status: "expired" };
+  if (payload.typ === "refresh") return { status: "expired" };
   if (!payload.bookipiToken) return { status: "unreadable" };
   return { status: "ok", bookipiToken: payload.bookipiToken };
 }
@@ -85642,7 +85293,25 @@ async function resolveIdentityForToken(token) {
   rememberIdentity(token, identity);
   return identity;
 }
-var sessions = /* @__PURE__ */ new Map();
+var sessions3 = /* @__PURE__ */ new Map();
+var SESSION_IDLE_MS = 60 * 60 * 1e3;
+function closeSession(sid, session) {
+  sessions3.delete(sid);
+  for (const closable of [session.transport, session.server]) {
+    void Promise.resolve().then(() => closable.close?.()).catch(() => {
+    });
+  }
+}
+function evictIdleSessions(now2 = Date.now()) {
+  let closed = 0;
+  for (const [sid, session] of sessions3) {
+    if (now2 - session.lastSeen > SESSION_IDLE_MS) {
+      closeSession(sid, session);
+      closed++;
+    }
+  }
+  return closed;
+}
 async function authContext(req) {
   const presented = bearerFrom(req);
   if (!presented) {
@@ -85724,7 +85393,7 @@ async function handleMcp(req, res, body) {
   const ctx = auth.ctx;
   const sessionId = req.headers["mcp-session-id"];
   const method = req.method ?? "POST";
-  if (sessionId && !sessions.has(sessionId)) {
+  if (sessionId && !sessions3.has(sessionId)) {
     sendJsonRpcError(
       res,
       404,
@@ -85733,12 +85402,14 @@ async function handleMcp(req, res, body) {
     );
     return;
   }
-  if (sessionId && sessions.has(sessionId)) {
-    const { transport } = sessions.get(sessionId);
-    await runWithRequestAuth(ctx, () => transport.handleRequest(req, res, body));
+  if (sessionId && sessions3.has(sessionId)) {
+    const session = sessions3.get(sessionId);
+    session.lastSeen = Date.now();
+    await runWithRequestAuth(ctx, () => session.transport.handleRequest(req, res, body));
     return;
   }
   if (method === "POST" && !sessionId && isInitializeRequest(body)) {
+    evictIdleSessions();
     const server = buildMcpServer(serverOptions);
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: () => randomUUID2(),
@@ -85749,11 +85420,11 @@ async function handleMcp(req, res, body) {
       // stream where getToken() would see no context ("not logged in").
       enableJsonResponse: true,
       onsessioninitialized: (sid) => {
-        sessions.set(sid, { transport, server });
+        sessions3.set(sid, { transport, server, lastSeen: Date.now() });
       }
     });
     transport.onclose = () => {
-      if (transport.sessionId) sessions.delete(transport.sessionId);
+      if (transport.sessionId) sessions3.delete(transport.sessionId);
     };
     await runWithRequestAuth(ctx, async () => {
       await server.connect(transport);
@@ -85768,7 +85439,7 @@ async function handleMcp(req, res, body) {
     "No valid session. Send an initialize request first."
   );
 }
-async function handleHttp(req, res, opts = {}) {
+async function handleHttp(req, res) {
   const method = req.method ?? "GET";
   const path10 = (req.url ?? "/").split("?")[0];
   const search = new URLSearchParams((req.url ?? "").split("?")[1] ?? "");
@@ -85853,17 +85524,16 @@ async function handleHttp(req, res, opts = {}) {
     return;
   }
   if (method === "POST" && path10 === "/oauth/register") {
-    const raw = opts.body ?? await readRawBody(req);
-    let parsed = raw;
-    if (typeof raw === "string") {
-      try {
-        parsed = raw ? JSON.parse(raw) : {};
-      } catch {
-        sendJson(res, 400, { error: "invalid_request" });
-        return;
-      }
+    const raw = await readRawBody(req);
+    let parsed;
+    try {
+      parsed = raw ? JSON.parse(raw) : {};
+    } catch {
+      sendJson(res, 400, { error: "invalid_request" });
+      return;
     }
-    sendJson(res, 201, registerClient(parsed));
+    const client = registerClient(parsed);
+    sendJson(res, "error" in client ? 400 : 201, client);
     return;
   }
   if (method === "GET" && path10 === "/oauth/authorize") {
@@ -85895,11 +85565,7 @@ async function handleHttp(req, res, opts = {}) {
     return;
   }
   if (method === "POST" && path10 === "/oauth/token") {
-    const raw = opts.body ?? await readRawBody(req);
-    let params;
-    if (typeof raw === "string") params = new URLSearchParams(raw);
-    else params = new URLSearchParams(raw);
-    const out = await handleToken(params);
+    const out = await handleToken(new URLSearchParams(await readRawBody(req)));
     sendJson(res, out.status, out.json);
     return;
   }
@@ -85908,19 +85574,24 @@ async function handleHttp(req, res, opts = {}) {
       sendJsonRpcError(res, 405, -32601, "Method not allowed.");
       return;
     }
-    let body = opts.body;
-    if (body === void 0 && method === "POST") {
+    let body;
+    if (method === "POST") {
       const raw = await readRawBody(req);
-      body = raw ? JSON.parse(raw) : void 0;
+      try {
+        body = raw ? JSON.parse(raw) : void 0;
+      } catch {
+        sendJsonRpcError(res, 400, -32700, "Parse error: body is not valid JSON.");
+        return;
+      }
     }
     await handleMcp(req, res, body);
     return;
   }
   sendJsonRpcError(res, 404, -32601, "Not found.");
 }
-var serverOptions = {};
+var serverOptions = { localFiles: false };
 async function runMcpHttp(port, host = "127.0.0.1", options = {}) {
-  serverOptions = options;
+  serverOptions = { ...options, localFiles: false };
   markMcpSurface("http");
   const debug = process.env["MCP_DEBUG"] === "1";
   const server = http.createServer((req, res) => {
@@ -85997,20 +85668,14 @@ function installShutdownHandler(server) {
     shuttingDown = true;
     process.stderr.write(
       `
-[mcp] ${signal} \u2014 draining (${sessions.size} session(s), ${SHUTDOWN_GRACE_MS / 1e3}s grace)
+[mcp] ${signal} \u2014 draining (${sessions3.size} session(s), ${SHUTDOWN_GRACE_MS / 1e3}s grace)
 `
     );
     server.close(() => {
       process.stderr.write("[mcp] drained cleanly\n");
       process.exit(0);
     });
-    for (const { transport, server: mcp } of sessions.values()) {
-      void Promise.resolve().then(() => transport.close?.()).catch(() => {
-      });
-      void Promise.resolve().then(() => mcp.close?.()).catch(() => {
-      });
-    }
-    sessions.clear();
+    for (const [sid, session] of sessions3) closeSession(sid, session);
     const timer = setTimeout(() => {
       process.stderr.write(
         `[mcp] ${SHUTDOWN_GRACE_MS / 1e3}s elapsed \u2014 forcing exit

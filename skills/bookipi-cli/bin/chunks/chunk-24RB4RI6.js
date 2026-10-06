@@ -17247,8 +17247,8 @@ var {
 
 // src/config.ts
 var BUILD_ENV = "prod";
-var CLI_VERSION = "0.40.6";
-var BUILD_STAMP = "9fdc414 2026-10-06";
+var CLI_VERSION = "0.41.0";
+var BUILD_STAMP = "d400713 2026-10-06";
 var config = {
   AUTH_SERVER: process.env["AUTH_SERVER"] ?? "https://auth.bookipi.com",
   APP_ID: process.env["APP_ID"] ?? "1dd166d9569f4f7eb0f08a22c8f0d54a",
@@ -17467,6 +17467,8 @@ function claimFirstRun() {
 }
 var REFERRAL_FILE = "referral.json";
 function getReferral() {
+  const ctx = currentRequestAuth();
+  if (ctx) return null;
   const dir = getBookipiConfigDir();
   if (!dir) return null;
   try {
@@ -17493,6 +17495,7 @@ function rememberReferral(ref) {
   }
 }
 function retireLegacyHomeConfig() {
+  if (currentRequestAuth()) return;
   const credentialsPath = getCredentialsPath();
   if (!credentialsPath) return;
   try {
@@ -17508,6 +17511,7 @@ function retireLegacyHomeConfig() {
   }
 }
 function writeConfigFields(updates) {
+  if (currentRequestAuth()) return;
   const dir = ensureConfigDir();
   if (dir) {
     mergeConfigAt(path.join(dir, CREDENTIALS_FILE), updates);
@@ -17528,30 +17532,25 @@ function saveCompanyCurrencies(map) {
   if (!map || Object.keys(map).length === 0) return;
   writeConfigFields({ companyCurrencies: map });
 }
+function* storedConfigs({ configDirOnly = false } = {}) {
+  const resolvers = [getCredentialsPath, getLegacyCredentialsPath];
+  if (!configDirOnly) resolvers.push(getSkillConfigPath, () => LEGACY_HOME_CONFIG);
+  for (const resolve of resolvers) {
+    const p = resolve();
+    if (p) yield readConfig(p);
+  }
+}
+function readStored(pick, options) {
+  for (const config2 of storedConfigs(options)) {
+    const value = pick(config2);
+    if (value != null) return value;
+  }
+  return null;
+}
 function readCompanyCurrencies() {
-  const credentialsPath = getCredentialsPath();
-  if (credentialsPath) {
-    const data2 = readConfig(credentialsPath);
-    if (data2.companyCurrencies && Object.keys(data2.companyCurrencies).length > 0) {
-      return data2.companyCurrencies;
-    }
-  }
-  const legacyCredentialsPath = getLegacyCredentialsPath();
-  if (legacyCredentialsPath) {
-    const data2 = readConfig(legacyCredentialsPath);
-    if (data2.companyCurrencies && Object.keys(data2.companyCurrencies).length > 0) {
-      return data2.companyCurrencies;
-    }
-  }
-  const skillPath = getSkillConfigPath();
-  if (skillPath) {
-    const data2 = readConfig(skillPath);
-    if (data2.companyCurrencies && Object.keys(data2.companyCurrencies).length > 0) {
-      return data2.companyCurrencies;
-    }
-  }
-  const data = readConfig(LEGACY_HOME_CONFIG);
-  return data.companyCurrencies ?? {};
+  return readStored(
+    (c) => c.companyCurrencies && Object.keys(c.companyCurrencies).length > 0 ? c.companyCurrencies : null
+  ) ?? {};
 }
 function getCurrentCurrency() {
   const ctx = currentRequestAuth();
@@ -17568,26 +17567,8 @@ function getCurrentCurrency() {
 function getDefaultCompany() {
   const ctx = currentRequestAuth();
   if (ctx) return ctx.companyId ?? null;
-  if (process.env.BOOKIPI_COMPANY) {
-    return process.env.BOOKIPI_COMPANY;
-  }
-  const credentialsPath = getCredentialsPath();
-  if (credentialsPath) {
-    const data2 = readConfig(credentialsPath);
-    if (data2.defaultCompany) return data2.defaultCompany;
-  }
-  const legacyCredentialsPath = getLegacyCredentialsPath();
-  if (legacyCredentialsPath) {
-    const data2 = readConfig(legacyCredentialsPath);
-    if (data2.defaultCompany) return data2.defaultCompany;
-  }
-  const skillPath = getSkillConfigPath();
-  if (skillPath) {
-    const data2 = readConfig(skillPath);
-    if (data2.defaultCompany) return data2.defaultCompany;
-  }
-  const data = readConfig(LEGACY_HOME_CONFIG);
-  return data.defaultCompany ?? null;
+  if (process.env.BOOKIPI_COMPANY) return process.env.BOOKIPI_COMPANY;
+  return readStored((c) => c.defaultCompany || null);
 }
 function saveAnalyticsUserId(hash) {
   writeConfigFields({ analyticsUserId: hash });
@@ -17598,32 +17579,15 @@ function saveInternalTesterEmail(email) {
 function getInternalTesterEmail() {
   const ctx = currentRequestAuth();
   if (ctx) return ctx.internalTesterEmail ?? null;
-  const credentialsPath = getCredentialsPath();
-  if (credentialsPath) {
-    const data = readConfig(credentialsPath);
-    if (data.analyticsUserId) return data.internalTesterEmail ?? null;
+  for (const c of storedConfigs()) {
+    if (c.analyticsUserId) return c.internalTesterEmail ?? null;
   }
-  const skillPath = getSkillConfigPath();
-  if (skillPath) {
-    const data = readConfig(skillPath);
-    if (data.analyticsUserId) return data.internalTesterEmail ?? null;
-  }
-  return readConfig(LEGACY_HOME_CONFIG).internalTesterEmail ?? null;
+  return null;
 }
 function getAnalyticsUserId() {
   const ctx = currentRequestAuth();
   if (ctx) return ctx.analyticsUserId ?? null;
-  const credentialsPath = getCredentialsPath();
-  if (credentialsPath) {
-    const data = readConfig(credentialsPath);
-    if (data.analyticsUserId) return data.analyticsUserId;
-  }
-  const skillPath = getSkillConfigPath();
-  if (skillPath) {
-    const data = readConfig(skillPath);
-    if (data.analyticsUserId) return data.analyticsUserId;
-  }
-  return readConfig(LEGACY_HOME_CONFIG).analyticsUserId ?? null;
+  return readStored((c) => c.analyticsUserId || null);
 }
 function saveMeetAppToken(token) {
   const company = getDefaultCompany();
@@ -17643,102 +17607,32 @@ function saveSignitToken(token, expiry) {
   writeConfigFields(fields);
 }
 function getSignitTokenCached() {
+  const ctx = currentRequestAuth();
+  if (ctx) return { token: null, expiry: null };
   const activeCompany = getDefaultCompany();
-  const hit = (data2) => !!data2.signitToken && data2.signitTokenCompany === activeCompany;
-  const credentialsPath = getCredentialsPath();
-  if (credentialsPath) {
-    const data2 = readConfig(credentialsPath);
-    if (hit(data2)) {
-      return { token: data2.signitToken, expiry: data2.signitTokenExpiry ?? null };
-    }
-  }
-  const legacyCredentialsPath = getLegacyCredentialsPath();
-  if (legacyCredentialsPath) {
-    const data2 = readConfig(legacyCredentialsPath);
-    if (hit(data2)) {
-      return { token: data2.signitToken, expiry: data2.signitTokenExpiry ?? null };
-    }
-  }
-  const skillPath = getSkillConfigPath();
-  if (skillPath) {
-    const data2 = readConfig(skillPath);
-    if (hit(data2)) {
-      return { token: data2.signitToken, expiry: data2.signitTokenExpiry ?? null };
-    }
-  }
-  const data = readConfig(LEGACY_HOME_CONFIG);
-  if (hit(data)) {
-    return { token: data.signitToken, expiry: data.signitTokenExpiry ?? null };
-  }
-  return { token: null, expiry: null };
+  return readStored(
+    (c) => c.signitToken && c.signitTokenCompany === activeCompany ? { token: c.signitToken, expiry: c.signitTokenExpiry ?? null } : null
+  ) ?? { token: null, expiry: null };
 }
 function getMeetAppTokenCached() {
+  const ctx = currentRequestAuth();
+  if (ctx) return null;
   const activeCompany = getDefaultCompany();
-  const hit = (data2) => !!data2.meetAppToken && data2.meetAppTokenCompany === activeCompany;
-  const credentialsPath = getCredentialsPath();
-  if (credentialsPath) {
-    const data2 = readConfig(credentialsPath);
-    if (hit(data2)) return data2.meetAppToken;
-  }
-  const legacyCredentialsPath = getLegacyCredentialsPath();
-  if (legacyCredentialsPath) {
-    const data2 = readConfig(legacyCredentialsPath);
-    if (hit(data2)) return data2.meetAppToken;
-  }
-  const skillPath = getSkillConfigPath();
-  if (skillPath) {
-    const data2 = readConfig(skillPath);
-    if (hit(data2)) return data2.meetAppToken;
-  }
-  const data = readConfig(LEGACY_HOME_CONFIG);
-  if (hit(data)) return data.meetAppToken;
-  return null;
+  return readStored(
+    (c) => c.meetAppToken && c.meetAppTokenCompany === activeCompany ? c.meetAppToken : null
+  );
 }
 function getToken() {
   const ctx = currentRequestAuth();
   if (ctx) return ctx.token ?? null;
-  if (process.env.BOOKIPI_TOKEN) {
-    return process.env.BOOKIPI_TOKEN;
-  }
-  const credentialsPath = getCredentialsPath();
-  if (credentialsPath) {
-    const data2 = readConfig(credentialsPath);
-    if (data2.token) return data2.token;
-  }
-  const legacyCredentialsPath = getLegacyCredentialsPath();
-  if (legacyCredentialsPath) {
-    const data2 = readConfig(legacyCredentialsPath);
-    if (data2.token) return data2.token;
-  }
-  const skillPath = getSkillConfigPath();
-  if (skillPath) {
-    const data2 = readConfig(skillPath);
-    if (data2.token) return data2.token;
-  }
-  const data = readConfig(LEGACY_HOME_CONFIG);
-  return data.token ?? null;
+  if (process.env.BOOKIPI_TOKEN) return process.env.BOOKIPI_TOKEN;
+  return readStored((c) => c.token || null);
 }
 function savePendingRelaySession(session) {
   writeConfigFields({ relayPendingSession: session });
 }
 function getPendingRelaySession() {
-  const credentialsPath = getCredentialsPath();
-  if (credentialsPath) {
-    const data2 = readConfig(credentialsPath);
-    if (data2.relayPendingSession) return data2.relayPendingSession;
-  }
-  const legacyCredentialsPath = getLegacyCredentialsPath();
-  if (legacyCredentialsPath) {
-    const data2 = readConfig(legacyCredentialsPath);
-    if (data2.relayPendingSession) return data2.relayPendingSession;
-  }
-  const skillPath = getSkillConfigPath();
-  if (skillPath) {
-    const data2 = readConfig(skillPath);
-    if (data2.relayPendingSession) return data2.relayPendingSession;
-  }
-  const data = readConfig(LEGACY_HOME_CONFIG);
-  return data.relayPendingSession ?? null;
+  return readStored((c) => c.relayPendingSession);
 }
 function clearPendingRelaySession() {
   writeConfigFields({ relayPendingSession: null });
@@ -17752,52 +17646,17 @@ function saveOidcTokens(tokens) {
   writeConfigFields(update);
 }
 function getOidcTokens() {
-  const hasExplicitOverride = !!(process.env.BOOKIPI_CONFIG_DIR || process.env.BOOKIPI_AUTH_DIR);
-  const credentialsPath = getCredentialsPath();
-  if (credentialsPath) {
-    const data2 = readConfig(credentialsPath);
-    if (data2.oidcAccessToken) {
-      return {
-        accessToken: data2.oidcAccessToken,
-        refreshToken: data2.oidcRefreshToken ?? null,
-        expireAt: data2.oidcExpireAt ?? null
-      };
-    }
-  }
-  const legacyCredentialsPath = getLegacyCredentialsPath();
-  if (legacyCredentialsPath) {
-    const data2 = readConfig(legacyCredentialsPath);
-    if (data2.oidcAccessToken) {
-      return {
-        accessToken: data2.oidcAccessToken,
-        refreshToken: data2.oidcRefreshToken ?? null,
-        expireAt: data2.oidcExpireAt ?? null
-      };
-    }
-  }
-  if (hasExplicitOverride) {
-    return { accessToken: null, refreshToken: null, expireAt: null };
-  }
-  const skillPath = getSkillConfigPath();
-  if (skillPath) {
-    const data2 = readConfig(skillPath);
-    if (data2.oidcAccessToken) {
-      return {
-        accessToken: data2.oidcAccessToken,
-        refreshToken: data2.oidcRefreshToken ?? null,
-        expireAt: data2.oidcExpireAt ?? null
-      };
-    }
-  }
-  const data = readConfig(LEGACY_HOME_CONFIG);
-  if (data.oidcAccessToken) {
-    return {
-      accessToken: data.oidcAccessToken,
-      refreshToken: data.oidcRefreshToken ?? null,
-      expireAt: data.oidcExpireAt ?? null
-    };
-  }
-  return { accessToken: null, refreshToken: null, expireAt: null };
+  const ctx = currentRequestAuth();
+  if (ctx) return { accessToken: null, refreshToken: null, expireAt: null };
+  const configDirOnly = !!(process.env.BOOKIPI_CONFIG_DIR || process.env.BOOKIPI_AUTH_DIR);
+  return readStored(
+    (c) => c.oidcAccessToken ? {
+      accessToken: c.oidcAccessToken,
+      refreshToken: c.oidcRefreshToken ?? null,
+      expireAt: c.oidcExpireAt ?? null
+    } : null,
+    { configDirOnly }
+  ) ?? { accessToken: null, refreshToken: null, expireAt: null };
 }
 function clearAllCredentials() {
   const removed = [];
@@ -18042,7 +17901,7 @@ async function exchangeForBookipiToken(accessToken) {
 }
 var renewInFlight = null;
 async function renewBookipiToken() {
-  if (process.env["BOOKIPI_TOKEN"]) return false;
+  if (process.env["BOOKIPI_TOKEN"] || currentRequestAuth()) return false;
   if (renewInFlight) return renewInFlight;
   renewInFlight = (async () => {
     const { refreshToken } = getOidcTokens();
@@ -18052,6 +17911,7 @@ async function renewBookipiToken() {
       const bookipiToken = await exchangeForBookipiToken(refreshed.accessToken);
       saveToken(bookipiToken);
       process.stderr.write("(session expired \u2014 refreshed automatically)\n");
+      renewInFlight = null;
       return true;
     } catch {
       return false;
