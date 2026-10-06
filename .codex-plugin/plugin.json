@@ -1,7 +1,7 @@
 {
   "name": "bookipi",
-  "version": "0.40.2",
-  "description": "Run your business from chat — invoices, customers, expenses, deals, proposals, eSign contracts, meetings, reports and your website. Installs the Bookipi skill; pair it with the `bookipi` CLI.",
+  "version": "0.40.3",
+  "description": "Run your business from chat — invoices, customers, expenses, deals, proposals, eSign contracts, meetings, reports and your website. Installs the Bookipi skill and the `bookipi` CLI it runs.",
   "author": {
     "name": "Bookipi",
     "email": "support@bookipi.com",
@@ -23,7 +23,7 @@
   "interface": {
     "displayName": "Bookipi",
     "shortDescription": "Run your small business from chat",
-    "longDescription": "Run your business from chat. Invoices and the whole invoice document family (estimates, credit notes, delivery notes, purchase orders), customers and payment history, expenses and receipt scanning, deals, AI-written proposals, eSign contracts, recorded meetings with transcripts and AI summaries, reports and dashboards, and your Bookipi website. Installs the Bookipi skill — presentation rules, operation routing, and 21 flow playbooks (morning brief, collections run, win a deal, quick quote, stalled-deal recovery, website review) — and drives them through the `bookipi` CLI, which it fetches on first use. Sign in with your Bookipi account in the browser; no API key to manage.",
+    "longDescription": "Run your business from chat. Invoices and the whole invoice document family (estimates, credit notes, delivery notes, purchase orders), customers and payment history, expenses and receipt scanning, deals, AI-written proposals, eSign contracts, recorded meetings with transcripts and AI summaries, reports and dashboards, and your Bookipi website. Installs the Bookipi skill — presentation rules, operation routing, and 21 flow playbooks (morning brief, collections run, win a deal, quick quote, stalled-deal recovery, website review) — and drives them through the `bookipi` CLI, which ships inside the plugin. Sign in with your Bookipi account in the browser; no API key to manage.",
     "developerName": "Bookipi",
     "category": "Productivity",
     "capabilities": [

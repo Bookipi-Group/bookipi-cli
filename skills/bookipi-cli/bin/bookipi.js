@@ -3482,8 +3482,8 @@ var init_config = __esm({
   "src/config.ts"() {
     "use strict";
     BUILD_ENV = "prod";
-    CLI_VERSION = "0.40.2";
-    BUILD_STAMP = "01415db 2026-10-06";
+    CLI_VERSION = "0.40.3";
+    BUILD_STAMP = "6796754 2026-10-06";
     config = {
       AUTH_SERVER: process.env["AUTH_SERVER"] ?? "https://auth.bookipi.com",
       APP_ID: process.env["APP_ID"] ?? "1dd166d9569f4f7eb0f08a22c8f0d54a",
