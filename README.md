@@ -242,8 +242,8 @@ The bundled CLI ships in this repository at `skills/bookipi-cli/bin/bookipi.js`
 the repo gives you a runnable CLI:
 
 ```
-git clone https://github.com/Bookipi-Group/bookipi-cli.git
-alias bookipi='node "$PWD/bookipi-cli/skills/bookipi-cli/bin/bookipi.js"'
+git clone https://github.com/Bookipi-Group/bookipi-cli.git ~/bookipi-cli
+alias bookipi=~/bookipi-cli/skills/bookipi-cli/bin/bookipi.js
 
 bookipi init                                   # creates a workspace + browser OAuth sign-in (~5s)
 bookipi invoice list --status overdue --json   # structured output your code can act on
@@ -333,11 +333,6 @@ Bookipi account. Full policy: **[bookipi.com/privacy-policy](https://bookipi.com
   the machine, never by either value itself. Command arguments, invoice
   contents, customer records and credentials are not included. Turn it off with
   `BOOKIPI_NO_ANALYTICS=1` or the cross-tool `DO_NOT_TRACK=1`.
-- **OpenTelemetry (optional, off by default)** — the CLI can export timing
-  traces and metrics over OTLP, but **only** to an endpoint you configure
-  yourself via the standard `OTEL_EXPORTER_OTLP_ENDPOINT` variable. Without it,
-  nothing is exported; with it, spans carry command names, durations and status
-  — never your business data. The same opt-outs above disable it too.
 
 **What it does not do**
 
