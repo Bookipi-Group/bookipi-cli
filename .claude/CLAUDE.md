@@ -29,22 +29,17 @@ by version, so a mismatch ships a manifest claiming the wrong release.
 ### Maintained here (safe to edit)
 
 `README.md`, `SECURITY.md`, `LICENSE`, `CHANGELOG.md`,
-`.github/ISSUE_TEMPLATE/`, `.github/scripts/`, and both workflows:
-`release.yml` (the `.skill` bundle smoke test — distinct from the source
-repo's release pipeline of the same name) and `verify.yml`.
+`.github/ISSUE_TEMPLATE/`, and `.github/workflows/release.yml` (the `.skill`
+bundle smoke test — distinct from the source repo's release pipeline of the
+same name).
 
-`verify.yml` runs `.github/scripts/verify-manifests.mjs`, which catches what
-generation can get wrong silently: manifests disagreeing on the version, the
-version not matching the release tag, `skills/` and `.agents/skills/` drifting
-apart, a manifest naming a skills directory other than `./skills/` (the
-double-register trap below), a missing branding asset, a staging URL in a
-public manifest, or a declared MCP server that is not serving — that last one
-is dialled on releases only, so a release cannot ship a connector URL that
-does not answer. Run it before a release:
-
-```
-node .github/scripts/verify-manifests.mjs v0.37.1
-```
+**No manifest-checking script lives here.** A script in this repo that reads
+`.codex-plugin/plugin.json` gets the plugin held by the directory review
+(`UNREAD_ASSET_REFERENCED`): the manifest names PNGs, and the review cannot
+tell the script only checks they exist. Those checks run in the source repo
+instead: `publish-plugin.mjs` refuses to stage on a bad `./skills/` path,
+missing branding asset or bad MCP endpoint (`scripts/verify-plugin.mjs`), and
+stamps every manifest's version itself; CI runs it with `--dry-run`. Don't add it back.
 
 `CHANGELOG.md` is written by hand here, one section per release. Nothing
 generates it — add the entry when the release ships.
@@ -88,8 +83,8 @@ All three manifests declare the hosted MCP connector at
 key instead, so it is `httpUrl` (its `url` would mean SSE). None of them needs
 an OAuth block — the server answers an unauthenticated call with a 401 naming
 its protected-resource metadata, and every client discovers the flow from
-there. Keep the endpoint identical across the three; `verify.yml` fails the
-build when they drift.
+there. Keep the endpoint identical across the three; the source repo's publish step
+fails the release when they drift.
 
 Only the Codex manifest has a branding block (icon, logo, `brandColor`).
 Claude Code's plugin schema has no icon field, and neither does Gemini CLI's
