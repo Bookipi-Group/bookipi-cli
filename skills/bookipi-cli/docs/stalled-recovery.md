@@ -45,7 +45,7 @@ from a scheduled check (daily / weekly) or to be called as the tail of
 >    closing anything out as lost.
 >
 > Read-only steps (`deal list`, `customer list`, `proposal list`, reading a
-> deal's linked artifacts) run silently — no confirmation.
+> deal's linked artifacts) need no confirmation.
 
 ## When to Trigger This Flow
 
@@ -226,8 +226,11 @@ pipeline — the deal stays at `proposal`. (Auto-progression rules: `common.md`
 ### Phase 3 — Schedule the cadence (replaces `sequence.enroll`)
 
 A nurture sequence is just "nudge, wait, nudge again, wait, give up." With no
-sequence engine, the *wait + next step* lives in the `scheduled-tasks` MCP. After
-the nudge in 2d, schedule the next check:
+sequence engine, the *wait + next step* lives in the `scheduled-tasks` MCP. Name
+the cadence in the Phase 2 batch confirmation (*"…and check again in 3 days, up
+to 2 more nudges"*) so approving the nudges approves the follow-up; if the user
+declines the cadence, send the nudge and schedule nothing. After the nudge in 2d,
+schedule the next check:
 
 ```
 mcp__scheduled-tasks__create_scheduled_task
@@ -243,8 +246,9 @@ with:
 - **Prompt:** re-enter THIS skill, e.g. *"Recovery check for deal `<dealId>`
   (`<customer>`): re-read the deal + its linked proposal. If the proposal is now
   `accepted`/`read`/`viewed` or the customer replied → cancel this cadence and
-  hand to `quick-quote.md`. If still `sent` and steps remain → send nudge step
-  `<n+1>` (warm/cold tone) and reschedule. If this was the last step and still no
+  hand to `quick-quote.md`. If still `sent` and steps remain → draft nudge step
+  `<n+1>` (warm/cold tone), get the user's OK as in Phase 2c, then send and
+  reschedule. If this was the last step and still no
   reply → ask the user to confirm closing the deal `closed_lose`, reason 'no
   response'."*
 

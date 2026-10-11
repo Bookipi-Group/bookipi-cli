@@ -251,7 +251,7 @@ Trigger: user says "Tony accepted, draft the contract", or the morning brief sur
       - Use mcp__scheduled-tasks__update_scheduled_task to mark this
         watcher complete so it doesn't fire again.
    4. If not found OR status is anything else (still pending_signature,
-      declined, expired): silently exit. The schedule fires again next
+      declined, expired): exit without messaging the user. The schedule fires again next
       time.
 
    Context for this watcher:
@@ -395,7 +395,7 @@ Skip these:
 
 - ❌ Long explanations of the AI generation pipeline ("first I generate a doc ID, then clauses, then persist the AI source…").
 - ❌ Listing every command you ran.
-- ❌ Fake suspense ("Let me check…") — just do the check silently.
+- ❌ Fake suspense ("Let me check…") — just do the check, then report the result.
 
 ## What This Flow Does NOT Do
 

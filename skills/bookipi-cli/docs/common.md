@@ -27,7 +27,7 @@ Handles are an **internal tool for the LLM only**. The user does not know what `
 - **NEVER** show raw CLI commands (e.g., `bookipi invoice send @i1`) to the user
 - **ALWAYS** refer to invoices by their **invoice number** (e.g., "INV-650"), **customer name**, and **amount**
 - **ALWAYS** refer to customers by **name** (e.g., "Kelvin Bookipi"), not by handle
-- Use handles silently in CLI commands behind the scenes — the user should never see them
+- Use handles in CLI commands, not in replies — they mean nothing to the user
 - When suggesting actions, describe them in plain language (e.g., "I can resend the $5,000 invoice to Kelvin NewX") instead of showing raw CLI commands
 
 **Example — BAD (don't do this):**
@@ -120,8 +120,8 @@ The CLI emits errors in a consistent format on stderr — the agent should **pas
 
 ### How the agent should react
 
-1. **Auth errors** (`code: "auth"`) — silently re-trigger the login flow (`bookipi login --relay-start`, then `--relay-wait`), then re-run the original command. Don't abandon the user's task.
-2. **Handle-not-found / not-found** — run the suggested `list` command silently, then retry. If still missing, surface the issue plainly: *"I can't find that record — it might've been deleted."*
+1. **Auth errors** (`code: "auth"`) — re-run the login flow (`bookipi login --relay-start`, share the new login link, then `--relay-wait`), then re-run the original command. Don't abandon the user's task.
+2. **Handle-not-found / not-found** — run the suggested `list` command, then retry — no need to narrate it. If still missing, surface the issue plainly: *"I can't find that record — it might've been deleted."*
 3. **Network / timeout / rate-limit** — wait briefly and retry once. If it fails again, surface the hint to the user.
 4. **Validation** — these are user-input issues. Surface the message + hint plainly and ask for the right value via `AskUserQuestion` if possible.
 5. **Unknown** — surface as-is. If `BOOKIPI_DEBUG=1` was set, the markdown also includes a `_(Debug: <raw>)_` footer for troubleshooting.
@@ -173,7 +173,7 @@ The current Bookipi backend doesn't auto-progress deals when artifacts are sent.
 **Five rules the agent must follow:**
 
 1. **Forward only.** Never demote. If the deal is at `contract` and the user re-sends a proposal, do **not** bump back to `proposal` — leave it at `contract`. Re-sending an artifact doesn't unwind the pipeline.
-2. **Skip if at-or-past target.** If the deal is already at the target stage (e.g. already at `proposal` and you just sent another proposal), skip the update silently. Don't re-fire a no-op mutation.
+2. **Skip if at-or-past target.** If the deal is already at the target stage (e.g. already at `proposal` and you just sent another proposal), skip the update. Don't re-fire a no-op mutation.
 3. **Skip if no linked deal.** If the proposal/contract has no `projectPipelineId`, there's nothing to progress. Quietly skip.
 4. **Don't auto-progress out of terminal stages.** If the deal is `closed_win` or `closed_lose` and an artifact is somehow re-sent on it, **do not** move it back into the open pipeline. That's a fresh-deal scenario — ask the user before doing anything.
 5. **Custom keys exist.** A user might have added a stage with `key: "legal_review"` between `proposal` and `contract`. The agent doesn't know where it sits in the user's mental order. If the deal is at a non-standard key, **don't move it** — leave it alone and let the user advance manually. Only progress *out of* a non-standard key when the action's "allowed source" list (column 3 above) explicitly includes a standard key.

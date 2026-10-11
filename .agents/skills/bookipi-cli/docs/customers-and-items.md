@@ -95,26 +95,17 @@ When the user drags in a product image (or a photo of something they sell):
 
 Don't confuse this with **expense receipts** (`docs/expenses.md` — `expense scan`/`upload`): a receipt the user wants *logged as an expense* goes through the expense flow; an image the user wants *on a product* goes through `--photo`/`set-photo`. If ambiguous ("here's a receipt for the chair I sell"), ask via `AskUserQuestion`.
 
-**⚠️ Pasted images: recover the bytes yourself — never bounce the user.** An image *pasted* into chat arrives as vision content with no obvious file — but the bytes ARE recoverable. Work this ladder top-down and only ask the user as a last resort:
-
-1. **A real file attachment?** Check the harness's uploaded-files location (in Cowork: the session's uploads dir or the user's mounted project folder; in Claude Code: the path shown with the attachment). Found → `--photo <path>` / `set-photo -f <path>`, done.
-2. **Session-transcript extraction (the native path for pastes).** Some harnesses journal the conversation locally with pasted/dragged images embedded as base64. Find the journal:
-   ```bash
-   # Claude Code (local machine) — newest transcript for this project:
-   ls -t ~/.claude/projects/*/*.jsonl 2>/dev/null | head -1
-   # Other harnesses (e.g. Cowork VM) — probe generically:
-   find ~/.claude /sessions -name "*.jsonl" -mmin -120 2>/dev/null | head -3
-   ```
-   Then parse it (python3): each JSONL line may hold `message.content[]` blocks with `type: "image"` and `source: {type: "base64", media_type, data}` — take the **last** one, base64-decode to a file with the extension matching `media_type` (the client re-encodes pastes — jpeg or webp). ⚠️ **Item and invoice photo endpoints accept png/jpg only** — if you got webp, convert before uploading (macOS: `sips -s format jpeg <file>.webp --out <file>.jpg`; expense receipts accept webp as-is). **Read the saved file to visually confirm it's the image the user pasted** before uploading. If no journal or no image blocks exist in this harness, fall through — don't hunt for long.
-3. **Clipboard rescue** (macOS local machine — works when the user ⌘C-copied the image moments ago):
-   ```bash
-   osascript -e 'try' -e 'set png to the clipboard as «class PNGf»' \
-     -e 'set f to open for access POSIX file "/tmp/pasted-image.png" with write permission' \
-     -e 'write png to f' -e 'close access f' -e 'return "saved"' \
-     -e 'on error' -e 'return "no image on clipboard"' -e 'end try'
-   ```
-   If it saves, Read it to confirm it's the right image, then upload.
-4. **Only now ask** — do the vision work you can (read name/price, even create the item without a photo), then **one plain-language line**: *"Got the details — to attach the photo itself, just drag it straight into the chat and I'll add it."* Do **not** say "path", "file on disk", "Finder", or name any file manager (see SKILL.md user-facing rules). Never claim an upload succeeded without real bytes recovered, and never ask the user to re-send before working the ladder.
+**⚠️ Pasted images.** An image *pasted* into chat may arrive as vision content
+with no file behind it. Use the user's attachment if there is one (in Cowork: the
+session's uploads dir or the mounted project folder; in Claude Code: the path
+shown with the attachment). Item photos accept png/jpg only — convert webp/heic
+first (macOS: `sips -s format jpeg <in> --out <out>.jpg`); expense receipts accept
+webp as is, and invoice photos are covered in `docs/invoices.md`. No file → do the vision work
+you can (read name/price, even create the item without a photo), then one
+plain-language line: *"Got the details — to attach the photo itself, just drag it
+straight into the chat and I'll add it."* Never say "path", "file on disk" or
+"Finder"; never read the conversation's local history files or the clipboard to
+dig out an image; never claim an upload succeeded without a real file.
 
 ## Extending to Future Resources
 

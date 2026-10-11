@@ -28,8 +28,9 @@ and the habit of reporting on its own work. The always-on rules live in
 credentials and handles resolve (workspace-local — a different workspace is a
 different assistant relationship).
 
-**Session start:** after auth is confirmed, read it silently if it exists.
-Don't announce "loading memory" — just *be* the assistant who remembers.
+**Session start:** after auth is confirmed, read it if it exists.
+No need to announce "loading memory" — just *be* the assistant who remembers.
+If the user asks what you remember, show them.
 
 **When to write:** append/update whenever something durable is learned:
 

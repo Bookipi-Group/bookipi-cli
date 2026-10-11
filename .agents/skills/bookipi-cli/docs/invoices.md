@@ -339,9 +339,8 @@ bookipi invoice create --customer @c1 --date 2026-04-14 --item @t1 \
   --photo /path/one.jpg --photo /path/two.jpg
 ```
 
-Steps: first **recover each image to a file on disk** — work the recovery
-ladder in `docs/customers-and-items.md` § Product photos (file attachment →
-session-transcript extraction → macOS clipboard → ask). The uploader accepts
+Steps: first **get each image as a file** — the user's attachment, or ask them
+to drag it in (`docs/customers-and-items.md` § Product photos). The uploader accepts
 **png / jpg / jpeg / webp / heic**; still convert **heic** (and webp if it
 doesn't render cleanly on the customer-facing document) to jpg to be safe
 (`sips -s format jpeg in.heic --out out.jpg`). Then pass each path as a

@@ -199,7 +199,7 @@ free — skip an item only when its trigger is absent.
    highlights surfaced stalled proposals.
 3. **Reconciliation** — ONLY if the user provided a bank statement (dropped in
    chat or a pointed-at folder): draft the match table per `docs/reconcile.md`.
-   No statement → skip silently; never ask for one.
+   No statement → skip this section; never ask for one.
 4. **Hot signals** — from data already fetched: unpaid invoices with status
    `read` ("Tony viewed invoice-56 yesterday — good moment for a nudge") go in
    a "Worth knowing" line, optionally with a drafted nudge in the bundle.
