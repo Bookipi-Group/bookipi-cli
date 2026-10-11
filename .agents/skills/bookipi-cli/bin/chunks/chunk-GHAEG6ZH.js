@@ -11492,9 +11492,9 @@ var require_dist = __commonJS({
   }
 });
 
-// node_modules/.pnpm/follow-redirects@1.16.0/node_modules/follow-redirects/debug.js
+// node_modules/.pnpm/follow-redirects@1.16.1/node_modules/follow-redirects/debug.js
 var require_debug = __commonJS({
-  "node_modules/.pnpm/follow-redirects@1.16.0/node_modules/follow-redirects/debug.js"(exports, module) {
+  "node_modules/.pnpm/follow-redirects@1.16.1/node_modules/follow-redirects/debug.js"(exports, module) {
     var debug;
     module.exports = function() {
       if (!debug) {
@@ -11512,9 +11512,9 @@ var require_debug = __commonJS({
   }
 });
 
-// node_modules/.pnpm/follow-redirects@1.16.0/node_modules/follow-redirects/index.js
+// node_modules/.pnpm/follow-redirects@1.16.1/node_modules/follow-redirects/index.js
 var require_follow_redirects = __commonJS({
-  "node_modules/.pnpm/follow-redirects@1.16.0/node_modules/follow-redirects/index.js"(exports, module) {
+  "node_modules/.pnpm/follow-redirects@1.16.1/node_modules/follow-redirects/index.js"(exports, module) {
     var url2 = __require("url");
     var URL2 = url2.URL;
     var http3 = __require("http");
@@ -11742,6 +11742,12 @@ var require_follow_redirects = __commonJS({
     RedirectableRequest.prototype._sanitizeOptions = function(options) {
       if (!options.headers) {
         options.headers = {};
+      } else if (Array.isArray(options.headers)) {
+        var headerList = options.headers;
+        options.headers = {};
+        for (var i = 0; i < headerList.length; i += 2) {
+          options.headers[headerList[i]] = headerList[i + 1];
+        }
       }
       if (!isArray2(options.sensitiveHeaders)) {
         options.sensitiveHeaders = [];
@@ -12016,7 +12022,7 @@ var require_follow_redirects = __commonJS({
       return URL2 && value instanceof URL2;
     }
     function escapeRegex(regex) {
-      return regex.replace(/[\]\\/()*+?.$]/g, "\\$&");
+      return regex.replace(/[[\]\\/()*+?.^$|]/g, "\\$&");
     }
     module.exports = wrap({ http: http3, https: https2 });
     module.exports.wrap = wrap;
@@ -12028,34 +12034,94 @@ import fs3 from "node:fs";
 import path3 from "node:path";
 import { randomUUID } from "node:crypto";
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/helpers/bind.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/bind.js
 function bind(fn, thisArg) {
   return function wrap() {
     return fn.apply(thisArg, arguments);
   };
 }
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/utils.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/utils.js
 var { toString } = Object.prototype;
 var { getPrototypeOf } = Object;
 var { iterator, toStringTag } = Symbol;
 var hasOwnProperty = (({ hasOwnProperty: hasOwnProperty2 }) => (obj, prop) => hasOwnProperty2.call(obj, prop))(Object.prototype);
+var isUnsafeObjectKey = (prop) => typeof prop === "string" && (prop === "__proto__" || prop === "constructor" || prop === "prototype");
+var isPrototypeBoundary = (obj, prototype2, source) => obj === Object.prototype || !source && prototype2 === null;
+var isSafeAndFullyMutable = (obj) => {
+  if (!Object.isExtensible(obj)) {
+    return false;
+  }
+  const props = Object.getOwnPropertyNames(obj);
+  if (Object.getOwnPropertySymbols) {
+    props.push(...Object.getOwnPropertySymbols(obj));
+  }
+  return props.every((prop) => {
+    if (isUnsafeObjectKey(prop)) {
+      return false;
+    }
+    const descriptor = Object.getOwnPropertyDescriptor(obj, prop);
+    return !!descriptor && descriptor.configurable && descriptor.writable === true;
+  });
+};
 var hasOwnInPrototypeChain = (thing, prop) => {
   let obj = thing;
   const seen = [];
-  while (obj != null && obj !== Object.prototype) {
+  while (obj != null) {
     if (seen.indexOf(obj) !== -1) {
       return false;
     }
     seen.push(obj);
+    const prototype2 = getPrototypeOf(obj);
+    if (isPrototypeBoundary(obj, prototype2, obj === thing)) {
+      return false;
+    }
     if (hasOwnProperty(obj, prop)) {
       return true;
     }
-    obj = getPrototypeOf(obj);
+    obj = prototype2;
   }
   return false;
 };
 var getSafeProp = (obj, prop) => obj != null && hasOwnInPrototypeChain(obj, prop) ? obj[prop] : void 0;
+var toSafeFlatObject = (thing) => {
+  if (thing == null || typeof thing !== "object" && typeof thing !== "function") {
+    return thing;
+  }
+  const sourcePrototype = getPrototypeOf(thing);
+  if (sourcePrototype === null && isSafeAndFullyMutable(thing)) {
+    return thing;
+  }
+  const result = /* @__PURE__ */ Object.create(null);
+  const merged = /* @__PURE__ */ Object.create(null);
+  const seen = [];
+  let current = thing;
+  while (current != null) {
+    if (seen.indexOf(current) !== -1) {
+      break;
+    }
+    seen.push(current);
+    const prototype2 = current === thing ? sourcePrototype : getPrototypeOf(current);
+    if (isPrototypeBoundary(current, prototype2, current === thing)) {
+      break;
+    }
+    const props = Object.getOwnPropertyNames(current);
+    if (Object.getOwnPropertySymbols) {
+      props.push(...Object.getOwnPropertySymbols(current));
+    }
+    for (const prop of props) {
+      if (isUnsafeObjectKey(prop)) {
+        continue;
+      }
+      if (!hasOwnProperty(merged, prop)) {
+        result[prop] = thing[prop];
+        merged[prop] = true;
+      }
+    }
+    current = prototype2;
+  }
+  return result;
+};
 var kindOf = /* @__PURE__ */ ((cache) => (thing) => {
   const str = toString.call(thing);
   return cache[str] || (cache[str] = str.slice(8, -1).toLowerCase());
@@ -12090,9 +12156,9 @@ var isPlainObject = (val) => {
     return false;
   }
   const prototype2 = getPrototypeOf(val);
-  return (prototype2 === null || prototype2 === Object.prototype || getPrototypeOf(prototype2) === null) && // Treat any genuine (non-Object.prototype-polluted) Symbol.toStringTag or
-  // Symbol.iterator as evidence the value is a tagged/iterable type rather
-  // than a plain object, while ignoring keys injected onto Object.prototype.
+  return (prototype2 === null || prototype2 === Object.prototype || getPrototypeOf(prototype2) === null) && // Treat safe own/inherited Symbol.toStringTag or Symbol.iterator members as
+  // evidence the value is tagged/iterable, while ignoring members reachable
+  // only through shared or terminal prototype boundaries.
   !hasOwnInPrototypeChain(val, toStringTag) && !hasOwnInPrototypeChain(val, iterator);
 };
 var isEmptyObject = (val) => {
@@ -12503,6 +12569,7 @@ var utils_default = {
   // an alias to avoid ESLint no-prototype-builtins detection
   hasOwnInPrototypeChain,
   getSafeProp,
+  toSafeFlatObject,
   reduceDescriptors,
   freezeMethods,
   toObjectSet,
@@ -12522,7 +12589,7 @@ var utils_default = {
   isSafeIterable
 };
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/helpers/parseHeaders.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/parseHeaders.js
 var ignoreDuplicateOf = utils_default.toObjectSet([
   "age",
   "authorization",
@@ -12568,7 +12635,7 @@ var parseHeaders_default = (rawHeaders) => {
   return parsed;
 };
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/helpers/sanitizeHeaderValue.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/sanitizeHeaderValue.js
 function trimSPorHTAB(str) {
   let start = 0;
   let end = str.length;
@@ -12606,7 +12673,7 @@ function toByteStringHeaderObject(headers) {
   return byteStringHeaders;
 }
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/core/AxiosHeaders.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/core/AxiosHeaders.js
 var $internals = /* @__PURE__ */ Symbol("internals");
 function normalizeHeader(header) {
   return header && String(header).trim().toLowerCase();
@@ -12939,7 +13006,7 @@ utils_default.reduceDescriptors(AxiosHeaders.prototype, ({ value }, key) => {
 utils_default.freezeMethods(AxiosHeaders);
 var AxiosHeaders_default = AxiosHeaders;
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/core/AxiosError.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/core/AxiosError.js
 var REDACTED = "[REDACTED ****]";
 function hasOwnOrPrototypeToJSON(source) {
   if (utils_default.hasOwnProp(source, "toJSON")) {
@@ -13101,11 +13168,11 @@ AxiosError.ERR_INVALID_URL = "ERR_INVALID_URL";
 AxiosError.ERR_FORM_DATA_DEPTH_EXCEEDED = "ERR_FORM_DATA_DEPTH_EXCEEDED";
 var AxiosError_default = AxiosError;
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/platform/node/classes/FormData.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/platform/node/classes/FormData.js
 var import_form_data = __toESM(require_form_data(), 1);
 var FormData_default = import_form_data.default;
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/platform/node/classes/Buffer.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/platform/node/classes/Buffer.js
 var Buffer_default = {
   isBufferAvailable() {
     return typeof Buffer !== "undefined";
@@ -13115,7 +13182,7 @@ var Buffer_default = {
   }
 };
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/helpers/toFormData.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/toFormData.js
 var DEFAULT_FORM_DATA_MAX_DEPTH = 100;
 function isVisitable(thing) {
   return utils_default.isPlainObject(thing) || utils_default.isArray(thing);
@@ -13141,24 +13208,16 @@ function toFormData(obj, formData, options) {
     throw new TypeError("target must be an object");
   }
   formData = formData || new (FormData_default || FormData)();
-  options = utils_default.toFlatObject(
-    options,
-    {
-      metaTokens: true,
-      dots: false,
-      indexes: false
-    },
-    false,
-    function defined(option, source) {
-      return !utils_default.isUndefined(source[option]);
-    }
-  );
-  const metaTokens = options.metaTokens;
-  const visitor = options.visitor || defaultVisitor;
-  const dots = options.dots;
-  const indexes = options.indexes;
-  const _Blob = options.Blob || typeof Blob !== "undefined" && Blob;
-  const maxDepth = options.maxDepth === void 0 ? DEFAULT_FORM_DATA_MAX_DEPTH : options.maxDepth;
+  const option = (name, fallback) => {
+    const value = utils_default.getSafeProp(options, name);
+    return utils_default.isUndefined(value) ? fallback : value;
+  };
+  const metaTokens = option("metaTokens", true);
+  const visitor = option("visitor") || defaultVisitor;
+  const dots = option("dots", false);
+  const indexes = option("indexes", false);
+  const _Blob = option("Blob") || typeof Blob !== "undefined" && Blob;
+  const maxDepth = option("maxDepth", DEFAULT_FORM_DATA_MAX_DEPTH);
   const useBlob = _Blob && utils_default.isSpecCompliantForm(formData);
   const stack = [];
   if (!utils_default.isFunction(visitor)) {
@@ -13182,7 +13241,10 @@ function toFormData(obj, formData, options) {
       if (Buffer_default && Buffer_default.isBufferAvailable()) {
         return Buffer_default.from(value);
       }
-      throw new AxiosError_default("Blob is not supported. Use a Buffer instead.", AxiosError_default.ERR_NOT_SUPPORT);
+      throw new AxiosError_default(
+        "Blob is not supported. Use a Buffer instead.",
+        AxiosError_default.ERR_NOT_SUPPORT
+      );
     }
     return value;
   }
@@ -13267,7 +13329,7 @@ function toFormData(obj, formData, options) {
 }
 var toFormData_default = toFormData;
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/helpers/AxiosURLSearchParams.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/AxiosURLSearchParams.js
 function encode(str) {
   const charMap = {
     "!": "%21",
@@ -13297,7 +13359,7 @@ prototype.toString = function toString2(encoder) {
 };
 var AxiosURLSearchParams_default = AxiosURLSearchParams;
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/helpers/buildURL.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/buildURL.js
 function encode2(val) {
   return encodeURIComponent(val).replace(/%3A/gi, ":").replace(/%24/g, "$").replace(/%2C/gi, ",").replace(/%20/g, "+");
 }
@@ -13327,10 +13389,48 @@ function buildURL(url2, params, options) {
   return url2;
 }
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/core/InterceptorManager.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/core/InterceptorManager.js
+var $internals2 = /* @__PURE__ */ Symbol("internals");
+function countHandlers(handlers) {
+  return handlers ? handlers.length : 0;
+}
+function trimHandlers(handlers) {
+  if (!handlers) {
+    return;
+  }
+  while (handlers.length && handlers[handlers.length - 1] === null) {
+    handlers.pop();
+  }
+}
+function syncHandlerEntries(manager, internals) {
+  const handlers = manager.handlers;
+  const length = countHandlers(handlers);
+  if (handlers !== internals.handlersRef) {
+    internals.handlersRef = handlers;
+    internals.handlerEntries.clear();
+  } else if (length !== internals.handlersLength) {
+    if (!length) {
+      internals.handlerEntries.clear();
+    } else {
+      internals.handlerEntries.forEach(function removeStaleEntry(entry, id) {
+        if (handlers[entry.index] !== entry.handler) {
+          internals.handlerEntries.delete(id);
+        }
+      });
+    }
+  }
+  internals.handlersLength = length;
+}
 var InterceptorManager = class {
   constructor() {
     this.handlers = [];
+    this[$internals2] = {
+      handlersRef: this.handlers,
+      handlersLength: this.handlers.length,
+      handlerEntries: /* @__PURE__ */ new Map(),
+      iterationDepth: 0,
+      nextId: 0
+    };
   }
   /**
    * Add a new interceptor to the stack
@@ -13342,13 +13442,25 @@ var InterceptorManager = class {
    * @return {Number} An ID used to remove interceptor later
    */
   use(fulfilled, rejected, options) {
-    this.handlers.push({
+    const handler = {
       fulfilled,
       rejected,
       synchronous: options ? options.synchronous : false,
       runWhen: options ? options.runWhen : null
+    };
+    const internals = this[$internals2];
+    if (this.handlers == null) {
+      this.handlers = [];
+    }
+    syncHandlerEntries(this, internals);
+    const id = internals.nextId++;
+    this.handlers.push(handler);
+    internals.handlerEntries.set(id, {
+      handler,
+      index: this.handlers.length - 1
     });
-    return this.handlers.length - 1;
+    internals.handlersLength = this.handlers.length;
+    return id;
   }
   /**
    * Remove an interceptor from the stack
@@ -13358,8 +13470,19 @@ var InterceptorManager = class {
    * @returns {void}
    */
   eject(id) {
-    if (this.handlers[id]) {
-      this.handlers[id] = null;
+    const internals = this[$internals2];
+    syncHandlerEntries(this, internals);
+    const entry = internals.handlerEntries.get(id);
+    if (entry) {
+      internals.handlerEntries.delete(id);
+      if (this.handlers[entry.index] !== entry.handler) {
+        return;
+      }
+      this.handlers[entry.index] = null;
+      if (!internals.iterationDepth) {
+        trimHandlers(this.handlers);
+        internals.handlersLength = this.handlers.length;
+      }
     }
   }
   /**
@@ -13370,6 +13493,7 @@ var InterceptorManager = class {
   clear() {
     if (this.handlers) {
       this.handlers = [];
+      syncHandlerEntries(this, this[$internals2]);
     }
   }
   /**
@@ -13383,16 +13507,27 @@ var InterceptorManager = class {
    * @returns {void}
    */
   forEach(fn) {
-    utils_default.forEach(this.handlers, function forEachHandler(h) {
-      if (h !== null) {
-        fn(h);
+    const internals = this[$internals2];
+    syncHandlerEntries(this, internals);
+    internals.iterationDepth++;
+    try {
+      utils_default.forEach(this.handlers, function forEachHandler(h) {
+        if (h !== null) {
+          fn(h);
+        }
+      });
+    } finally {
+      if (!--internals.iterationDepth) {
+        syncHandlerEntries(this, internals);
+        trimHandlers(this.handlers);
+        internals.handlersLength = countHandlers(this.handlers);
       }
-    });
+    }
   }
 };
 var InterceptorManager_default = InterceptorManager;
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/defaults/transitional.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/defaults/transitional.js
 var transitional_default = {
   silentJSONParsing: true,
   forcedJSONParsing: true,
@@ -13402,14 +13537,14 @@ var transitional_default = {
   validateStatusUndefinedResolves: true
 };
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/platform/node/index.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/platform/node/index.js
 import crypto from "crypto";
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/platform/node/classes/URLSearchParams.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/platform/node/classes/URLSearchParams.js
 import url from "url";
 var URLSearchParams_default = url.URLSearchParams;
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/platform/node/index.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/platform/node/index.js
 var ALPHA = "abcdefghijklmnopqrstuvwxyz";
 var DIGIT = "0123456789";
 var ALPHABET = {
@@ -13439,7 +13574,7 @@ var node_default = {
   protocols: ["http", "https", "file", "data"]
 };
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/platform/common/utils.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/platform/common/utils.js
 var utils_exports = {};
 __export(utils_exports, {
   hasBrowserEnv: () => hasBrowserEnv,
@@ -13457,13 +13592,13 @@ var hasStandardBrowserWebWorkerEnv = (() => {
 })();
 var origin = hasBrowserEnv && window.location.href || "http://localhost";
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/platform/index.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/platform/index.js
 var platform_default = {
   ...utils_exports,
   ...node_default
 };
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/helpers/toURLEncodedForm.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/toURLEncodedForm.js
 function toURLEncodedForm(data, options) {
   return toFormData_default(data, new platform_default.classes.URLSearchParams(), {
     visitor: function(value, key, path4, helpers) {
@@ -13477,7 +13612,7 @@ function toURLEncodedForm(data, options) {
   });
 }
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/helpers/formDataToJSON.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/formDataToJSON.js
 var MAX_DEPTH = DEFAULT_FORM_DATA_MAX_DEPTH;
 function throwIfDepthExceeded(index) {
   if (index > MAX_DEPTH) {
@@ -13545,7 +13680,23 @@ function formDataToJSON(formData) {
 }
 var formDataToJSON_default = formDataToJSON;
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/defaults/index.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/core/methodList.js
+var methodList = Object.freeze([
+  "get",
+  "delete",
+  "head",
+  "options",
+  "post",
+  "put",
+  "patch",
+  "purge",
+  "link",
+  "unlink",
+  "query"
+]);
+var methodList_default = methodList;
+
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/defaults/index.js
 var own = (obj, key) => obj != null && utils_default.hasOwnProp(obj, key) ? obj[key] : void 0;
 function stringifySafely2(rawValue, parser, encoder) {
   if (utils_default.isString(rawValue)) {
@@ -13657,12 +13808,12 @@ var defaults = {
     }
   }
 };
-utils_default.forEach(["delete", "get", "head", "post", "put", "patch", "query"], (method) => {
+utils_default.forEach(methodList_default, (method) => {
   defaults.headers[method] = {};
 });
 var defaults_default = defaults;
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/core/transformData.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/core/transformData.js
 function transformData(fns, response) {
   const config2 = this || defaults_default;
   const context = response || config2;
@@ -13675,12 +13826,12 @@ function transformData(fns, response) {
   return data;
 }
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/cancel/isCancel.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/cancel/isCancel.js
 function isCancel(value) {
   return !!(value && value.__CANCEL__);
 }
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/cancel/CanceledError.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/cancel/CanceledError.js
 var CanceledError = class extends AxiosError_default {
   /**
    * A `CanceledError` is an object that is thrown when an operation is canceled.
@@ -13699,7 +13850,7 @@ var CanceledError = class extends AxiosError_default {
 };
 var CanceledError_default = CanceledError;
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/core/settle.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/core/settle.js
 function settle(resolve, reject, response) {
   const validateStatus2 = response.config.validateStatus;
   if (!response.status || !validateStatus2 || validateStatus2(response.status)) {
@@ -13715,7 +13866,7 @@ function settle(resolve, reject, response) {
   }
 }
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/helpers/isAbsoluteURL.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/isAbsoluteURL.js
 function isAbsoluteURL(url2) {
   if (typeof url2 !== "string") {
     return false;
@@ -13723,7 +13874,7 @@ function isAbsoluteURL(url2) {
   return /^([a-z][a-z\d+\-.]*:)?\/\//i.test(url2);
 }
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/helpers/combineURLs.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/combineURLs.js
 function combineURLs(baseURL, relativeURL) {
   if (!relativeURL) {
     return baseURL;
@@ -13735,19 +13886,21 @@ function combineURLs(baseURL, relativeURL) {
   return baseURL.slice(0, end) + "/" + relativeURL.replace(/^\/+/, "");
 }
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/core/buildFullPath.js
-var malformedHttpProtocol = /^https?:(?!\/\/)/i;
-var httpProtocolControlCharacters = /[\t\n\r]/g;
-function stripLeadingC0ControlOrSpace(url2) {
-  let i = 0;
-  while (i < url2.length && url2.charCodeAt(i) <= 32) {
-    i++;
-  }
-  return url2.slice(i);
-}
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/normalizeURLForProtocolCheck.js
+var urlParserControlCharacters = /[\t\n\r]/g;
 function normalizeURLForProtocolCheck(url2) {
-  return stripLeadingC0ControlOrSpace(url2).replace(httpProtocolControlCharacters, "");
+  if (typeof url2 !== "string") {
+    return url2;
+  }
+  let start = 0;
+  while (start < url2.length && url2.charCodeAt(start) <= 32) {
+    start++;
+  }
+  return url2.slice(start).replace(urlParserControlCharacters, "");
 }
+
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/core/buildFullPath.js
+var malformedHttpProtocol = /^https?:(?!\/\/)/i;
 function redactFragment(fragment) {
   if (!fragment) {
     return fragment;
@@ -13858,7 +14011,7 @@ function getEnv(key) {
   return process.env[key.toLowerCase()] || process.env[key.toUpperCase()] || "";
 }
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/adapters/http.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/adapters/http.js
 var import_https_proxy_agent = __toESM(require_dist(), 1);
 var import_follow_redirects = __toESM(require_follow_redirects(), 1);
 import http from "http";
@@ -13868,17 +14021,17 @@ import util3 from "util";
 import { resolve as resolvePath } from "path";
 import zlib from "zlib";
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/env/data.js
-var VERSION = "1.19.0";
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/env/data.js
+var VERSION = "1.20.0";
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/helpers/parseProtocol.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/parseProtocol.js
 function parseProtocol(url2) {
   const match = /^([-+\w]{1,25}):(?:\/\/)?/.exec(url2);
   return match && match[1] || "";
 }
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/helpers/fromDataURI.js
-var DATA_URL_PATTERN = /^([^,;]+\/[^,;]+)?((?:;[^,;=]+=[^,;]+)*)(;base64)?,([\s\S]*)$/;
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/fromDataURI.js
+var DATA_URL_PATTERN = /^([^,;/]+\/[^,;/]+)?((?:;[^,;=]+=[^,;]+)*)(;base64)?,([\s\S]*)$/;
 function fromDataURI(uri, asBlob, options) {
   const _Blob = options && options.Blob || platform_default.classes.Blob;
   const protocol = parseProtocol(uri);
@@ -13913,10 +14066,10 @@ function fromDataURI(uri, asBlob, options) {
   throw new AxiosError_default("Unsupported protocol " + protocol, AxiosError_default.ERR_NOT_SUPPORT);
 }
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/adapters/http.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/adapters/http.js
 import stream3 from "stream";
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/core/setFormDataHeaders.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/core/setFormDataHeaders.js
 var FORM_DATA_CONTENT_HEADERS = ["content-type", "content-length"];
 function setFormDataHeaders(headers, formHeaders, policy) {
   if (policy !== "content-only") {
@@ -13930,7 +14083,7 @@ function setFormDataHeaders(headers, formHeaders, policy) {
   });
 }
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/helpers/AxiosTransformStream.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/AxiosTransformStream.js
 import stream from "stream";
 var kInternals = /* @__PURE__ */ Symbol("internals");
 var AxiosTransformStream = class extends stream.Transform {
@@ -14053,14 +14206,14 @@ var AxiosTransformStream = class extends stream.Transform {
 };
 var AxiosTransformStream_default = AxiosTransformStream;
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/adapters/http.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/adapters/http.js
 import { EventEmitter } from "events";
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/helpers/formDataToStream.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/formDataToStream.js
 import util from "util";
 import { Readable } from "stream";
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/helpers/readBlob.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/readBlob.js
 var { asyncIterator } = Symbol;
 var readBlob = async function* (blob) {
   if (blob.stream) {
@@ -14075,7 +14228,7 @@ var readBlob = async function* (blob) {
 };
 var readBlob_default = readBlob;
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/helpers/formDataToStream.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/formDataToStream.js
 var BOUNDARY_ALPHABET = platform_default.ALPHABET.ALPHA_DIGIT + "-_";
 var textEncoder = typeof TextEncoder === "function" ? new TextEncoder() : new util.TextEncoder();
 var CRLF = "\r\n";
@@ -14160,7 +14313,7 @@ var formDataToStream = (form, headersHandler, options) => {
 };
 var formDataToStream_default = formDataToStream;
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/helpers/ZlibHeaderTransformStream.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/ZlibHeaderTransformStream.js
 import stream2 from "stream";
 var ZlibHeaderTransformStream = class extends stream2.Transform {
   __transform(chunk, encoding, callback) {
@@ -14182,7 +14335,7 @@ var ZlibHeaderTransformStream = class extends stream2.Transform {
 };
 var ZlibHeaderTransformStream_default = ZlibHeaderTransformStream;
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/helpers/Http2Sessions.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/Http2Sessions.js
 import http2 from "http2";
 import util2 from "util";
 var Http2Sessions = class {
@@ -14191,6 +14344,7 @@ var Http2Sessions = class {
   }
   getSession(authority, options) {
     options = Object.assign(
+      /* @__PURE__ */ Object.create(null),
       {
         sessionTimeout: 1e3
       },
@@ -14256,6 +14410,7 @@ var Http2Sessions = class {
       };
     }
     session.once("close", removeSession);
+    session.once("error", removeSession);
     let entry = [session, options];
     authoritySessions ? authoritySessions.push(entry) : authoritySessions = this.sessions[authority] = [entry];
     return session;
@@ -14263,7 +14418,7 @@ var Http2Sessions = class {
 };
 var Http2Sessions_default = Http2Sessions;
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/helpers/callbackify.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/callbackify.js
 var callbackify = (fn, reducer) => {
   return utils_default.isAsyncFn(fn) ? function(...args) {
     const cb = args.pop();
@@ -14278,8 +14433,15 @@ var callbackify = (fn, reducer) => {
 };
 var callbackify_default = callbackify;
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/helpers/shouldBypassProxy.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/shouldBypassProxy.js
 var LOOPBACK_HOSTNAMES = /* @__PURE__ */ new Set(["localhost", "0.0.0.0"]);
+var trimTrailingDots = (value) => {
+  let end = value.length;
+  while (end && value.charCodeAt(end - 1) === 46) {
+    end--;
+  }
+  return end === value.length ? value : value.slice(0, end);
+};
 var isIPv4Loopback = (host) => {
   const parts = host.split(".");
   if (parts.length !== 4) return false;
@@ -14312,7 +14474,7 @@ var normalizeIPAddress = (host) => {
   if (h.charAt(0) === "[" && h.charAt(h.length - 1) === "]") {
     h = h.slice(1, -1);
   }
-  h = h.replace(/\.+$/, "");
+  h = trimTrailingDots(h);
   if (!/^[0-9.xXa-fA-F]+$/.test(h)) return host;
   const parts = h.split(".");
   if (parts.some((p) => p === "")) return host;
@@ -14424,6 +14586,40 @@ var unmapIPv4MappedIPv6 = (host) => {
   }
   return host;
 };
+var IPV4_OCTET_RE = /^(?:0|[1-9]\d{0,2})$/;
+var ipv4ToBytes = (host) => {
+  const parts = host.split(".");
+  return parts.length === 4 && parts.every((part) => IPV4_OCTET_RE.test(part) && Number(part) <= 255) ? parts.map(Number) : null;
+};
+var IPV6_GROUP_RE = /^[0-9a-f]{1,4}$/i;
+var ipv6ToBytes = (host) => {
+  const halves = host.split("::");
+  if (halves.length > 2) {
+    return null;
+  }
+  const groups = halves[0] ? halves[0].split(":") : [];
+  if (halves.length === 2) {
+    const rear = halves[1] ? halves[1].split(":") : [];
+    const missing = 8 - groups.length - rear.length;
+    if (missing < 1) {
+      return null;
+    }
+    groups.push(...new Array(missing).fill("0"), ...rear);
+  }
+  if (groups.length !== 8 || groups.some((group) => !IPV6_GROUP_RE.test(group))) {
+    return null;
+  }
+  return groups.flatMap((group) => {
+    const value = Number.parseInt(group, 16);
+    return [value >> 8 & 255, value & 255];
+  });
+};
+var ipToBytes = (host) => {
+  if (typeof host !== "string" || !host) {
+    return null;
+  }
+  return host.indexOf(":") !== -1 ? ipv6ToBytes(host) : ipv4ToBytes(host);
+};
 var normalizeNoProxyHost = (hostname) => {
   if (!hostname) {
     return hostname;
@@ -14431,12 +14627,89 @@ var normalizeNoProxyHost = (hostname) => {
   if (hostname.charAt(0) === "[" && hostname.charAt(hostname.length - 1) === "]") {
     hostname = hostname.slice(1, -1);
   }
-  const trimmed = hostname.replace(/\.+$/, "");
+  const trimmed = trimTrailingDots(hostname);
   const ipv4 = normalizeIPAddress(trimmed);
   if (ipv4 !== trimmed) {
     return ipv4;
   }
   return unmapIPv4MappedIPv6(trimmed);
+};
+var normalizeCidrBase = (input) => {
+  let base = input;
+  const startsBracket = base.charAt(0) === "[";
+  const endsBracket = base.charAt(base.length - 1) === "]";
+  const hasBracket = base.includes("[") || base.includes("]");
+  if (startsBracket || endsBracket) {
+    if (!startsBracket || !endsBracket) {
+      return null;
+    }
+    base = base.slice(1, -1);
+    if (base.indexOf(":") === -1 || base.includes("[") || base.includes("]")) {
+      return null;
+    }
+  } else if (hasBracket) {
+    return null;
+  }
+  if (!base || base.charAt(base.length - 1) === ".") {
+    return null;
+  }
+  const wasIPv6 = base.indexOf(":") !== -1;
+  if (wasIPv6) {
+    try {
+      base = new URL(`http://[${base}]/`).hostname.slice(1, -1);
+    } catch (_err) {
+      return null;
+    }
+  } else {
+    base = normalizeIPAddress(base);
+    if (!ipv4ToBytes(base)) {
+      return null;
+    }
+  }
+  return { normalized: unmapIPv4MappedIPv6(base), wasIPv6 };
+};
+var CIDR_ENTRY_RE = /^(.+)\/(0|[1-9]\d{0,2})$/;
+var parseCidrEntry = (entry) => {
+  if (entry.indexOf("/") === -1) {
+    return void 0;
+  }
+  const match = CIDR_ENTRY_RE.exec(entry);
+  if (!match) {
+    return null;
+  }
+  let prefix = Number(match[2]);
+  const parsedBase = normalizeCidrBase(match[1]);
+  if (!parsedBase) {
+    return null;
+  }
+  const { normalized, wasIPv6 } = parsedBase;
+  if (wasIPv6 && normalized.indexOf(":") === -1) {
+    if (prefix < 96) {
+      return null;
+    }
+    prefix -= 96;
+  }
+  const bytes = ipToBytes(normalized);
+  if (!bytes || prefix > bytes.length * 8) {
+    return null;
+  }
+  return { bytes, prefix };
+};
+var isInSubnet = (addressBytes, networkBytes, prefix) => {
+  const fullBytes = prefix >> 3;
+  for (let i = 0; i < fullBytes; i++) {
+    if (addressBytes[i] !== networkBytes[i]) {
+      return false;
+    }
+  }
+  const remainingBits = prefix & 7;
+  if (remainingBits) {
+    const mask = 255 << 8 - remainingBits & 255;
+    if ((addressBytes[fullBytes] & mask) !== (networkBytes[fullBytes] & mask)) {
+      return false;
+    }
+  }
+  return true;
 };
 function shouldBypassProxy(location) {
   let parsed;
@@ -14454,12 +14727,17 @@ function shouldBypassProxy(location) {
   }
   const port = Number.parseInt(parsed.port, 10) || DEFAULT_PORTS2[parsed.protocol.split(":", 1)[0]] || 0;
   const hostname = normalizeNoProxyHost(parsed.hostname.toLowerCase());
+  const hostnameBytes = ipToBytes(hostname);
   return noProxy.split(/[\s,]+/).some((entry) => {
     if (!entry) {
       return false;
     }
     if (entry === "*") {
       return true;
+    }
+    const cidr = parseCidrEntry(entry);
+    if (cidr !== void 0) {
+      return cidr !== null && !!hostnameBytes && hostnameBytes.length === cidr.bytes.length && isInSubnet(hostnameBytes, cidr.bytes, cidr.prefix);
     }
     let [entryHost, entryPort] = parseNoProxyEntry(entry);
     entryHost = normalizeNoProxyHost(entryHost);
@@ -14479,7 +14757,7 @@ function shouldBypassProxy(location) {
   });
 }
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/helpers/speedometer.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/speedometer.js
 function speedometer(samplesCount, min) {
   samplesCount = samplesCount || 10;
   const bytes = new Array(samplesCount);
@@ -14515,7 +14793,7 @@ function speedometer(samplesCount, min) {
 }
 var speedometer_default = speedometer;
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/helpers/throttle.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/throttle.js
 function throttle(fn, freq) {
   let timestamp = 0;
   let threshold = 1e3 / freq;
@@ -14546,16 +14824,17 @@ function throttle(fn, freq) {
     }
   };
   const flush = () => lastArgs && invoke(lastArgs);
-  return [throttled, flush];
+  const flushWith = (...args) => invoke(args);
+  return [throttled, flush, flushWith];
 }
 var throttle_default = throttle;
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/helpers/progressEventReducer.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/progressEventReducer.js
 var progressEventReducer = (listener, isDownloadStream, freq = 3) => {
   let bytesNotified = 0;
   const _speedometer = speedometer_default(50, 250);
   return throttle_default((e) => {
-    if (!e || typeof e.loaded !== "number") {
+    if (!e || !utils_default.isNumber(e.loaded)) {
       return;
     }
     const rawLoaded = e.loaded;
@@ -14591,7 +14870,7 @@ var progressEventDecorator = (total, throttled) => {
 };
 var asyncDecorator = (fn, scheduler = utils_default.asap) => (...args) => scheduler(() => fn(...args));
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/helpers/estimateDataURLDecodedBytes.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/estimateDataURLDecodedBytes.js
 var isHexDigit = (charCode) => charCode >= 48 && charCode <= 57 || charCode >= 65 && charCode <= 70 || charCode >= 97 && charCode <= 102;
 var isPercentEncodedByte = (str, i, len) => i + 2 < len && isHexDigit(str.charCodeAt(i + 1)) && isHexDigit(str.charCodeAt(i + 2));
 var hexValue = (charCode) => charCode <= 57 ? charCode - 48 : (charCode & 223) - 55;
@@ -14694,7 +14973,7 @@ function estimateDataURLBufferAllocation(url2) {
   return estimateDataURLBytes(url2, estimateBase64BufferAllocation);
 }
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/adapters/http.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/adapters/http.js
 var zlibOptions = {
   flush: zlib.constants.Z_SYNC_FLUSH,
   finishFlush: zlib.constants.Z_SYNC_FLUSH
@@ -14716,6 +14995,12 @@ var { http: httpFollow, https: httpsFollow } = import_follow_redirects.default;
 var isHttps = /https:?/;
 var kAxiosSocketListener = /* @__PURE__ */ Symbol("axios.http.socketListener");
 var kAxiosCurrentReq = /* @__PURE__ */ Symbol("axios.http.currentReq");
+function handleSocketError(err) {
+  const current = this[kAxiosCurrentReq];
+  if (current && !current.destroyed) {
+    current.destroy(err);
+  }
+}
 var kAxiosInstalledTunnel = /* @__PURE__ */ Symbol("axios.http.installedTunnel");
 var tunnelingAgentCache = /* @__PURE__ */ new Map();
 var tunnelingAgentCacheUser = /* @__PURE__ */ new WeakMap();
@@ -14818,10 +15103,10 @@ function isSameOriginRedirect(redirectOptions, requestDetails) {
     return false;
   }
 }
-function setProxy(options, configProxy, location, isRedirect, configHttpsAgent, configHttpAgent) {
+function setProxy(options, configProxy, location, isRedirect, configHttpsAgent, configHttpAgent, allowEnvProxy = true) {
   let proxy = configProxy;
   const proxyEnvAgent = getProxyEnvAgent(options, configHttpAgent, configHttpsAgent);
-  if (!proxy && proxy !== false && !isNodeEnvProxyEnabled(proxyEnvAgent)) {
+  if (!proxy && proxy !== false && allowEnvProxy && !isNodeEnvProxyEnabled(proxyEnvAgent)) {
     const proxyUrl = getProxyForUrl(location);
     if (proxyUrl) {
       if (!shouldBypassProxy(location)) {
@@ -14918,9 +15203,13 @@ function setProxy(options, configProxy, location, isRedirect, configHttpsAgent, 
       redirectOptions.href,
       true,
       configHttpsAgent,
-      configHttpAgent
+      configHttpAgent,
+      allowEnvProxy
     );
   };
+  return Boolean(
+    proxy || configProxy !== false && allowEnvProxy && isNodeEnvProxyEnabled(proxyEnvAgent)
+  );
 }
 var isHttpAdapterSupported = typeof process !== "undefined" && utils_default.kindOf(process) === "process";
 var wrapAsync = (asyncExecutor) => {
@@ -14945,7 +15234,7 @@ var wrapAsync = (asyncExecutor) => {
 };
 var resolveFamily = ({ address, family }) => {
   if (!utils_default.isString(address)) {
-    throw TypeError("address must be a string");
+    throw new AxiosError_default("address must be a string", AxiosError_default.ERR_BAD_OPTION_VALUE);
   }
   return {
     address,
@@ -14953,6 +15242,30 @@ var resolveFamily = ({ address, family }) => {
   };
 };
 var buildAddressEntry = (address, family) => resolveFamily(utils_default.isObject(address) ? address : { address, family });
+var normalizedLookupCache = /* @__PURE__ */ new WeakMap();
+var normalizeLookup = (lookup) => {
+  let normalized = normalizedLookupCache.get(lookup);
+  if (normalized) {
+    return normalized;
+  }
+  const callbackLookup = callbackify_default(lookup, (value) => utils_default.isArray(value) ? value : [value]);
+  normalized = (hostname, opt, cb) => {
+    callbackLookup(hostname, opt, (err, arg0, arg1) => {
+      if (err) {
+        return cb(err);
+      }
+      let addresses;
+      try {
+        addresses = utils_default.isArray(arg0) ? arg0.map((addr) => buildAddressEntry(addr)) : [buildAddressEntry(arg0, arg1)];
+      } catch (error) {
+        return cb(error);
+      }
+      opt.all ? cb(err, addresses) : cb(err, addresses[0].address, addresses[0].family);
+    });
+  };
+  normalizedLookupCache.set(lookup, normalized);
+  return normalized;
+};
 var http2Transport = {
   request(options, cb) {
     const authority = options.protocol + "//" + options.hostname + ":" + (options.port || (options.protocol === "https:" ? 443 : 80));
@@ -14989,6 +15302,7 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config2) {
     let family = own2("family");
     let httpVersion = own2("httpVersion");
     if (httpVersion === void 0) httpVersion = 1;
+    const rawHttpVersion = httpVersion;
     let http2Options = own2("http2Options");
     const httpAgent = own2("httpAgent");
     const httpsAgent = own2("httpsAgent");
@@ -15005,25 +15319,32 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config2) {
     let rejected = false;
     let req;
     let connectPhaseTimer;
-    httpVersion = +httpVersion;
+    try {
+      httpVersion = +httpVersion;
+    } catch (err) {
+      throw new AxiosError_default(
+        "Invalid protocol version: value is not a number",
+        AxiosError_default.ERR_BAD_OPTION_VALUE,
+        config2
+      );
+    }
     if (Number.isNaN(httpVersion)) {
-      throw TypeError(`Invalid protocol version: '${config2.httpVersion}' is not a number`);
+      throw new AxiosError_default(
+        `Invalid protocol version: '${rawHttpVersion}' is not a number`,
+        AxiosError_default.ERR_BAD_OPTION_VALUE,
+        config2
+      );
     }
     if (httpVersion !== 1 && httpVersion !== 2) {
-      throw TypeError(`Unsupported protocol version '${httpVersion}'`);
+      throw new AxiosError_default(
+        `Unsupported protocol version '${httpVersion}'`,
+        AxiosError_default.ERR_BAD_OPTION_VALUE,
+        config2
+      );
     }
     const isHttp2 = httpVersion === 2;
     if (lookup) {
-      const _lookup = callbackify_default(lookup, (value) => utils_default.isArray(value) ? value : [value]);
-      lookup = (hostname, opt, cb) => {
-        _lookup(hostname, opt, (err, arg0, arg1) => {
-          if (err) {
-            return cb(err);
-          }
-          const addresses = utils_default.isArray(arg0) ? arg0.map((addr) => buildAddressEntry(addr)) : [buildAddressEntry(arg0, arg1)];
-          opt.all ? cb(err, addresses) : cb(err, addresses[0].address, addresses[0].family);
-        });
-      };
+      lookup = normalizeLookup(lookup);
     }
     const abortEmitter = new EventEmitter();
     function abort(reason) {
@@ -15266,6 +15587,9 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config2) {
       utils_default.hasOwnProp(transitional2, "advertiseZstdAcceptEncoding") && transitional2.advertiseZstdAcceptEncoding === true ? ACCEPT_ENCODING_WITH_ZSTD : ACCEPT_ENCODING,
       false
     );
+    if (isHttp2 && lookup) {
+      http2Options = Object.assign(/* @__PURE__ */ Object.create(null), http2Options, { lookup });
+    }
     const options = Object.assign(/* @__PURE__ */ Object.create(null), {
       path: path4,
       method,
@@ -15276,9 +15600,11 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config2) {
       family,
       beforeRedirect: dispatchBeforeRedirect,
       beforeRedirects: /* @__PURE__ */ Object.create(null),
-      http2Options
+      http2Options,
+      createConnection: void 0
     });
     !utils_default.isUndefined(lookup) && (options.lookup = lookup);
+    let proxyApplied = false;
     if (socketPath) {
       if (typeof socketPath !== "string") {
         return reject(
@@ -15306,13 +15632,17 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config2) {
     } else {
       options.hostname = parsed.hostname.startsWith("[") ? parsed.hostname.slice(1, -1) : parsed.hostname;
       options.port = parsed.port;
-      setProxy(
+      proxyApplied = setProxy(
         options,
         configProxy,
         protocol + "//" + parsed.hostname + (parsed.port ? ":" + parsed.port : "") + options.path,
         false,
         httpsAgent,
-        httpAgent
+        httpAgent,
+        // The HTTP/2 transport connects independently of HTTP/1 agents, so it
+        // cannot apply either axios-resolved or agent-local environment proxies.
+        // Explicit proxy config is still processed and rejected below.
+        !isHttp2
       );
     }
     let transport;
@@ -15323,6 +15653,15 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config2) {
       options.agent = isHttpsRequest ? httpsAgent : httpAgent;
     }
     if (isHttp2) {
+      if (proxyApplied) {
+        return reject(
+          new AxiosError_default(
+            "HTTP/2 requests with a proxy are not supported",
+            AxiosError_default.ERR_NOT_SUPPORT,
+            config2
+          )
+        );
+      }
       transport = http2Transport;
     } else {
       const configTransport = own2("transport");
@@ -15410,7 +15749,11 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config2) {
             transformStream,
             progressEventDecorator(
               responseLength,
-              progressEventReducer(asyncDecorator(onDownloadProgress, scheduleProgress), true, 3)
+              progressEventReducer(
+                asyncDecorator(onDownloadProgress, scheduleProgress),
+                true,
+                3
+              )
             )
           )
         );
@@ -15559,12 +15902,7 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config2) {
         socket.setKeepAlive(true, 1e3 * 60);
       }
       if (!socket[kAxiosSocketListener]) {
-        socket.on("error", function handleSocketError(err) {
-          const current = socket[kAxiosCurrentReq];
-          if (current && !current.destroyed) {
-            current.destroy(err);
-          }
-        });
+        socket.on("error", handleSocketError);
         socket[kAxiosSocketListener] = true;
       }
       socket[kAxiosCurrentReq] = req;
@@ -15656,7 +15994,7 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config2) {
   });
 };
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/helpers/isURLSameOrigin.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/isURLSameOrigin.js
 var isURLSameOrigin_default = platform_default.hasStandardBrowserEnv ? /* @__PURE__ */ ((origin2, isMSIE) => (url2) => {
   url2 = new URL(url2, platform_default.origin);
   return origin2.protocol === url2.protocol && origin2.host === url2.host && (isMSIE || origin2.port === url2.port);
@@ -15665,7 +16003,7 @@ var isURLSameOrigin_default = platform_default.hasStandardBrowserEnv ? /* @__PUR
   platform_default.navigator && /(msie|trident)/i.test(platform_default.navigator.userAgent)
 ) : () => true;
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/helpers/cookies.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/cookies.js
 var cookies_default = platform_default.hasStandardBrowserEnv ? (
   // Standard browser envs support document.cookie
   {
@@ -15722,7 +16060,7 @@ var cookies_default = platform_default.hasStandardBrowserEnv ? (
   }
 );
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/core/mergeConfig.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/core/mergeConfig.js
 var headersToObject = (thing) => thing instanceof AxiosHeaders_default ? { ...thing } : thing;
 var ownEnumerableKeys = (thing) => {
   if (Object.getOwnPropertySymbols && Object.getOwnPropertyDescriptor) {
@@ -15809,7 +16147,7 @@ function mergeConfig(config1, config2) {
     transformResponse: defaultToConfig2,
     paramsSerializer: defaultToConfig2,
     timeout: defaultToConfig2,
-    timeoutMessage: defaultToConfig2,
+    timeoutErrorMessage: defaultToConfig2,
     withCredentials: defaultToConfig2,
     withXSRFToken: defaultToConfig2,
     adapter: defaultToConfig2,
@@ -15850,7 +16188,7 @@ function mergeConfig(config1, config2) {
   return config3;
 }
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/helpers/resolveConfig.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/resolveConfig.js
 var encodeUTF8 = (str) => encodeURIComponent(str).replace(
   /%([0-9A-F]{2})/gi,
   (_, hex) => String.fromCharCode(parseInt(hex, 16))
@@ -15886,10 +16224,11 @@ function resolveConfig(config2) {
     }
   }
   if (utils_default.isFormData(data)) {
+    const getHeaders = utils_default.getSafeProp(data, "getHeaders");
     if (platform_default.hasStandardBrowserEnv || platform_default.hasStandardBrowserWebWorkerEnv || utils_default.isReactNative(data)) {
       headers.setContentType(void 0);
-    } else if (utils_default.isFunction(data.getHeaders)) {
-      setFormDataHeaders(headers, data.getHeaders(), own2("formDataHeaderPolicy"));
+    } else if (utils_default.isFunction(getHeaders)) {
+      setFormDataHeaders(headers, getHeaders.call(data), own2("formDataHeaderPolicy"));
     }
   }
   if (platform_default.hasStandardBrowserEnv) {
@@ -15908,7 +16247,7 @@ function resolveConfig(config2) {
 }
 var resolveConfig_default = resolveConfig;
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/adapters/xhr.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/adapters/xhr.js
 var isXHRAdapterSupported = typeof XMLHttpRequest !== "undefined";
 var xhr_default = isXHRAdapterSupported && function(config2) {
   return new Promise(function dispatchXhrRequest(resolve, reject) {
@@ -15918,7 +16257,7 @@ var xhr_default = isXHRAdapterSupported && function(config2) {
     let { responseType, onUploadProgress, onDownloadProgress } = _config;
     let onCanceled;
     let uploadThrottled, downloadThrottled;
-    let flushUpload, flushDownload;
+    let flushUpload, flushDownload, flushDownloadWithEvent;
     function done() {
       flushUpload && flushUpload();
       flushDownload && flushDownload();
@@ -15928,7 +16267,27 @@ var xhr_default = isXHRAdapterSupported && function(config2) {
     let request = new XMLHttpRequest();
     request.open(_config.method.toUpperCase(), _config.url, true);
     request.timeout = _config.timeout;
-    function onloadend() {
+    function onloadend(event) {
+      if (!request) {
+        return;
+      }
+      if (request.status === 0 && (parseProtocol(normalizeURLForProtocolCheck(_config.url)) || parseProtocol(platform_default.origin)) !== "file" && !(request.responseURL && request.responseURL.startsWith("file:"))) {
+        reject(new AxiosError_default("Request aborted", AxiosError_default.ECONNABORTED, config2, request));
+        done();
+        request = null;
+        return;
+      }
+      try {
+        if (event) {
+          flushDownloadWithEvent && flushDownloadWithEvent(event);
+        } else {
+          flushDownload && flushDownload();
+        }
+      } catch (err) {
+        setTimeout(() => {
+          throw err;
+        });
+      }
       if (!request) {
         return;
       }
@@ -16016,7 +16375,10 @@ var xhr_default = isXHRAdapterSupported && function(config2) {
       request.responseType = _config.responseType;
     }
     if (onDownloadProgress) {
-      [downloadThrottled, flushDownload] = progressEventReducer(onDownloadProgress, true);
+      [downloadThrottled, flushDownload, flushDownloadWithEvent] = progressEventReducer(
+        onDownloadProgress,
+        true
+      );
       request.addEventListener("progress", downloadThrottled);
     }
     if (onUploadProgress && request.upload) {
@@ -16055,7 +16417,7 @@ var xhr_default = isXHRAdapterSupported && function(config2) {
   });
 };
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/helpers/composeSignals.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/composeSignals.js
 var composeSignals = (signals, timeout) => {
   signals = signals ? signals.filter(Boolean) : [];
   if (!timeout && !signals.length) {
@@ -16104,7 +16466,7 @@ var composeSignals = (signals, timeout) => {
 };
 var composeSignals_default = composeSignals;
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/helpers/trackStream.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/trackStream.js
 var streamChunk = function* (chunk, chunkSize) {
   let len = chunk.byteLength;
   if (!chunkSize || len < chunkSize) {
@@ -16184,8 +16546,19 @@ var trackStream = (stream4, chunkSize, onProgress, onFinish) => {
   );
 };
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/adapters/fetch.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/adapters/fetch.js
 var DEFAULT_CHUNK_SIZE = 64 * 1024;
+var DEFAULT_REQUEST_OPTIONS = {
+  cache: "default",
+  redirect: "follow",
+  referrer: "about:client",
+  referrerPolicy: "",
+  mode: "cors",
+  integrity: "",
+  keepalive: false,
+  priority: "auto",
+  window: null
+};
 var { isFunction: isFunction2 } = utils_default;
 var encodeUTF82 = (str) => encodeURIComponent(str).replace(
   /%([0-9A-F]{2})/gi,
@@ -16316,7 +16689,8 @@ var factory = (env) => {
       withCredentials = "same-origin",
       fetchOptions,
       maxContentLength,
-      maxBodyLength
+      maxBodyLength,
+      maxRedirects
     } = resolveConfig_default(config2);
     const hasMaxContentLength = utils_default.isNumber(maxContentLength) && maxContentLength > -1;
     const hasMaxBodyLength = utils_default.isNumber(maxBodyLength) && maxBodyLength > -1;
@@ -16446,17 +16820,44 @@ var factory = (env) => {
         }
       }
       headers.set("User-Agent", "axios/" + VERSION, false);
-      const resolvedOptions = {
-        ...fetchOptions,
+      const safeFetchOptions = fetchOptions == null ? fetchOptions : Object.assign(/* @__PURE__ */ Object.create(null), fetchOptions);
+      if (safeFetchOptions) {
+        delete safeFetchOptions.body;
+        delete safeFetchOptions.headers;
+        delete safeFetchOptions.method;
+        delete safeFetchOptions.signal;
+        delete safeFetchOptions.duplex;
+        delete safeFetchOptions.credentials;
+      }
+      const resolvedOptions = Object.assign(/* @__PURE__ */ Object.create(null), safeFetchOptions, {
         signal: composedSignal,
         method: method.toUpperCase(),
         headers: toByteStringHeaderObject(headers.normalize()),
         body: data,
         duplex: "half",
         credentials: isCredentialsSupported ? withCredentials : void 0
-      };
+      });
+      if (isRequestSupported) {
+        utils_default.forEach(DEFAULT_REQUEST_OPTIONS, (value, key) => {
+          if (resolvedOptions[key] === void 0) {
+            resolvedOptions[key] = value;
+          }
+        });
+        if (resolvedOptions.signal === void 0) {
+          resolvedOptions.signal = null;
+        }
+        if (resolvedOptions.body === void 0) {
+          resolvedOptions.body = null;
+        }
+      }
+      if (maxRedirects === 0) {
+        resolvedOptions.redirect = "manual";
+        if (safeFetchOptions) {
+          safeFetchOptions.redirect = "manual";
+        }
+      }
       request = isRequestSupported && new Request(url2, resolvedOptions);
-      let response = await (isRequestSupported ? _fetch(request, fetchOptions) : _fetch(url2, resolvedOptions));
+      let response = await (isRequestSupported ? _fetch(request, safeFetchOptions) : _fetch(url2, resolvedOptions));
       const responseHeaders = AxiosHeaders_default.from(response.headers);
       if (hasMaxContentLength) {
         const declaredLength = utils_default.toFiniteNumber(responseHeaders.getContentLength());
@@ -16601,7 +17002,7 @@ var getFetch = (config2) => {
 };
 var adapter = getFetch();
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/adapters/adapters.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/adapters/adapters.js
 var knownAdapters = {
   http: http_default,
   xhr: xhr_default,
@@ -16666,7 +17067,7 @@ var adapters_default = {
   adapters: knownAdapters
 };
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/core/dispatchRequest.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/core/dispatchRequest.js
 function throwIfCancellationRequested(config2) {
   if (config2.cancelToken) {
     config2.cancelToken.throwIfRequested();
@@ -16675,9 +17076,10 @@ function throwIfCancellationRequested(config2) {
     throw new CanceledError_default(null, config2);
   }
 }
-function dispatchRequest(config2) {
+function dispatchRequest(_config) {
+  const config2 = utils_default.toSafeFlatObject(_config);
   throwIfCancellationRequested(config2);
-  config2.headers = AxiosHeaders_default.from(config2.headers);
+  config2.headers = AxiosHeaders_default.from(utils_default.getSafeProp(config2, "headers"));
   config2.data = transformData.call(config2, config2.transformRequest);
   if (["post", "put", "patch"].indexOf(config2.method) !== -1) {
     config2.headers.setContentType("application/x-www-form-urlencoded", false);
@@ -16717,7 +17119,7 @@ function dispatchRequest(config2) {
   );
 }
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/helpers/validator.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/validator.js
 var validators = {};
 ["object", "boolean", "number", "function", "string", "symbol"].forEach((type, i) => {
   validators[type] = function validator(thing) {
@@ -16784,7 +17186,7 @@ var validator_default = {
   validators
 };
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/core/Axios.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/core/Axios.js
 var validators2 = validator_default.validators;
 var Axios = class {
   constructor(instanceConfig) {
@@ -16807,16 +17209,15 @@ var Axios = class {
       return await this._request(configOrUrl, config2);
     } catch (err) {
       if (err instanceof Error) {
-        let dummy = {};
-        Error.captureStackTrace ? Error.captureStackTrace(dummy) : dummy = new Error();
-        const stack = (() => {
-          if (!dummy.stack) {
-            return "";
-          }
-          const firstNewlineIndex = dummy.stack.indexOf("\n");
-          return firstNewlineIndex === -1 ? "" : dummy.stack.slice(firstNewlineIndex + 1);
-        })();
         try {
+          let dummy = {};
+          Error.captureStackTrace ? Error.captureStackTrace(dummy) : dummy = new Error();
+          const dummyStack = dummy.stack;
+          let stack = "";
+          if (typeof dummyStack === "string") {
+            const firstNewlineIndex = dummyStack.indexOf("\n");
+            stack = firstNewlineIndex === -1 ? "" : dummyStack.slice(firstNewlineIndex + 1);
+          }
           if (!err.stack) {
             err.stack = stack;
           } else if (stack) {
@@ -16886,9 +17287,9 @@ var Axios = class {
       },
       true
     );
-    config2.method = (config2.method || this.defaults.method || "get").toLowerCase();
+    config2.method = (utils_default.getSafeProp(config2, "method") || utils_default.getSafeProp(this.defaults, "method") || "get").toLowerCase();
     let contextHeaders = headers && utils_default.merge(headers.common, headers[config2.method]);
-    headers && utils_default.forEach(["delete", "get", "head", "post", "put", "patch", "query", "common"], (method) => {
+    headers && utils_default.forEach(methodList_default.concat("common"), (method) => {
       delete headers[method];
     });
     config2.headers = AxiosHeaders_default.concat(contextHeaders, headers);
@@ -17003,7 +17404,7 @@ utils_default.forEach(["post", "put", "patch", "query"], function forEachMethodW
 });
 var Axios_default = Axios;
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/cancel/CancelToken.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/cancel/CancelToken.js
 var CancelToken = class _CancelToken {
   constructor(executor) {
     if (typeof executor !== "function") {
@@ -17101,19 +17502,19 @@ var CancelToken = class _CancelToken {
 };
 var CancelToken_default = CancelToken;
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/helpers/spread.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/spread.js
 function spread(callback) {
   return function wrap(arr) {
     return callback.apply(null, arr);
   };
 }
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/helpers/isAxiosError.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/isAxiosError.js
 function isAxiosError(payload) {
   return utils_default.isObject(payload) && payload.isAxiosError === true;
 }
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/helpers/HttpStatusCode.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/HttpStatusCode.js
 var HttpStatusCode = {
   Continue: 100,
   SwitchingProtocols: 101,
@@ -17151,14 +17552,22 @@ var HttpStatusCode = {
   Gone: 410,
   LengthRequired: 411,
   PreconditionFailed: 412,
+  /**
+   * @deprecated Use `ContentTooLarge` instead.
+   */
   PayloadTooLarge: 413,
+  ContentTooLarge: 413,
   UriTooLong: 414,
   UnsupportedMediaType: 415,
   RangeNotSatisfiable: 416,
   ExpectationFailed: 417,
   ImATeapot: 418,
   MisdirectedRequest: 421,
+  /**
+   * @deprecated Use `UnprocessableContent` instead.
+   */
   UnprocessableEntity: 422,
+  UnprocessableContent: 422,
   Locked: 423,
   FailedDependency: 424,
   TooEarly: 425,
@@ -17187,11 +17596,13 @@ var HttpStatusCode = {
   InvalidSslCertificate: 526
 };
 Object.entries(HttpStatusCode).forEach(([key, value]) => {
-  HttpStatusCode[value] = key;
+  if (HttpStatusCode[value] === void 0) {
+    HttpStatusCode[value] = key;
+  }
 });
 var HttpStatusCode_default = HttpStatusCode;
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/lib/axios.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/axios.js
 function createInstance(defaultConfig) {
   const context = new Axios_default(defaultConfig);
   const instance = bind(Axios_default.prototype.request, context);
@@ -17224,7 +17635,7 @@ axios.HttpStatusCode = HttpStatusCode_default;
 axios.default = axios;
 var axios_default = axios;
 
-// node_modules/.pnpm/axios@1.19.0/node_modules/axios/index.js
+// node_modules/.pnpm/axios@1.20.0/node_modules/axios/index.js
 var {
   Axios: Axios2,
   AxiosError: AxiosError2,
@@ -17247,8 +17658,8 @@ var {
 
 // src/config.ts
 var BUILD_ENV = "prod";
-var CLI_VERSION = "0.41.1";
-var BUILD_STAMP = "d44699e 2026-10-11";
+var CLI_VERSION = "0.41.2";
+var BUILD_STAMP = "29366c8 2026-10-11";
 var config = {
   AUTH_SERVER: process.env["AUTH_SERVER"] ?? "https://auth.bookipi.com",
   APP_ID: process.env["APP_ID"] ?? "1dd166d9569f4f7eb0f08a22c8f0d54a",

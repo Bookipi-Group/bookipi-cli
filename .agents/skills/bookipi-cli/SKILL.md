@@ -38,6 +38,10 @@ contracts, meetings, reports and your website.
 - **Safety:** drafts are created freely, but anything that emails a customer,
   closes a deal, publishes your website or deletes a record is shown to you
   first and waits for your confirmation.
+- **Notes:** the assistant keeps a plain-text notes file,
+  `.bookipi/assistant-memory.md`, with your preferences and a dated log of the
+  Bookipi actions it took. It tells you the first time it saves a note; ask
+  to see the file at any time, or to delete an entry or the whole file.
 
 The rest of this file is instructions for the assistant.
 
@@ -257,15 +261,24 @@ though it succeeded, and never describe an action you could not perform.
 
 ### Step 2: Authenticate
 
-The CLI looks for credentials in this order (first hit wins). **Only the CLI
-reads these files** — never open, print, copy, upload or send `credentials.json`
-or any other credential file yourself, and never paste a token into chat.
+The CLI finds and manages its own sign-in; `bookipi whoami` tells you whether
+it has one. **Only the CLI reads credential files.** Never open, list, print,
+copy, upload or send anything in a `.bookipi/` folder yourself (the one
+exception is `assistant-memory.md`, Step 2.5), and never paste a token into
+chat.
 
-1. `BOOKIPI_TOKEN` env var (CI/CD escape hatch)
-2. **Walking up from CWD** — a `.bookipi/credentials.json` in the current folder or any ancestor. Created by `bookipi init`. **The recommended modern path.**
-3. **Cowork mount scan** — `.bookipi/` inside any mounted folder. Mount roots vary by Cowork build: `/sessions/<id>/mnt/<folder>/` (older) or `/mnt/user-data/uploads/<folder>/` (newer). Both are scanned automatically, so project-folder workspaces are discovered wherever the CLI runs from. **Never copy `.bookipi/` or `credentials.json` out of the mounted folder** (not into `/home/claude`, not into `/tmp`, not anywhere) — use it in place. A copy forks the workspace: refreshed tokens and new handles land in the ephemeral copy and die with the instance while the real folder goes stale. **"The mount is read-only" is NOT a reason to copy**: the CLI treats credential-dir writes as best-effort — reads work and skipped writes are harmless — so a read-only mount authenticates fine in place. If discovery somehow misses it, `cd` into the mounted folder or `export BOOKIPI_CONFIG_DIR=<mounted-folder>/.bookipi` — never `cp`. (Discovery of `/mnt/user-data/uploads/<folder>/.bookipi` requires a recent build — if the CLI can't see an existing mounted workspace, check `bookipi --version`: it prints the build stamp `<version> (<env>, build <git-sha> <date>)`, and a stale bundle is the usual culprit.)
-4. `~/.bookipi/credentials.json` — legacy global host config, mounted into the session if available
-5. Legacy paths (`~/.bookipi/.bookipi.json`, repo-local `.bookipi.json`, transient `$HOME/.bookipi.json`)
+A workspace's `.bookipi/` folder — created by `bookipi init` in the project
+folder, the recommended setup — is found from the current folder or any
+parent, and inside Cowork from any mounted folder. **Use it in place: never
+copy `.bookipi/` out of a mounted folder** (not into `/home/claude`, `/tmp`
+or anywhere). A copy forks the workspace: refreshed sign-ins and new handles
+land in the ephemeral copy and die with the instance while the real folder
+goes stale. A read-only mount is NOT a reason to copy — it authenticates fine
+in place. If the CLI misses a mounted workspace, `cd` into the mounted folder
+or `export BOOKIPI_CONFIG_DIR=<mounted-folder>/.bookipi`; if it still can't
+see it, check `bookipi --version` (it prints the build stamp
+`<version> (<env>, build <git-sha> <date>)`) — a stale bundle is the usual
+culprit.
 
 Handles (`@i1`, `@c1`-style references) live alongside credentials in the same `.bookipi/` folder, wherever it resolves to. They are workspace-local — `@c1` in one project is a different customer than `@c1` in another.
 
@@ -299,11 +312,11 @@ bookipi whoami
   user prefers their existing global login instead, use the legacy
   `~/.bookipi` mount flow below.
 
-**Outside Cowork (Claude Code, Claude Desktop running on the user's own machine):** `~/.bookipi/` is directly readable — there are no mounts and `request_cowork_directory` does not exist; never attempt it. If `whoami` fails, go straight to the split relay login below — credentials save to `~/.bookipi/` (or the project's `.bookipi/` if one exists) and that's the whole flow. The entire mount section below is Cowork-only.
+**Outside Cowork (Claude Code, Claude Desktop running on the user's own machine):** the CLI reaches `~/.bookipi/` directly — there are no mounts and `request_cowork_directory` does not exist; never attempt it. If `whoami` fails, go straight to the split relay login below — credentials save to `~/.bookipi/` (or the project's `.bookipi/` if one exists) and that's the whole flow. The entire mount section below is Cowork-only.
 
 Decide based on context: is the user working in a project folder they've added to Cowork? If yes, suggest `bookipi init`. Otherwise (or if they explicitly want global creds), fall through to the legacy mount flow below.
 
-**Do NOT preemptively call `request_cowork_directory` before `whoami` has had a chance to discover existing creds via path 2 or 3.**
+**Do NOT preemptively call `request_cowork_directory` before `whoami` has had a chance to discover an existing sign-in.**
 
 #### Legacy global-creds flow (`~/.bookipi/` on host)
 
@@ -315,42 +328,15 @@ request_cowork_directory(path: "~/.bookipi")
 
 If the user approves, the folder appears at `/sessions/<id>/mnt/.bookipi/` and credentials are discoverable.
 
-**If the mount fails with `"doesn't exist or isn't accessible"` (first-time setup with no existing `~/.bookipi/`), the user has two options:**
+**If the mount fails with `"doesn't exist or isn't accessible"` (first-time setup with no existing `~/.bookipi/`)**, don't try to create it from inside the sandbox. Tell the user plainly:
 
-- **Preferred:** run `bookipi init` in a project folder. This creates a workspace-local `.bookipi/` automatically. No host-level mount dance required.
-- **Fallback:** create the global folder. Approaches A and B below.
-
-**Approach A — Auto-create via a parent-folder mount (try first):**
-
-1. Briefly request access to the user's home folder so you can write to it:
-
-   ```
-   request_cowork_directory(path: "~")
-   ```
-
-   Tell the user what you're doing first, e.g. "The `.bookipi` config folder doesn't exist yet. I'll request one-time access to your home folder so I can create it — after this, I'll only need access to `.bookipi` itself."
-
-2. **If the mount succeeds**, find the VM path (usually `/sessions/<id>/mnt/<home-basename>/`, check with `ls /sessions/<id>/mnt/`), then create the folder through the mount:
-
-   ```bash
-   mkdir -p /sessions/<id>/mnt/<home-basename>/.bookipi
-   ```
-
-   Re-request the narrow mount: `request_cowork_directory(path: "~/.bookipi")`. Continue with `bookipi whoami`.
-
-3. **If the mount is rejected with `"That directory is Cowork's internal session storage"`**, the `~` path collides with session storage on this Cowork build and cannot be mounted from inside the sandbox. Mounting the absolute home path (e.g. `/Users/<user>`) fails for the same reason — don't bother retrying with it. Fall through to Approach B.
-
-**Approach B — Ask the user to create it (fallback, one-time):**
-
-Tell the user plainly:
-
-> The `~/.bookipi` folder doesn't exist yet and Cowork won't let me create it from inside the sandbox on this setup. You have two options:
-> - **Recommended:** run `bookipi init` inside your project folder. That creates workspace-local credentials with no host-level setup.
+> Your global `~/.bookipi` folder doesn't exist yet. You have two options:
+> - **Recommended:** run `bookipi init` inside your project folder. That keeps the sign-in in that folder, with no other setup.
 > - **Or:** run `mkdir -p ~/.bookipi` in your terminal once, then I'll pick up from there.
 
-If they choose the legacy global path, retry `request_cowork_directory(path: "~/.bookipi")` and continue with `bookipi whoami`. This is a one-time ask — future sessions mount the folder directly.
+If they choose the global folder, retry `request_cowork_directory(path: "~/.bookipi")` and continue with `bookipi whoami`. This is a one-time ask — future sessions mount the folder directly. Never request access to the whole home folder (`~`) or any broader path.
 
-**DO NOT silently proceed with `bookipi login` after a failed mount in the legacy flow.** Credentials would land in the ephemeral sandbox `$HOME/.bookipi.json` (fallback #5) and not persist, leaving the user to re-login every single session. Always resolve the folder on the host first — then log in. (`bookipi init` avoids this trap entirely.)
+**DO NOT silently proceed with `bookipi login` after a failed mount in the legacy flow.** The sign-in would land in the ephemeral sandbox home and not persist, leaving the user to re-login every single session. Always resolve the folder on the host first — then log in. (`bookipi init` avoids this trap entirely.)
 
 **Logging out** ("log out", "sign out", the launcher's "Log out" chip): confirm first — `bookipi logout` deletes the cached credentials AND the workspace's handles from every location the CLI reads, and the user will need the full OAuth flow to get back in. On a clear yes, run `bookipi logout` and relay what it cleared. Never run it as a troubleshooting step for auth errors — re-login fixes those without destroying handles.
 
@@ -586,8 +572,8 @@ Once auth is confirmed, read `assistant-memory.md` from the same
 `.bookipi/` folder the credentials resolved to (skip it if absent —
 first sessions won't have one). Do this BEFORE acting on the user's request:
 it carries their preferences, standing instructions ("never chase X"), and
-your action log. No need to announce it — just be the assistant who
-remembers. If the user asks what you remember, show them.
+your action log. When a note changes what you do, say which note you
+followed, in a few words. If the user asks what you remember, show them.
 Mechanics: `docs/assistant.md`.
 
 ### Step 3: Proactive Health Check

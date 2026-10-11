@@ -29,8 +29,9 @@ credentials and handles resolve (workspace-local — a different workspace is a
 different assistant relationship).
 
 **Session start:** after auth is confirmed, read it if it exists.
-No need to announce "loading memory" — just *be* the assistant who remembers.
-If the user asks what you remember, show them.
+When a note changes what you do (an invoice they said never to chase, a
+preferred tone), say which note you followed, in a few words. If the user asks
+what you remember, show them; delete any entry, or the whole file, on request.
 
 **When to write:** append/update whenever something durable is learned:
 
