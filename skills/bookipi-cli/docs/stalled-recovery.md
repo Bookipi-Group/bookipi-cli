@@ -194,7 +194,7 @@ On **"Let me pick"** → present the list and let the user deselect (a second
 in the deal's activity:
 
 ```bash
-bookipi customer send-email @c6 \
+bookipi customer send-email @c6 --yes \
   --to "mariachen@yopmail.com" \
   --subject "Following up — SEO retainer proposal" \
   --body "Hi Maria, just checking in on the proposal I sent last week. Happy to walk through any of it or adjust the scope — what questions can I answer?" \

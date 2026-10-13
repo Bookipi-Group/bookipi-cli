@@ -10,12 +10,12 @@ customer pays on BPay's own payment page in their browser.
 ## Commands
 
 ```bash
-bookipi paylink create --title "Deposit" --price 100 --currency USD   # create a link
-bookipi paylink create --title "Donate" --allow-custom-amount         # payer enters the amount
-bookipi paylink list                                                  # most recent links
-bookipi paylink get <id>                                              # one link by _id
-bookipi paylink status <id>                                           # has it been paid? amount collected + attempts
-bookipi paylink send <id> --customer @c1 --to maria@acme.com          # email the link to a customer
+bookipi paylink create --title "Deposit" --price 100 --currency USD --yes  # create a link
+bookipi paylink create --title "Donate" --allow-custom-amount --yes        # payer enters the amount
+bookipi paylink list                                                       # most recent links
+bookipi paylink get <id>                                                   # one link by _id
+bookipi paylink status <id>                                                # has it been paid? amount collected + attempts
+bookipi paylink send <id> --customer @c1 --to maria@acme.com --yes         # email the link to a customer
 ```
 
 ## Creating a link
@@ -71,13 +71,13 @@ invoices, proposals, and contracts — see `docs/morning-brief.md` § Scheduling
 
 ## Sending a link to a customer
 
-`bookipi paylink send <id> --customer <handle|id|name> --to <email>` emails the
+`bookipi paylink send <id> --customer <handle|id|name> --to <email> --yes` emails the
 link via the app's customer-email channel (`customersSendEmail`). It composes
 the subject + body from the link (title, amount, the `/pay/…` URL); `--message`
 adds a note, `--subject` overrides the subject, `--cc` adds CCs.
 
 ```bash
-bookipi paylink send 6a395a7f37ea7b75e924c2f2 --customer @c1 --to maria@acme.com --message "Thanks for your business!"
+bookipi paylink send 6a395a7f37ea7b75e924c2f2 --customer @c1 --to maria@acme.com --message "Thanks for your business!" --yes
 ```
 
 ⚠️ Customer email currently depends on a backend recaptcha-bypass for

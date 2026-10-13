@@ -85,9 +85,9 @@ bookipi invoice duplicate @i1 --to-company @co2         # "duplicate this into m
 bookipi invoice update @i1 --note "Payment received" --due-date 2026-05-01
 
 # Mark an invoice paid (RECORDS a payment — the real "mark as paid") / void it
-bookipi invoice mark-paid @i1                         # full balance, cash
-bookipi invoice mark-paid @i1 --amount 500 --method transfer
-bookipi invoice void @i1                              # clear payments → back to unpaid
+bookipi invoice mark-paid @i1 --yes                   # full balance, cash
+bookipi invoice mark-paid @i1 --amount 500 --method transfer --yes
+bookipi invoice void @i1 --yes                        # clear payments → back to unpaid
 
 # Due dates — absolute, relative, or removed (dueIn stays in sync automatically)
 bookipi invoice update @i1 --due-date 2026-06-30   # set an exact date
@@ -121,12 +121,12 @@ bookipi invoice attach-photo @i1 -f ./final.jpg --replace     # replace ALL exis
 # Remove all photos: bookipi invoice update @i1 --data '{"photos":[]}'
 
 # Send an invoice by email
-bookipi invoice send @i1 -r customer@example.com
-bookipi invoice send @i1 -r a@test.com,b@test.com -b bcc@test.com -s "Your invoice" -m "Please find attached"
+bookipi invoice send @i1 -r customer@example.com --yes
+bookipi invoice send @i1 -r a@test.com,b@test.com -b bcc@test.com -s "Your invoice" -m "Please find attached" --yes
 
 # Email a PAYMENT RECEIPT for a paid invoice (amount defaults to the invoice total)
-bookipi invoice send-receipt @i1
-bookipi invoice send-receipt @i1 --amount 111 --date 2026-05-04 --brand Visa --last4 4242
+bookipi invoice send-receipt @i1 --yes
+bookipi invoice send-receipt @i1 --amount 111 --date 2026-05-04 --brand Visa --last4 4242 --yes
 
 # Delete an invoice
 bookipi invoice delete @i1
@@ -310,13 +310,13 @@ Use `bookipi invoice duplicate <handle-or-id>`. The server creates a **fresh edi
 
 Typical follow-ups after duplicating:
 - *"change the amount / date / items"* → `bookipi invoice update <new-handle> …` (or open the edit link).
-- *"send it"* → `bookipi invoice send <new-handle> -r <email>`.
+- *"send it"* → `bookipi invoice send <new-handle> -r <email> --yes`.
 
 The duplicate inherits the source invoice's number — that's expected; the user renumbers it on edit/send if they want. Timezone defaults to the host's zone; pass `--timezone <IANA>` only if the user wants the draft dated in a specific zone.
 
 ### "Send a receipt" / "Email a payment confirmation" / "They paid — send their receipt"
 
-Use `bookipi invoice send-receipt <handle-or-id>`. It emails a **payment receipt** to the invoice's recipient. The amount defaults to the invoice total (override with `--amount`); date defaults to now (`--date` for the actual payment date); optionally include card `--brand` / `--last4`.
+Use `bookipi invoice send-receipt <handle-or-id> --yes`. It emails a **payment receipt** to the invoice's recipient. The amount defaults to the invoice total (override with `--amount`); date defaults to now (`--date` for the actual payment date); optionally include card `--brand` / `--last4`.
 
 **This sends a real email — confirm first via `AskUserQuestion`** (recipient + amount), exactly like `invoice send`. Use it on invoices that are actually **paid**; if the invoice's payment status isn't paid the command prints a warning but still sends, so double-check before confirming. Don't confuse it with `invoice send` (sends the invoice itself) — `send-receipt` sends the *payment confirmation* after money is in.
 
@@ -406,7 +406,7 @@ bookipi invoice create --customer <handle-or-name> --number INV-XXX --date YYYY-
 # → returns @iN handle AND prints "Recipient Email: <email> [@eN]"
 
 # 2. Send — reuse the email from step 1's output
-bookipi invoice send @iN -r <email-from-step-1>
+bookipi invoice send @iN -r <email-from-step-1> --yes
 ```
 
 Two commands. Don't re-derive this flow from scratch. If the customer handle is already known from earlier in the conversation, use it directly — do not re-run `customer list`. **Critically:** the `invoice create` output already contains the customer's recipient email (labeled "Recipient Email"). Do NOT run `customer list --search` or any other lookup to fetch that email before sending — just reuse it from the create response.

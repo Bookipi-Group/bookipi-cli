@@ -17658,8 +17658,8 @@ var {
 
 // src/config.ts
 var BUILD_ENV = "prod";
-var CLI_VERSION = "0.41.3";
-var BUILD_STAMP = "dba5ee1 2026-10-13";
+var CLI_VERSION = "0.42.0";
+var BUILD_STAMP = "666cdfc 2026-10-13";
 var config = {
   AUTH_SERVER: process.env["AUTH_SERVER"] ?? "https://auth.bookipi.com",
   APP_ID: process.env["APP_ID"] ?? "1dd166d9569f4f7eb0f08a22c8f0d54a",

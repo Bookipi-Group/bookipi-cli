@@ -26,7 +26,7 @@ bookipi website preview --page About   # render just one page; --full writes a s
 bookipi website update --find "old text" --replace "new text"   # edit page copy (deterministic), save to builder, re-render preview
 bookipi website ask "make the hero headline punchier"            # freeform AI edit (reword/restructure/tone) via the builder's chat AI
 bookipi website page -o home.html      # dump a page's raw HTML to edit, then update --html-file home.html
-bookipi website publish                # 🔴 make the site PUBLIC (confirm first); --url <slug> to choose the address
+bookipi website publish --yes          # 🔴 make the site PUBLIC (confirm first); --url <slug> to choose the address
 ```
 
 ## Publishing — *"publish my website"*, *"make it live"*

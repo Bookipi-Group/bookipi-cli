@@ -43,7 +43,7 @@ import {
   saveSignitToken,
   saveToken,
   uploadItemImage
-} from "./chunks/chunk-ZYNRFFEQ.js";
+} from "./chunks/chunk-PGWQXQLQ.js";
 import {
   __commonJS,
   __export,
@@ -39348,6 +39348,33 @@ function withErrors(action) {
     }
   };
 }
+var CONFIRM_REQUIRED = {
+  "invoice send": "email this invoice",
+  "invoice send-receipt": "email this payment receipt",
+  "invoice mark-paid": "record this payment",
+  "invoice void": "clear this invoice's recorded payments",
+  "paylink create": "create this payment link",
+  "paylink send": "email this payment link",
+  "proposal send": "email this proposal",
+  "contract send": "send this contract for signature",
+  "customer send-email": "email this customer",
+  "website publish": "publish the website"
+};
+function applyConfirmGates(program3) {
+  for (const [path10, what] of Object.entries(CONFIRM_REQUIRED)) {
+    const command = path10.split(" ").reduce((cmd, name) => cmd?.commands.find((c) => c.name() === name), program3);
+    if (!command) throw new Error(`applyConfirmGates: no command "${path10}"`);
+    command.option("-y, --yes", `Confirm the user approved this (${what}); required`).hook("preAction", (cmd) => {
+      const opts = cmd.opts();
+      if (opts["yes"] !== true) {
+        failWith(
+          `Refusing to ${what} without --yes. Show the user what will happen, get their approval, then re-run with --yes.`,
+          { json: opts["json"] === true }
+        );
+      }
+    });
+  }
+}
 function parsePaging(opts) {
   const json3 = opts.json === true;
   const page = parseInt(opts.page, 10);
@@ -45479,7 +45506,7 @@ var createCommand4 = new Command("create").description("Create a new item/produc
     if (opts.photo) {
       process.stderr.write(`  \u2022 Uploading ${opts.photo}...
 `);
-      const { uploadItemImage: uploadItemImage2 } = await import("./chunks/uploadItemImage-UDS6X6DO.js");
+      const { uploadItemImage: uploadItemImage2 } = await import("./chunks/uploadItemImage-QL46TFFM.js");
       const { filename } = await uploadItemImage2(opts.photo);
       record2.photos = [{ filename }];
     }
@@ -87122,6 +87149,7 @@ program2.addCommand(calendarCommand);
 program2.addCommand(companyCommand);
 program2.addCommand(websiteCommand);
 program2.addCommand(mcpCommand);
+applyConfirmGates(program2);
 program2.hook("preAction", async (_thisCommand, actionCommand) => {
   const parts2 = [];
   for (let c = actionCommand; c; c = c.parent) {

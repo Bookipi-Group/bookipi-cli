@@ -39,19 +39,19 @@ bookipi customer delete @c1 --json
 # Use when the user says "email Acme about X", "send a note to @c1", "follow up with
 # Wayne", "reply to that customer". Auto-detects HTML in --body; otherwise wraps plain
 # text in <p> with newlines as <br>. Add --cc / --bcc for additional recipients.
-bookipi customer send-email @c1 \
+bookipi customer send-email @c1 --yes \
   --to kelvin@bookipi.com \
   --subject "Following up" \
   --body "Hi Kelvin, just checking in on the proposal."
 
 # HTML body — passed through unchanged, plain-text fallback derived by stripping tags
-bookipi customer send-email "Wayne Construction" \
+bookipi customer send-email "Wayne Construction" --yes \
   --to wayne@example.com --cc finance@example.com \
   --subject "Invoice INV-186 attached" \
   --body "<p>Hi Wayne,</p><p>Invoice attached.</p>"
 
 # Multiple recipients — repeat --to or pass comma-separated
-bookipi customer send-email @c1 \
+bookipi customer send-email @c1 --yes \
   --to "a@x.com,b@x.com" --to c@x.com \
   --subject "Update" --body "Sending the revised quote tomorrow."
 

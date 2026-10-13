@@ -313,7 +313,7 @@ User: "draft a proposal for Maria for ₱75k SEO retainer"
 
 7. On approval:
    bookipi proposal update @p15 --no-draft           [AUTO]   (draft → saved)
-   bookipi proposal send @p15 -r mariachen@yopmail.com \
+   bookipi proposal send @p15 -r mariachen@yopmail.com --yes \
      -s "Proposal — SEO retainer" \
      -m "Hi Maria, here's the proposal we discussed..." \
      --advance-deal                                  [DESTRUCTIVE]
@@ -419,7 +419,7 @@ Trigger: user says "Maria accepted", or the agent reads `proposal list --status 
    **Choices:** `["Send now", "Edit message first", "Hold for later"]`
 
 5. On "Send now":
-   bookipi invoice send @i7 -r mariachen@yopmail.com \
+   bookipi invoice send @i7 -r mariachen@yopmail.com --yes \
      -s "Invoice INV-657 — SEO retainer" \
      -m "Hi Maria, attached is the invoice for the SEO retainer..."   [DESTRUCTIVE]
 
@@ -532,7 +532,7 @@ The server creates a **fresh editable draft** copy — same title, line items, t
 Typical follow-ups after duplicating:
 - *"point it at a different customer"* → `bookipi proposal update <new-handle> --customer <name-or-handle>`.
 - *"change the price / items"* → edit via the link, or `bookipi proposal update <new-handle> --data '{…}'`.
-- *"send it"* → `bookipi proposal send <new-handle> -r <email> --advance-deal`.
+- *"send it"* → `bookipi proposal send <new-handle> -r <email> --advance-deal --yes`.
 
 Don't want the copy after all? `bookipi proposal delete <handle-or-id>` soft-deletes it (moves to trash). It's destructive — **confirm with the user via `AskUserQuestion` before deleting** (see `common.md` § Confirmation Style). Or just leave the draft; it won't be sent on its own.
 

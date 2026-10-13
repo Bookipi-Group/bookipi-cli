@@ -185,7 +185,7 @@ The CLI bakes the precedence rules above into a `--advance-deal` flag on the rel
 ```bash
 # This single command sends the proposal AND advances the linked deal
 # (only if not already at-or-past 'proposal', not terminal, not custom-key).
-bookipi proposal send @p1 -r email@example.com --advance-deal
+bookipi proposal send @p1 -r email@example.com --advance-deal --yes
 ```
 
 Currently available on:

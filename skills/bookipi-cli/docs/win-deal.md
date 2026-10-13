@@ -306,7 +306,7 @@ Want me to send it?" Then jump to step 4.
    now, or hold?"
 
 5. On approval:
-   bookipi invoice send @i9 -r tonystark@yopmail.com \
+   bookipi invoice send @i9 -r tonystark@yopmail.com --yes \
     -s "Invoice INV-722 — Stark Industries platform" \
     -m "Hi Tony, attached is the invoice for the platform engagement..." [DESTRUCTIVE]
 

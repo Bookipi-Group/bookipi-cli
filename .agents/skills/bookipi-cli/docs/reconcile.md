@@ -120,7 +120,7 @@ question with the candidate invoices as options.
 Only after explicit confirmation, one `mark-paid` per match:
 
 ```bash
-bookipi invoice mark-paid <id> --amount <received> --method transfer --date <deposit date>
+bookipi invoice mark-paid <id> --amount <received> --method transfer --date <deposit date> --yes
 ```
 
 - Use the DEPOSIT's date and actual received amount (fee-shaved counts as
@@ -128,7 +128,7 @@ bookipi invoice mark-paid <id> --amount <received> --method transfer --date <dep
 - Then re-run the open-pool query and close with the delta: *"Recorded 3
   payments totaling Rp 605,000 — Tony's balance is now Rp 20,000 across 1
   open invoice."*
-- Mistake recovery: `bookipi invoice void <id>` clears payments and returns
+- Mistake recovery: `bookipi invoice void <id> --yes` clears payments and returns
   an invoice to unpaid — mention it if the user spots a wrong match after the
   fact.
 
