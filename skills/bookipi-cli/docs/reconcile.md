@@ -128,8 +128,6 @@ bookipi invoice mark-paid <id> --amount <received> --method transfer --date <dep
 - Then re-run the open-pool query and close with the delta: *"Recorded 3
   payments totaling Rp 605,000 — Tony's balance is now Rp 20,000 across 1
   open invoice."*
-- **Log it**: one dated line in the assistant-memory action log — payments
-  recorded, total, user-approved (`docs/assistant.md`).
 - Mistake recovery: `bookipi invoice void <id>` clears payments and returns
   an invoice to unpaid — mention it if the user spots a wrong match after the
   fact.

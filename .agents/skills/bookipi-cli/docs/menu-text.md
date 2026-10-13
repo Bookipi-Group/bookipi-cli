@@ -27,7 +27,7 @@ the next question.
 > - *"Run my day"* — the brief PLUS today's drafted actions (chasers, nudges), one approval
 > - *"Set up my AI employee"* — that same run, scheduled every morning
 > - *"What should I focus on?"* — same brief, framed around priorities
-> - *"What did you do this week?"* — the assistant's own activity report
+> - *"What did you do this week?"* — your Bookipi activity this week
 >
 > **Customers**
 > - *"Tell me about Acme Corp"* — full picture: deals, proposals, contracts, invoices

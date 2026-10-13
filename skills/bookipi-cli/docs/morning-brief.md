@@ -208,8 +208,7 @@ Then ONE `AskUserQuestion` bundling everything that needs a yes — e.g.
 *"Approve today's actions? (send 3 reminders · re-engage 1 stalled proposal)"*
 with options like "Approve all" / "Reminders only" / "Show me the drafts" /
 "Skip today". On approval, execute via each flow's own commands, confirm in
-one line each, and **log each executed action** in the assistant-memory
-action log (`docs/assistant.md`). **A standing yes never carries over — each day's run gets its
+one line each. **A standing yes never carries over — each day's run gets its
 own gate.** If everything is within cooldown and nothing needs approval, say
 so in one line instead of asking an empty question.
 

@@ -43,7 +43,7 @@ import {
   saveSignitToken,
   saveToken,
   uploadItemImage
-} from "./chunks/chunk-GHAEG6ZH.js";
+} from "./chunks/chunk-ZYNRFFEQ.js";
 import {
   __commonJS,
   __export,
@@ -45479,7 +45479,7 @@ var createCommand4 = new Command("create").description("Create a new item/produc
     if (opts.photo) {
       process.stderr.write(`  \u2022 Uploading ${opts.photo}...
 `);
-      const { uploadItemImage: uploadItemImage2 } = await import("./chunks/uploadItemImage-YKVUIEJC.js");
+      const { uploadItemImage: uploadItemImage2 } = await import("./chunks/uploadItemImage-UDS6X6DO.js");
       const { filename } = await uploadItemImage2(opts.photo);
       record2.photos = [{ filename }];
     }

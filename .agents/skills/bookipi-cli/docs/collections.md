@@ -75,8 +75,6 @@ destructive bulk action):
    bookipi invoice collections --send --stage final         # just the final notices
    bookipi invoice collections --send --customer "Acme"     # one customer, all their overdue stages
    ```
-   After a successful send, **log it**: one dated line in the assistant-memory
-   action log — stages, count, total chased, user-approved (`docs/assistant.md`).
    On `--send`, each invoice is **re-sent** (via the invoice send rails) with the
    stage-toned subject/body as the covering note. The invoice email carries its
    own pay link, so nothing extra is minted. A failed send is surfaced per

@@ -167,7 +167,6 @@ Send reminder emails to overdue invoice customers in bulk. **This command is des
    - **Question:** *"This would email 4 reminders totaling $34,877 to Kelvin Bookipi. Send them?"*
    - **Choices:** `["Send all 4", "Review individually first", "Cancel"]`
 4. **Only when confirmed**, re-run with `--send`: `bookipi invoice remind --send --min-days 7`.
-5. **Log it**: one dated line in the assistant-memory action log — how many reminders, total chased, user-approved (`docs/assistant.md`).
 
 ```bash
 bookipi invoice remind                                 # preview all overdue (dry-run)
@@ -414,7 +413,7 @@ Two commands. Don't re-derive this flow from scratch. If the customer handle is 
 
 ### "Mark INV-X as paid" / "record a payment" / "they paid me"
 
-Use `invoice mark-paid @handle` — this **records a payment** (defaults to the full outstanding balance, method `cash`), which is what actually sets the payment status, clears the amount due, and shows up in payment history. Add `--amount` for a partial/custom amount, `--method` (cash / card / bank transfer), `--date`, or `--note`. **Destructive — confirm with the user first.**
+Use `invoice mark-paid @handle` — this **records a payment** that already happened outside the CLI (it never charges or moves money) (defaults to the full outstanding balance, method `cash`), which is what actually sets the payment status, clears the amount due, and shows up in payment history. Add `--amount` for a partial/custom amount, `--method` (cash / card / bank transfer), `--date`, or `--note`. **Destructive — confirm with the user first.**
 
 > ⚠️ Do NOT use `invoice update --status paid` to mark something paid — that only flips the raw lifecycle flag and records no money, so the balance and payment history stay wrong.
 

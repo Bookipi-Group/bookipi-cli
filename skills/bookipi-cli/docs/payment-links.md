@@ -4,6 +4,9 @@ A **payment link** is a shareable URL that lets anyone pay the company a set
 (or customer-entered) amount. Backed by Bookipi's BPay service — a separate
 host from the main API. The CLI exposes create / list / get.
 
+The CLI only creates and sends the link — it never takes or moves money. The
+customer pays on BPay's own payment page in their browser.
+
 ## Commands
 
 ```bash
