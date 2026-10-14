@@ -17,12 +17,13 @@ to claude.ai, Claude Desktop, or any MCP client — nothing to install.
 - **Talk to Claude** — install the skill and ask in plain English inside
   Cowork, Claude Desktop, or Claude Code. Claude runs Bookipi CLI for you; no
   commands to memorize. Setup is below.
-- **Build on the CLI** — clone it, run `bookipi init`, and pipe `--json`
+- **Build on the CLI** — install it, sign in, and pipe `--json`
   output into your own agents, automations, and products. See
   [Building on the CLI](#building-on-the-cli).
 
-Either way it's the same tool underneath. Everything that sends, charges, or
-records stops for your confirmation first.
+Either way it's the same tool underneath. Everything that emails someone,
+records a payment, or publishes stops for your confirmation first, and it never
+moves money.
 
 ## Talk to Claude
 
@@ -48,7 +49,7 @@ later is two commands rather than a re-download:
 /plugin install bookipi@bookipi-cli
 ```
 
-Claude fetches the CLI on first use, so there's nothing else to install. You
+The plugin ships the CLI inside it, so there's nothing else to install. You
 need Node 22.12 or newer on your machine.
 
 To upgrade later, refresh the marketplace **first** — `install` and `update`
@@ -229,22 +230,34 @@ accounts side by side.
 - "What companies do I have?"
 - "Log me out."
 
-Everything that sends, charges, or records stops for your confirmation first.
+Everything that emails someone, records a payment, or publishes stops for your
+confirmation first. Bookipi never moves money: no charges, refunds or transfers.
 
 ## Building on the CLI
 
 Bookipi CLI is also a standalone, JSON-first command-line tool you can build on
-directly — for AI agents, automations, integrations, and your own products. The
-bundled CLI runs on Node 22+ with no build step.
+directly — for AI agents, automations, integrations, and your own products. It
+runs on Node 22.12+ with no build step.
 
-The bundled CLI ships in this repository at `skills/bookipi-cli/bin/bookipi.js`
-(the same production build as the release's `bookipi-cli.skill`), so cloning
-the repo gives you a runnable CLI:
+To install the `bookipi` command on macOS or Linux, use the one-line installer
+on the [latest release page](https://github.com/Bookipi-Group/bookipi-cli/releases/latest).
+It checks Node, downloads that release's CLI archive, verifies its SHA-256,
+installs it to `~/.local/share/bookipi-cli` and puts a `bookipi` launcher in
+`~/.local/bin`. It never installs Node or edits your shell profile — if
+`~/.local/bin` isn't on your PATH it tells you the line to add. Run it again to
+update.
+
+Or clone this repository — the same production build ships at
+`skills/bookipi-cli/bin/bookipi.js`:
 
 ```
 git clone https://github.com/Bookipi-Group/bookipi-cli.git ~/bookipi-cli
 alias bookipi=~/bookipi-cli/skills/bookipi-cli/bin/bookipi.js
+```
 
+Then:
+
+```
 bookipi init                                   # creates a workspace + browser OAuth sign-in (~5s)
 bookipi invoice list --status overdue --json   # structured output your code can act on
 ```
@@ -290,12 +303,17 @@ of them.
 | `calendar` | Calendar connection state | `status` |
 | `company` | The active company | `list` `set` |
 | `website` | The AI-built company website | `status` `content` `pages` `page` `create` `generate` `add-page` `update` `ask` `preview` `publish` `analytics` `open` |
-| — | Session and workspace | `login` `logout` `whoami` `init` `mcp` |
+| — | Session and workspace | `setup` `login` `logout` `whoami` `init` `mcp` |
 
-Note the difference between the two paths: in chat, the skill stops and asks
-before anything sends, charges, or records. The CLI has no such prompt — a
-write subcommand executes as soon as you run it, which is what you want in a
-script and worth knowing before you wire one up.
+`bookipi setup` is the one call an agent runs first: it checks the workspace and
+sign-in, starts a login if needed, and returns the next step as JSON.
+
+Commands that email someone, record or clear a payment, create or send a
+payment link, or publish the website refuse to run without `--yes`
+(`invoice send`, `send-receipt`, `mark-paid`, `void`, `paylink create`/`send`,
+`proposal send`, `contract send`, `customer send-email`, `website publish`). In
+chat the skill asks you first and adds it; in a script, pass `--yes` yourself.
+Other write subcommands run as soon as you call them.
 
 ## Found a bug? Stuck?
 
@@ -313,8 +331,9 @@ The more detail, the faster we can help.
 
 ## Privacy
 
-Bookipi CLI talks only to Bookipi's own services, on your behalf, using your own
-Bookipi account. Full policy: **[bookipi.com/privacy-policy](https://bookipi.com/privacy-policy/)**.
+Bookipi CLI talks to Bookipi's own services on your behalf, using your own
+Bookipi account, plus Amplitude for usage analytics and GitHub for update
+checks (both below). Full policy: **[bookipi.com/privacy-policy](https://bookipi.com/privacy-policy/)**.
 
 **What it collects and where it goes**
 
@@ -333,6 +352,11 @@ Bookipi account. Full policy: **[bookipi.com/privacy-policy](https://bookipi.com
   the machine, never by either value itself. Command arguments, invoice
   contents, customer records and credentials are not included. Turn it off with
   `BOOKIPI_NO_ANALYTICS=1` or the cross-tool `DO_NOT_TRACK=1`.
+- **Update check** — once a day the CLI asks GitHub for this repository's latest
+  release, so it can tell you when a newer version is out. The request carries
+  only the CLI version; nothing about your account is sent, and nothing is
+  downloaded or installed. Turn it off with
+  `BOOKIPI_NO_UPDATE_CHECK=1`.
 
 **What it does not do**
 
