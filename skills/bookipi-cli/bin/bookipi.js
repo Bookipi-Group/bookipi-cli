@@ -9,12 +9,14 @@ import {
   RECORD_SOURCE_APP,
   axios_default,
   bookipiGraphql,
+  canWrite,
   claimFirstRun,
   clearAllCredentials,
   clearPendingRelaySession,
   config,
   coworkMountDirs,
   currentRequestAuth,
+  ensureConfigDir,
   getAnalyticsUserId,
   getBookipiConfigDir,
   getCurrentCurrency,
@@ -27,6 +29,7 @@ import {
   getSignitTokenCached,
   getToken,
   graphqlRequest,
+  nativeConfigDir,
   postToS3,
   refreshOidcToken,
   refreshOidcTokenWith,
@@ -42,8 +45,9 @@ import {
   savePendingRelaySession,
   saveSignitToken,
   saveToken,
-  uploadItemImage
-} from "./chunks/chunk-PGWQXQLQ.js";
+  uploadItemImage,
+  useConfigDir
+} from "./chunks/chunk-PUN3RL4U.js";
 import {
   __commonJS,
   __export,
@@ -1214,8 +1218,8 @@ var require_command = __commonJS({
   "node_modules/.pnpm/commander@14.0.3/node_modules/commander/lib/command.js"(exports) {
     var EventEmitter = __require("node:events").EventEmitter;
     var childProcess = __require("node:child_process");
-    var path10 = __require("node:path");
-    var fs8 = __require("node:fs");
+    var path12 = __require("node:path");
+    var fs10 = __require("node:fs");
     var process4 = __require("node:process");
     var { Argument: Argument2, humanReadableArgName } = require_argument();
     var { CommanderError: CommanderError2 } = require_error();
@@ -2209,7 +2213,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @param {string} subcommandName
        */
       _checkForMissingExecutable(executableFile, executableDir, subcommandName) {
-        if (fs8.existsSync(executableFile)) return;
+        if (fs10.existsSync(executableFile)) return;
         const executableDirMessage = executableDir ? `searched for local subcommand relative to directory '${executableDir}'` : "no directory for search for local subcommand, use .executableDir() to supply a custom directory";
         const executableMissing = `'${executableFile}' does not exist
  - if '${subcommandName}' is not meant to be an executable command, remove description parameter from '.command()' and use '.description()' instead
@@ -2227,11 +2231,11 @@ Expecting one of '${allowedValues.join("', '")}'`);
         let launchWithNode = false;
         const sourceExt = [".js", ".ts", ".tsx", ".mjs", ".cjs"];
         function findFile(baseDir, baseName) {
-          const localBin = path10.resolve(baseDir, baseName);
-          if (fs8.existsSync(localBin)) return localBin;
-          if (sourceExt.includes(path10.extname(baseName))) return void 0;
+          const localBin = path12.resolve(baseDir, baseName);
+          if (fs10.existsSync(localBin)) return localBin;
+          if (sourceExt.includes(path12.extname(baseName))) return void 0;
           const foundExt = sourceExt.find(
-            (ext) => fs8.existsSync(`${localBin}${ext}`)
+            (ext) => fs10.existsSync(`${localBin}${ext}`)
           );
           if (foundExt) return `${localBin}${foundExt}`;
           return void 0;
@@ -2243,21 +2247,21 @@ Expecting one of '${allowedValues.join("', '")}'`);
         if (this._scriptPath) {
           let resolvedScriptPath;
           try {
-            resolvedScriptPath = fs8.realpathSync(this._scriptPath);
+            resolvedScriptPath = fs10.realpathSync(this._scriptPath);
           } catch {
             resolvedScriptPath = this._scriptPath;
           }
-          executableDir = path10.resolve(
-            path10.dirname(resolvedScriptPath),
+          executableDir = path12.resolve(
+            path12.dirname(resolvedScriptPath),
             executableDir
           );
         }
         if (executableDir) {
           let localFile = findFile(executableDir, executableFile);
           if (!localFile && !subcommand._executableFile && this._scriptPath) {
-            const legacyName = path10.basename(
+            const legacyName = path12.basename(
               this._scriptPath,
-              path10.extname(this._scriptPath)
+              path12.extname(this._scriptPath)
             );
             if (legacyName !== this._name) {
               localFile = findFile(
@@ -2268,7 +2272,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
           }
           executableFile = localFile || executableFile;
         }
-        launchWithNode = sourceExt.includes(path10.extname(executableFile));
+        launchWithNode = sourceExt.includes(path12.extname(executableFile));
         let proc;
         if (process4.platform !== "win32") {
           if (launchWithNode) {
@@ -3183,7 +3187,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @return {Command}
        */
       nameFromFilename(filename) {
-        this._name = path10.basename(filename, path10.extname(filename));
+        this._name = path12.basename(filename, path12.extname(filename));
         return this;
       }
       /**
@@ -3197,9 +3201,9 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @param {string} [path]
        * @return {(string|null|Command)}
        */
-      executableDir(path11) {
-        if (path11 === void 0) return this._executableDir;
-        this._executableDir = path11;
+      executableDir(path13) {
+        if (path13 === void 0) return this._executableDir;
+        this._executableDir = path13;
         return this;
       }
       /**
@@ -4586,14 +4590,14 @@ var require_util = __commonJS({
         }
         const port = url2.port != null ? url2.port : url2.protocol === "https:" ? 443 : 80;
         let origin = url2.origin != null ? url2.origin : `${url2.protocol || ""}//${url2.hostname || ""}:${port}`;
-        let path10 = url2.path != null ? url2.path : `${url2.pathname || ""}${url2.search || ""}`;
+        let path12 = url2.path != null ? url2.path : `${url2.pathname || ""}${url2.search || ""}`;
         if (origin[origin.length - 1] === "/") {
           origin = origin.slice(0, origin.length - 1);
         }
-        if (path10 && path10[0] !== "/") {
-          path10 = `/${path10}`;
+        if (path12 && path12[0] !== "/") {
+          path12 = `/${path12}`;
         }
-        return new URL(`${origin}${path10}`);
+        return new URL(`${origin}${path12}`);
       }
       if (!isHttpOrHttpsPrefixed(url2.origin || url2.protocol)) {
         throw new InvalidArgumentError2("Invalid URL protocol: the URL must start with `http:` or `https:`.");
@@ -5432,9 +5436,9 @@ var require_diagnostics = __commonJS({
         "undici:client:sendHeaders",
         (evt) => {
           const {
-            request: { method, path: path10, origin }
+            request: { method, path: path12, origin }
           } = evt;
-          debugLog("sending request to %s %s%s", method, origin, path10);
+          debugLog("sending request to %s %s%s", method, origin, path12);
         }
       );
     }
@@ -5452,14 +5456,14 @@ var require_diagnostics = __commonJS({
         "undici:request:headers",
         (evt) => {
           const {
-            request: { method, path: path10, origin },
+            request: { method, path: path12, origin },
             response: { statusCode }
           } = evt;
           debugLog(
             "received response to %s %s%s - HTTP %d",
             method,
             origin,
-            path10,
+            path12,
             statusCode
           );
         }
@@ -5468,23 +5472,23 @@ var require_diagnostics = __commonJS({
         "undici:request:trailers",
         (evt) => {
           const {
-            request: { method, path: path10, origin }
+            request: { method, path: path12, origin }
           } = evt;
-          debugLog("trailers received from %s %s%s", method, origin, path10);
+          debugLog("trailers received from %s %s%s", method, origin, path12);
         }
       );
       diagnosticsChannel.subscribe(
         "undici:request:error",
         (evt) => {
           const {
-            request: { method, path: path10, origin },
+            request: { method, path: path12, origin },
             error: error51
           } = evt;
           debugLog(
             "request to %s %s%s errored - %s",
             method,
             origin,
-            path10,
+            path12,
             error51.message
           );
         }
@@ -5639,7 +5643,7 @@ var require_request = __commonJS({
     };
     var Request2 = class {
       constructor(origin, {
-        path: path10,
+        path: path12,
         method,
         body,
         headers,
@@ -5656,11 +5660,11 @@ var require_request = __commonJS({
         maxRedirections,
         typeOfService
       }, handler) {
-        if (typeof path10 !== "string") {
+        if (typeof path12 !== "string") {
           throw new InvalidArgumentError2("path must be a string");
-        } else if (path10[0] !== "/" && !(path10.startsWith("http://") || path10.startsWith("https://")) && method !== "CONNECT") {
+        } else if (path12[0] !== "/" && !(path12.startsWith("http://") || path12.startsWith("https://")) && method !== "CONNECT") {
           throw new InvalidArgumentError2("path must be an absolute URL or start with a slash");
-        } else if (invalidPathRegex.test(path10)) {
+        } else if (invalidPathRegex.test(path12)) {
           throw new InvalidArgumentError2("invalid request path");
         }
         if (typeof method !== "string") {
@@ -5735,7 +5739,7 @@ var require_request = __commonJS({
         this.completed = false;
         this.aborted = false;
         this.upgrade = upgrade || null;
-        this.path = query ? serializePathWithQuery(path10, query) : path10;
+        this.path = query ? serializePathWithQuery(path12, query) : path12;
         this.origin = origin;
         this.protocol = getProtocolFromUrlString(origin);
         this.idempotent = idempotent == null ? method === "HEAD" || method === "GET" || method === "QUERY" : idempotent;
@@ -10856,7 +10860,7 @@ var require_client_h1 = __commonJS({
       }
     }
     function writeH1(client, request) {
-      const { method, path: path10, host, upgrade, blocking, reset } = request;
+      const { method, path: path12, host, upgrade, blocking, reset } = request;
       let { body, headers, contentLength } = request;
       const expectsPayload = method === "PUT" || method === "POST" || method === "PATCH" || method === "QUERY" || method === "PROPFIND" || method === "PROPPATCH";
       if (util2.isFormDataLike(body)) {
@@ -10932,7 +10936,7 @@ var require_client_h1 = __commonJS({
         socket[kBlocking] = true;
       }
       setTypeOfService(socket, request);
-      let header = `${method} ${path10} HTTP/1.1\r
+      let header = `${method} ${path12} HTTP/1.1\r
 `;
       if (typeof host === "string") {
         header += `host: ${host}\r
@@ -12027,7 +12031,7 @@ var require_client_h2 = __commonJS({
       const headersTimeout = request.headersTimeout ?? client[kHeadersTimeout];
       const bodyTimeout = request.bodyTimeout ?? client[kBodyTimeout];
       const session = client[kHTTP2Session];
-      const { method, path: path10, host, upgrade, expectContinue, signal, protocol, headers: reqHeaders } = request;
+      const { method, path: path12, host, upgrade, expectContinue, signal, protocol, headers: reqHeaders } = request;
       if (upgrade != null && upgrade !== "websocket") {
         util2.errorRequest(client, request, new InvalidArgumentError2(`Custom upgrade "${upgrade}" not supported over HTTP/2`));
         return false;
@@ -12093,7 +12097,7 @@ var require_client_h2 = __commonJS({
           }
           headers[HTTP2_HEADER_METHOD] = "CONNECT";
           headers[HTTP2_HEADER_PROTOCOL] = "websocket";
-          headers[HTTP2_HEADER_PATH] = path10;
+          headers[HTTP2_HEADER_PATH] = path12;
           if (protocol === "ws:" || protocol === "wss:") {
             headers[HTTP2_HEADER_SCHEME] = protocol === "ws:" ? "http" : "https";
           } else {
@@ -12115,7 +12119,7 @@ var require_client_h2 = __commonJS({
         setupUpgradeStream(stream, state);
         return true;
       }
-      headers[HTTP2_HEADER_PATH] = path10;
+      headers[HTTP2_HEADER_PATH] = path12;
       headers[HTTP2_HEADER_SCHEME] = protocol === "http:" ? "http" : "https";
       const expectsPayload = method === "PUT" || method === "POST" || method === "PATCH" || method === "QUERY" || method === "PROPFIND" || method === "PROPPATCH";
       let body = state.body;
@@ -14998,10 +15002,10 @@ var require_proxy_agent = __commonJS({
         };
         const {
           origin,
-          path: path10 = "/",
+          path: path12 = "/",
           headers = {}
         } = opts;
-        opts.path = origin + path10;
+        opts.path = origin + path12;
         if (!("host" in headers) && !("Host" in headers)) {
           const { host } = new URL(origin);
           headers.host = host;
@@ -17417,20 +17421,20 @@ var require_mock_utils = __commonJS({
       }
       return normalizedQp;
     }
-    function safeUrl(path10) {
-      if (typeof path10 !== "string") {
-        return path10;
+    function safeUrl(path12) {
+      if (typeof path12 !== "string") {
+        return path12;
       }
-      const pathSegments = path10.split("?", 3);
+      const pathSegments = path12.split("?", 3);
       if (pathSegments.length !== 2) {
-        return path10;
+        return path12;
       }
       const qp = new URLSearchParams(pathSegments.pop());
       qp.sort();
       return [...pathSegments, qp.toString()].join("?");
     }
-    function matchKey(mockDispatch2, { path: path10, method, body, headers }) {
-      const pathMatch = matchValue(mockDispatch2.path, path10);
+    function matchKey(mockDispatch2, { path: path12, method, body, headers }) {
+      const pathMatch = matchValue(mockDispatch2.path, path12);
       const methodMatch = matchValue(mockDispatch2.method, method);
       const bodyMatch = typeof mockDispatch2.body !== "undefined" ? matchValue(mockDispatch2.body, body) : true;
       const headersMatch = matchHeaders(mockDispatch2, headers);
@@ -17457,8 +17461,8 @@ var require_mock_utils = __commonJS({
       const basePath = key2.query ? serializePathWithQuery(key2.path, key2.query) : key2.path;
       const resolvedPath = typeof basePath === "string" ? safeUrl(basePath) : basePath;
       const resolvedPathWithoutTrailingSlash = removeTrailingSlash(resolvedPath);
-      let matchedMockDispatches = mockDispatches.filter(({ consumed }) => !consumed).filter(({ path: path10, ignoreTrailingSlash }) => {
-        return ignoreTrailingSlash ? matchValue(removeTrailingSlash(safeUrl(path10)), resolvedPathWithoutTrailingSlash) : matchValue(safeUrl(path10), resolvedPath);
+      let matchedMockDispatches = mockDispatches.filter(({ consumed }) => !consumed).filter(({ path: path12, ignoreTrailingSlash }) => {
+        return ignoreTrailingSlash ? matchValue(removeTrailingSlash(safeUrl(path12)), resolvedPathWithoutTrailingSlash) : matchValue(safeUrl(path12), resolvedPath);
       });
       if (matchedMockDispatches.length === 0) {
         throw new MockNotMatchedError(`Mock dispatch not matched for path '${resolvedPath}'`);
@@ -17497,22 +17501,22 @@ var require_mock_utils = __commonJS({
         mockDispatches.splice(index, 1);
       }
     }
-    function removeTrailingSlash(path10) {
-      if (typeof path10 !== "string") {
-        return path10;
+    function removeTrailingSlash(path12) {
+      if (typeof path12 !== "string") {
+        return path12;
       }
-      while (path10.endsWith("/")) {
-        path10 = path10.slice(0, -1);
+      while (path12.endsWith("/")) {
+        path12 = path12.slice(0, -1);
       }
-      if (path10.length === 0) {
-        path10 = "/";
+      if (path12.length === 0) {
+        path12 = "/";
       }
-      return path10;
+      return path12;
     }
     function buildKey(opts) {
-      const { path: path10, method, body, headers, query } = opts;
+      const { path: path12, method, body, headers, query } = opts;
       return {
-        path: path10,
+        path: path12,
         method,
         body,
         headers,
@@ -18381,10 +18385,10 @@ var require_pending_interceptors_formatter = __commonJS({
       }
       format(pendingInterceptors) {
         const withPrettyHeaders = pendingInterceptors.map(
-          ({ method, path: path10, data: { statusCode }, persist, times, timesInvoked, origin }) => ({
+          ({ method, path: path12, data: { statusCode }, persist, times, timesInvoked, origin }) => ({
             Method: method,
             Origin: origin,
-            Path: path10,
+            Path: path12,
             "Status code": statusCode,
             Persistent: persist ? PERSISTENT : NOT_PERSISTENT,
             Invocations: timesInvoked,
@@ -18474,9 +18478,9 @@ var require_mock_agent = __commonJS({
           }
         }
         if (acceptNonStandardSearchParameters && dispatchOpts.path) {
-          const [path10, searchParams] = dispatchOpts.path.split("?");
+          const [path12, searchParams] = dispatchOpts.path.split("?");
           const normalizedSearchParams = normalizeSearchParams(searchParams, acceptNonStandardSearchParameters);
-          dispatchOpts.path = `${path10}?${normalizedSearchParams}`;
+          dispatchOpts.path = `${path12}?${normalizedSearchParams}`;
         }
         return this[kAgent].dispatch(dispatchOpts, handler);
       }
@@ -18892,12 +18896,12 @@ var require_snapshot_recorder = __commonJS({
        * @return {Promise<void>} - Resolves when snapshots are loaded
        */
       async loadSnapshots(filePath) {
-        const path10 = filePath || this.#snapshotPath;
-        if (!path10) {
+        const path12 = filePath || this.#snapshotPath;
+        if (!path12) {
           throw new InvalidArgumentError2("Snapshot path is required");
         }
         try {
-          const data = await readFile(resolve3(path10), "utf8");
+          const data = await readFile(resolve3(path12), "utf8");
           const parsed = JSON.parse(data);
           if (Array.isArray(parsed)) {
             this.#snapshots.clear();
@@ -18911,7 +18915,7 @@ var require_snapshot_recorder = __commonJS({
           if (error51.code === "ENOENT") {
             this.#snapshots.clear();
           } else {
-            throw new UndiciError(`Failed to load snapshots from ${path10}`, { cause: error51 });
+            throw new UndiciError(`Failed to load snapshots from ${path12}`, { cause: error51 });
           }
         }
       }
@@ -18922,11 +18926,11 @@ var require_snapshot_recorder = __commonJS({
        * @returns {Promise<void>} - Resolves when snapshots are saved
        */
       async saveSnapshots(filePath) {
-        const path10 = filePath || this.#snapshotPath;
-        if (!path10) {
+        const path12 = filePath || this.#snapshotPath;
+        if (!path12) {
           throw new InvalidArgumentError2("Snapshot path is required");
         }
-        const resolvedPath = resolve3(path10);
+        const resolvedPath = resolve3(path12);
         await mkdir(dirname(resolvedPath), { recursive: true });
         const data = Array.from(this.#snapshots.entries()).map(([hash2, snapshot]) => ({
           hash: hash2,
@@ -19580,15 +19584,15 @@ var require_redirect_handler = __commonJS({
         }
         const baseUrl2 = requestOrigin ? new URL(this.opts.path, requestOrigin) : void 0;
         const { origin, pathname, search } = util2.parseURL(new URL(this.location, baseUrl2));
-        const path10 = search ? `${pathname}${search}` : pathname;
-        const redirectUrlString = `${origin}${path10}`;
+        const path12 = search ? `${pathname}${search}` : pathname;
+        const redirectUrlString = `${origin}${path12}`;
         for (const historyUrl of this.history) {
           if (historyUrl.toString() === redirectUrlString) {
             throw new InvalidArgumentError2(`Redirect loop detected. Cannot redirect to ${origin}. This typically happens when using a Client or Pool with cross-origin redirects. Use an Agent for cross-origin redirects.`);
           }
         }
         this.opts.headers = cleanRequestHeaders(this.opts.headers, removeContentHeaders, requestOrigin !== origin, this.stripHeadersOnRedirect, this.stripHeadersOnCrossOriginRedirect);
-        this.opts.path = path10;
+        this.opts.path = path12;
         this.opts.origin = origin;
         this.opts[kRequestOrigin] = origin;
         this.opts.query = null;
@@ -21439,10 +21443,10 @@ var require_cache_handler = __commonJS({
       }
       return locationUrl.pathname + locationUrl.search;
     }
-    function deleteCachedUri(store2, cacheKey2, path10) {
+    function deleteCachedUri(store2, cacheKey2, path12) {
       deleteCachedValue(store2, {
         ...cacheKey2,
-        path: path10
+        path: path12
       });
       for (let i = 0; i < util2.safeHTTPMethods.length; i++) {
         const method = util2.safeHTTPMethods[i];
@@ -21450,7 +21454,7 @@ var require_cache_handler = __commonJS({
           deleteCachedValue(store2, {
             ...cacheKey2,
             method,
-            path: path10
+            path: path12
           });
         }
       }
@@ -21461,9 +21465,9 @@ var require_cache_handler = __commonJS({
       }
       const values = Array.isArray(headerValue) ? headerValue : [headerValue];
       for (let i = 0; i < values.length; i++) {
-        const path10 = getSameOriginPath(cacheKey2, values[i]);
-        if (path10 !== void 0) {
-          deleteCachedUri(store2, cacheKey2, path10);
+        const path12 = getSameOriginPath(cacheKey2, values[i]);
+        if (path12 !== void 0) {
+          deleteCachedUri(store2, cacheKey2, path12);
         }
       }
     }
@@ -26715,13 +26719,13 @@ var require_fetch = __commonJS({
       function dispatch({ body }) {
         const url2 = requestCurrentURL(request);
         const agent = fetchParams.controller.dispatcher;
-        const path10 = url2.pathname + url2.search;
+        const path12 = url2.pathname + url2.search;
         const hasTrailingQuestionMark = url2.search.length === 0 && url2.href[url2.href.length - url2.hash.length - 1] === "?";
         return dispatchWithProtocolPreference(body);
         function dispatchWithProtocolPreference(body2, allowH2) {
           return new Promise((resolve3, reject) => agent.dispatch(
             {
-              path: hasTrailingQuestionMark ? `${path10}?` : path10,
+              path: hasTrailingQuestionMark ? `${path12}?` : path12,
               origin: url2.origin,
               method: request.method,
               body: agent.isMockActive ? request.body && (request.body.source || request.body.stream) : body2,
@@ -27651,9 +27655,9 @@ var require_util4 = __commonJS({
         }
       }
     }
-    function validateCookiePath(path10) {
-      for (let i = 0; i < path10.length; ++i) {
-        const code = path10.charCodeAt(i);
+    function validateCookiePath(path12) {
+      for (let i = 0; i < path12.length; ++i) {
+        const code = path12.charCodeAt(i);
         if (code < 32 || // exclude CTLs (0-31)
         code > 126 || // exclude non-ascii and DEL
         code === 59) {
@@ -31119,11 +31123,11 @@ var require_undici = __commonJS({
           if (typeof opts.path !== "string") {
             throw new InvalidArgumentError2("invalid opts.path");
           }
-          let path10 = opts.path;
+          let path12 = opts.path;
           if (!opts.path.startsWith("/")) {
-            path10 = `/${path10}`;
+            path12 = `/${path12}`;
           }
-          url2 = new URL(util2.parseOrigin(url2).origin + path10);
+          url2 = new URL(util2.parseOrigin(url2).origin + path12);
         } else {
           if (!opts) {
             opts = typeof url2 === "object" ? url2 : {};
@@ -34461,8 +34465,8 @@ var require_utils2 = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path10) {
-      let input = path10;
+    function removeDotSegments(path12) {
+      let input = path12;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -34871,8 +34875,8 @@ var require_schemes = __commonJS({
       }
       if (wsComponent.resourceName) {
         const queryIndex = wsComponent.resourceName.indexOf("?");
-        const path10 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
-        wsComponent.path = path10 && path10 !== "/" ? path10 : void 0;
+        const path12 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
+        wsComponent.path = path12 && path12 !== "/" ? path12 : void 0;
         wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
@@ -38385,12 +38389,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list, fs8, exportName) {
+    function addFormats(ajv, list, fs10, exportName) {
       var _a3;
       var _b;
       (_a3 = (_b = ajv.opts.code).formats) !== null && _a3 !== void 0 ? _a3 : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list)
-        ajv.addFormat(f, fs8[f]);
+        ajv.addFormat(f, fs10[f]);
     }
     module.exports = exports = formatsPlugin;
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -38662,7 +38666,7 @@ async function startRelayLogin() {
   const persisted = getPendingRelaySession();
   if (!persisted || persisted.sessionId !== sessionId) {
     throw new Error(
-      "Could not save the login session \u2014 no writable credential directory. The login cannot continue: the next step reads this back. Fix: run `bookipi init --no-login` in a writable folder (the CLI finds its .bookipi/ automatically), or set BOOKIPI_CONFIG_DIR to a writable path. Then start over with `bookipi login --relay-start`. In a sandboxed agent, the working directory is usually writable when the home directory is not."
+      "Could not save the login session \u2014 no writable credential directory. The login cannot continue: the next step reads this back. Fix: run `bookipi setup --folder <a writable folder>` (it keeps the sign-in in that folder's .bookipi/ and starts a fresh login), or set BOOKIPI_CONFIG_DIR to a writable path and run `bookipi setup`. In a sandboxed agent, the working directory is usually writable when the home directory is not."
     );
   }
   return { url: url2, sessionId };
@@ -38670,10 +38674,10 @@ async function startRelayLogin() {
 async function resumeRelayLogin(sessionId) {
   const stored = getPendingRelaySession();
   if (!stored || stored.sessionId !== sessionId) {
-    throw new Error("Unknown session. Run 'bookipi login --relay-start' first.");
+    throw new Error("Unknown session. Run `bookipi setup` for a fresh login link.");
   }
   if (Date.now() - stored.createdAt > SESSION_MAX_AGE_MS) {
-    throw new Error("Session expired. Run 'bookipi login --relay-start' again.");
+    throw new Error("Session expired. Run `bookipi setup` for a fresh login link.");
   }
   const relayBase = getRelayBaseUrl();
   let res;
@@ -38692,7 +38696,7 @@ async function resumeRelayLogin(sessionId) {
     case "pending":
       return { status: "pending" };
     case "expired":
-      throw new Error("Session expired. Run 'bookipi login --relay-start' again.");
+      throw new Error("Session expired. Run `bookipi setup` for a fresh login link.");
     case "completed": {
       if (!code) {
         throw new Error("Relay returned completed status but no code.");
@@ -38968,14 +38972,11 @@ function deviceId() {
   return cachedDeviceId;
 }
 function analyticsOptedOut() {
-  for (const key2 of ["BOOKIPI_NO_ANALYTICS", "DO_NOT_TRACK"]) {
-    const raw = process.env[key2];
-    if (raw === void 0) continue;
-    const value = raw.trim().toLowerCase();
-    if (value === "" || value === "0" || value === "false") continue;
-    return true;
-  }
-  return false;
+  return envFlagOn("BOOKIPI_NO_ANALYTICS") || envFlagOn("DO_NOT_TRACK");
+}
+function envFlagOn(key2, env = process.env) {
+  const value = env[key2]?.trim().toLowerCase();
+  return value !== void 0 && value !== "" && value !== "0" && value !== "false";
 }
 var surface = "cli";
 var mcpTransport;
@@ -39181,9 +39182,9 @@ function commandFailed(reason) {
 }
 
 // src/usecases/auth/persistLoginProfile.ts
-async function persistLoginProfile() {
+async function persistLoginProfile(prefetched) {
   try {
-    const data = await whoami();
+    const data = prefetched ?? await whoami();
     const rawCompanies = data.whoami?.companies;
     const email3 = data.whoami?.email ?? null;
     if (email3) saveAnalyticsUserId(hashEmail(email3));
@@ -39231,12 +39232,12 @@ function formatError(err2, opts = {}) {
   if (autoDetect) {
     if (lower.includes("not logged in") || lower.includes("invalid token") || lower.includes("token expired") || lower.includes("unauthorized") || /\b401\b/.test(lower)) {
       friendly = "Your Bookipi session expired (or you're not logged in).";
-      hint = "Run `bookipi login --relay` to reconnect, then retry the command.";
+      hint = "Run `bookipi setup` to sign in again, then retry the command.";
       code = "auth";
       exitCode = 2;
     } else if (lower.includes("no default company") || lower.includes("no company")) {
       friendly = "No company is set as your default.";
-      hint = "Run `bookipi whoami` after logging in to refresh the default company.";
+      hint = "Run `bookipi setup`: it refreshes the default company, or says how to create one.";
       code = "no-company";
       exitCode = 2;
     } else if (lower.includes("enotfound") || lower.includes("econnrefused") || lower.includes("eai_again") || lower.includes("getaddrinfo") || lower.includes("network error")) {
@@ -39361,9 +39362,9 @@ var CONFIRM_REQUIRED = {
   "website publish": "publish the website"
 };
 function applyConfirmGates(program3) {
-  for (const [path10, what] of Object.entries(CONFIRM_REQUIRED)) {
-    const command = path10.split(" ").reduce((cmd, name) => cmd?.commands.find((c) => c.name() === name), program3);
-    if (!command) throw new Error(`applyConfirmGates: no command "${path10}"`);
+  for (const [path12, what] of Object.entries(CONFIRM_REQUIRED)) {
+    const command = path12.split(" ").reduce((cmd, name) => cmd?.commands.find((c) => c.name() === name), program3);
+    if (!command) throw new Error(`applyConfirmGates: no command "${path12}"`);
     command.option("-y, --yes", `Confirm the user approved this (${what}); required`).hook("preAction", (cmd) => {
       const opts = cmd.opts();
       if (opts["yes"] !== true) {
@@ -39413,6 +39414,11 @@ function successPayload(profile) {
   };
 }
 var sleep2 = (ms) => new Promise((r) => setTimeout(r, ms));
+function relayWaitCommand(sessionId, configDir = getBookipiConfigDir()) {
+  const wait = `bookipi login --relay-wait ${sessionId}`;
+  return configDir ? `${wait} --config-dir '${configDir.replace(/'/g, "'\\''")}'` : wait;
+}
+var RESTART_LOGIN = "Start over: run `bookipi setup` for a fresh login link.";
 var DEFAULT_WAIT_MS = 11e4;
 async function saveCompanyFromProfile() {
   const profile = await persistLoginProfile();
@@ -39438,10 +39444,14 @@ var loginCommand = new Command("login").description("Login to Bookipi via browse
   "--relay-wait <sessionId>",
   'Step 2 (auto-poll): poll the relay until the user authorizes, then save the token and print {"success":true}. Waits ~110s by default \u2014 long enough to cover most logins, short enough to always return inside a 2-minute tool budget. On {"status":"pending"} just run it again; the result says so.'
 ).option(
+  "--config-dir <dir>",
+  "The config dir the login was started in (setup and init put it in `next` for you)."
+).option(
   "--wait-seconds <seconds>",
   "Widen (or narrow) --relay-wait's window. Use it only when the call cannot be killed \u2014 e.g. a background task, where ~290 covers the whole 5-minute session in one call. A killed process prints nothing at all, which is why this is not the default."
 ).action(
   withErrors(async (opts) => {
+    if (opts.configDir) useConfigDir(opts.configDir);
     if (opts.relayStart) {
       if (opts.relayResume) {
         failWith("--relay-start and --relay-resume are mutually exclusive");
@@ -39450,7 +39460,7 @@ var loginCommand = new Command("login").description("Login to Bookipi via browse
       console.log(
         JSON.stringify({
           ...result,
-          next: `bookipi login --relay-wait ${result.sessionId}`,
+          next: relayWaitCommand(result.sessionId),
           // The agent-facing path. Without this the caller got {url,
           // sessionId} and nothing telling it a second step exists, which is
           // the other half of "the link appeared and then nothing happened".
@@ -39499,10 +39509,10 @@ var loginCommand = new Command("login").description("Login to Bookipi via browse
             status: "pending",
             waitedMs: Date.now() - startedAt,
             sessionExpiresInMs: expiresInMs,
-            next: `bookipi login --relay-wait ${opts.relayWait}`,
+            next: relayWaitCommand(opts.relayWait),
             // Same reasoning as successPayload: the next move is decided
             // after this process is gone, so it ships with the result.
-            action: expiresInMs > 0 ? "Not authorized yet. Run `next` again now \u2014 do NOT ask the user whether they finished, this command detects it." : "The login session has expired. Start over with `bookipi login --relay-start`."
+            action: expiresInMs > 0 ? "Not authorized yet. Run `next` again now \u2014 do NOT ask the user whether they finished, this command detects it." : `The login session has expired. ${RESTART_LOGIN}`
           })
         );
         process.exit(0);
@@ -39517,7 +39527,7 @@ var loginCommand = new Command("login").description("Login to Bookipi via browse
             console.log(
               JSON.stringify({
                 error: msg,
-                action: "Start over: bookipi login --relay-start"
+                action: RESTART_LOGIN
               })
             );
             process.exit(3);
@@ -39540,7 +39550,7 @@ var loginCommand = new Command("login").description("Login to Bookipi via browse
       console.log(
         JSON.stringify({
           ...result,
-          next: `bookipi login --relay-wait ${result.sessionId}`,
+          next: relayWaitCommand(result.sessionId),
           action: "Share the url with the user as a clickable markdown link, then run `next` \u2014 it waits for them to authorize and detects it. Do not ask the user to confirm when they are done."
         })
       );
@@ -39576,7 +39586,7 @@ Run \`bookipi login\` to log back in.`);
 var whoamiCommand = new Command("whoami").description("Get current user").action(
   withErrors(async () => {
     const data = await whoami();
-    await persistLoginProfile();
+    await persistLoginProfile(data);
     console.log(JSON.stringify(data, null, 2));
   })
 );
@@ -39619,27 +39629,30 @@ For new CLI features:
 - npm publish is deferred until credentials are wired up.
 `;
 function checkCoworkPersistence(targetPath) {
-  const inSandbox = fs.existsSync("/sessions") || fs.existsSync("/mnt/user-data");
-  if (!inSandbox) {
+  if (!inCoworkSandbox() || onCoworkMount(targetPath)) {
     return { ephemeral: false, mountedFolders: [] };
   }
-  const resolved = path.resolve(targetPath);
-  const mountDirs = coworkMountDirs();
-  const underMount = mountDirs.some((d) => resolved.startsWith(`${d}${path.sep}`)) || /^\/sessions\/[^/]+\/mnt\/[^/]/.test(resolved) || resolved.startsWith("/mnt/");
-  if (underMount) {
-    return { ephemeral: false, mountedFolders: [] };
-  }
-  const mountedFolders = [];
-  for (const mntDir of mountDirs) {
+  return { ephemeral: true, mountedFolders: mountedProjectFolders() };
+}
+function onCoworkMount(target) {
+  const resolved = path.resolve(target);
+  return coworkMountDirs().some((d) => resolved.startsWith(`${d}${path.sep}`)) || /^\/sessions\/[^/]+\/mnt\/[^/]/.test(resolved) || resolved.startsWith("/mnt/");
+}
+function inCoworkSandbox() {
+  return fs.existsSync("/sessions") || fs.existsSync("/mnt/user-data");
+}
+function mountedProjectFolders() {
+  const folders = [];
+  for (const mntDir of coworkMountDirs()) {
     try {
       for (const folder of fs.readdirSync(mntDir)) {
         if (folder.startsWith(".")) continue;
-        mountedFolders.push(path.join(mntDir, folder));
+        folders.push(path.join(mntDir, folder));
       }
     } catch {
     }
   }
-  return { ephemeral: true, mountedFolders };
+  return folders;
 }
 async function initProject(opts) {
   const { targetPath, force, withCoworkInstructions } = opts;
@@ -39761,8 +39774,7 @@ var initCommand = new Command("init").description("Set up a project-folder Booki
     process.exit(0);
   }
   const prevConfigDir = process.env.BOOKIPI_CONFIG_DIR;
-  process.env.BOOKIPI_CONFIG_DIR = result.configDir;
-  resetBookipiConfigDirCache();
+  useConfigDir(result.configDir);
   if (!process.stdout.isTTY) {
     try {
       const relay = await startRelayLogin();
@@ -39775,8 +39787,8 @@ var initCommand = new Command("init").description("Set up a project-folder Booki
           loggedIn: false,
           url: relay.url,
           sessionId: relay.sessionId,
-          next: `cd ${targetPath} && bookipi login --relay-wait ${relay.sessionId}`,
-          action: "Workspace created. Share the url with the user as a clickable markdown link, then run `next` \u2014 it waits for them to authorize and detects it. Run it from the folder above, or the workspace credentials will not be found. Do not ask the user to confirm."
+          next: relayWaitCommand(relay.sessionId, result.configDir),
+          action: "Workspace created. Share the url with the user as a clickable markdown link, then run `next` \u2014 it waits for them to authorize and detects it. Do not ask the user to confirm."
         })
       );
     } catch (err2) {
@@ -39863,6 +39875,262 @@ var initCommand = new Command("init").description("Set up a project-folder Booki
   }
   process.exit(0);
 });
+
+// src/commands/setup.ts
+import fs3 from "node:fs";
+import path4 from "node:path";
+
+// src/core/update/updateCheck.ts
+import fs2 from "node:fs";
+import path3 from "node:path";
+var LATEST_RELEASE_URL = "https://api.github.com/repos/Bookipi-Group/bookipi-cli/releases/latest";
+var RELEASES_PAGE = "https://github.com/Bookipi-Group/bookipi-cli/releases/latest";
+var CHECK_INTERVAL_MS = 24 * 60 * 60 * 1e3;
+var CHECK_TIMEOUT_MS = 1500;
+var CACHE_FILE = "update-check.json";
+function updateCheckDisabled(env = process.env, buildEnv = BUILD_ENV) {
+  return buildEnv !== "prod" || envFlagOn("BOOKIPI_NO_UPDATE_CHECK", env) || envFlagOn("CI", env);
+}
+function isNewer(latest, current) {
+  const parse3 = (v) => {
+    const m = /^v?(\d+)\.(\d+)\.(\d+)$/.exec(v.trim());
+    return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
+  };
+  const a = parse3(latest);
+  const b = parse3(current);
+  if (!a || !b) return false;
+  for (let i = 0; i < 3; i++) {
+    if (a[i] !== b[i]) return a[i] > b[i];
+  }
+  return false;
+}
+function updateHint(scriptPath = process.argv[1] ?? "", env = process.env) {
+  const installDir = env["BOOKIPI_INSTALL_DIR"];
+  if (installDir && scriptPath.startsWith(installDir)) {
+    const binDir = env["BOOKIPI_BIN_DIR"];
+    const home = env["HOME"] ?? "";
+    const custom2 = installDir !== `${home}/.local/share/bookipi-cli` || binDir && binDir !== `${home}/.local/bin`;
+    const rerun = `run the installer from ${RELEASES_PAGE} again`;
+    if (!custom2) return rerun;
+    const dirs = `BOOKIPI_INSTALL_DIR="${installDir}"` + (binDir ? ` BOOKIPI_BIN_DIR="${binDir}"` : "");
+    return `${rerun}, with ${dirs} set so it replaces this copy`;
+  }
+  const p = scriptPath.replace(/\\/g, "/");
+  if (p.includes("/.claude/plugins/")) {
+    return "in Claude Code run `/plugin marketplace update bookipi-cli`, then `/plugin update bookipi@bookipi-cli`";
+  }
+  if (p.includes("/.codex/")) {
+    return "update the Bookipi plugin from its marketplace in Codex";
+  }
+  if (p.includes("/.agents/skills/")) {
+    return "run `npx skills update bookipi-cli`";
+  }
+  if (p.includes("/.gemini/extensions/")) {
+    return "run `gemini extensions update bookipi`";
+  }
+  return `update Bookipi the way it was installed: a plugin from its marketplace, \`npx skills update bookipi-cli\` for the skills CLI, the installer on the release page for the standalone CLI, or in Claude Desktop/Cowork install the latest bookipi-cli.skill from ${RELEASES_PAGE}`;
+}
+function cachePath() {
+  const dir = ensureConfigDir();
+  return dir && canWrite(dir) ? path3.join(dir, CACHE_FILE) : null;
+}
+function readCache(file2) {
+  try {
+    const raw = JSON.parse(fs2.readFileSync(file2, "utf8"));
+    if (typeof raw.checkedAt !== "number") return null;
+    return { checkedAt: raw.checkedAt, latest: typeof raw.latest === "string" ? raw.latest : null };
+  } catch {
+    return null;
+  }
+}
+async function refresh(file2, previous) {
+  let latest = previous;
+  try {
+    const res = await fetch(LATEST_RELEASE_URL, {
+      headers: { Accept: "application/vnd.github+json", "User-Agent": `bookipi-cli/${CLI_VERSION}` },
+      signal: AbortSignal.timeout(CHECK_TIMEOUT_MS)
+    });
+    if (res.ok) {
+      const tag = (await res.json()).tag_name;
+      if (typeof tag === "string") latest = tag.replace(/^v/, "");
+    }
+  } catch {
+  }
+  try {
+    fs2.writeFileSync(file2, JSON.stringify({ checkedAt: Date.now(), latest }));
+  } catch {
+  }
+  return latest;
+}
+async function checkForUpdate() {
+  if (updateCheckDisabled()) return;
+  const file2 = cachePath();
+  if (!file2) return;
+  const cache = readCache(file2);
+  const age = cache ? Date.now() - cache.checkedAt : Infinity;
+  const latest = age < 0 || age >= CHECK_INTERVAL_MS ? await refresh(file2, cache?.latest ?? null) : cache.latest;
+  if (latest && isNewer(latest, CLI_VERSION)) {
+    process.stderr.write(
+      `\u2139\uFE0F Bookipi CLI ${latest} is available (this is ${CLI_VERSION}). To update, ${updateHint()}.
+`
+    );
+  }
+}
+function availableUpdate() {
+  if (updateCheckDisabled()) return null;
+  const dir = getBookipiConfigDir();
+  const latest = dir ? readCache(path3.join(dir, CACHE_FILE))?.latest : null;
+  return latest && isNewer(latest, CLI_VERSION) ? { latest, how: updateHint() } : null;
+}
+
+// src/usecases/setup/decideNext.ts
+function decideNext(f) {
+  if (f.auth.kind === "offline") return { action: "offline", error: f.auth.error };
+  if (f.storeProblem) return needsFolder(f, f.storeProblem);
+  if (f.auth.kind === "signed_in") {
+    return f.auth.companyCount > 0 ? { action: "ready" } : { action: "create_company" };
+  }
+  if (f.store) return f.checkOnly ? { action: "login_required" } : { action: "login", store: f.store };
+  if (f.cowork) {
+    if (f.mountedFolders.length === 1 && f.checkOnly) return { action: "login_required" };
+    if (f.mountedFolders.length > 1) return { action: "choose_folder", folders: f.mountedFolders };
+    return needsFolder(f, "Nothing is mounted into this Cowork session, so a sign-in would be lost when it ends.");
+  }
+  return needsFolder(f, "There is no writable place to save the sign-in.");
+}
+function needsFolder(f, reason) {
+  return {
+    action: "needs_folder",
+    reason,
+    options: f.cowork ? [
+      "Add a local folder to this Cowork project, then run setup again.",
+      'Or mount the existing global sign-in folder: request_cowork_directory(path: "~/.bookipi").'
+    ] : ["Run `bookipi setup --folder <a writable project folder>`, e.g. the current folder."]
+  };
+}
+
+// src/commands/setup.ts
+var INSTRUCTION = {
+  ready: "Signed in. Carry on with the user's request. If they just logged in during this conversation and companyCount is 2 or more, ask which company to use first.",
+  create_company: "Signed in, but the account has no company yet. Ask the user to create one in Bookipi (link the url), then run setup again.",
+  offline: "Couldn't reach Bookipi. Tell the user in one line and try again later; don't start a login.",
+  login_required: "Signed out. Run `bookipi setup` (without --check) to start the login.",
+  show_login_link: "Share url with the user as an inline markdown link, then run `then`: it waits for them to authorize and detects it. Don't ask the user to confirm.",
+  choose_folder: "Ask the user which mounted folder should hold their Bookipi sign-in, then run `bookipi setup --folder <that folder>`.",
+  needs_folder: "Explain the reason to the user in plain words and offer the options. Don't copy .bookipi anywhere."
+};
+async function workspaceIn(folder, create) {
+  const targetPath = path4.resolve(folder);
+  const existing = path4.join(targetPath, ".bookipi");
+  if (fs3.existsSync(existing) || !create) {
+    return { configDir: fs3.existsSync(existing) ? existing : null, problem: null };
+  }
+  try {
+    const { configDir } = await initProject({ targetPath, force: false, withCoworkInstructions: false });
+    return { configDir, problem: null };
+  } catch (err2) {
+    return { configDir: null, problem: err2 instanceof Error ? err2.message : String(err2) };
+  }
+}
+async function readAuth() {
+  if (!getToken()) return { auth: { kind: "signed_out" }, profile: null };
+  try {
+    const profile = await persistLoginProfile(await whoami());
+    return { auth: { kind: "signed_in", companyCount: profile.companies.length }, profile };
+  } catch (err2) {
+    const { code, error: error51 } = formatError(err2).json;
+    if (code === "auth") return { auth: { kind: "signed_out" }, profile: null };
+    if (code === "network" || code === "timeout") return { auth: { kind: "offline", error: error51 }, profile: null };
+    throw err2;
+  }
+}
+function pickStore(cowork, checkOnly) {
+  const resolved = getBookipiConfigDir();
+  if (cowork) {
+    const ok2 = resolved !== null && onCoworkMount(resolved) && canWrite(resolved);
+    return { store: ok2 ? resolved : null, problem: null };
+  }
+  const dir = resolved ?? nativeConfigDir();
+  if (!canWrite(dir)) {
+    return { store: null, problem: `Can't save a sign-in to ${dir}: it isn't writable here.` };
+  }
+  if (checkOnly) return { store: dir, problem: null };
+  const store2 = resolved ?? ensureConfigDir();
+  if (store2) fs3.mkdirSync(store2, { recursive: true });
+  return { store: store2, problem: null };
+}
+var setupCommand = new Command("setup").description(
+  "Agent session bootstrap: report the CLI, workspace and sign-in state, start a login if needed, and return the one next step as JSON (next.action)."
+).option("--folder <path>", "Use (or create) a workspace in this folder").option("--check", "Only report: don't create a workspace or start a login").option(
+  "--ref <code>",
+  "Referral code the user signed up with (a creator's or campaign's). Stored once; the first code wins."
+).option("--json", "Output JSON (always on; accepted for consistency)").action(
+  withErrors(async (opts) => {
+    const checkOnly = opts.check === true;
+    const cowork = inCoworkSandbox();
+    let picked = { store: null, problem: null };
+    if (opts.folder) {
+      const ws = await workspaceIn(opts.folder, !checkOnly);
+      if (ws.configDir) useConfigDir(ws.configDir);
+      picked.problem = ws.problem;
+    }
+    const { auth, profile } = await readAuth();
+    let mountedFolders = [];
+    if (auth.kind === "signed_out" && !picked.problem) {
+      picked = pickStore(cowork, checkOnly);
+      if (cowork && !picked.store) {
+        mountedFolders = mountedProjectFolders();
+        if (mountedFolders.length === 1 && !checkOnly) {
+          const ws = await workspaceIn(mountedFolders[0], true);
+          picked = { store: ws.configDir, problem: ws.problem };
+          mountedFolders = [];
+        }
+      }
+    }
+    const step = decideNext({
+      cowork,
+      auth,
+      store: picked.store,
+      storeProblem: picked.problem,
+      mountedFolders,
+      checkOnly
+    });
+    let next;
+    if (step.action === "login") {
+      useConfigDir(step.store);
+      const relay = await startRelayLogin();
+      next = {
+        action: "show_login_link",
+        url: relay.url,
+        sessionId: relay.sessionId,
+        then: relayWaitCommand(relay.sessionId, step.store),
+        instruction: INSTRUCTION.show_login_link
+      };
+    } else {
+      next = {
+        ...step,
+        ...step.action === "create_company" ? { url: config.BOOKIPI_WEB_URL } : {},
+        instruction: INSTRUCTION[step.action]
+      };
+    }
+    const configDir = getBookipiConfigDir();
+    const company = profile?.defaultCompany;
+    console.log(
+      JSON.stringify({
+        cli: { version: CLI_VERSION, node: process.versions.node },
+        update: availableUpdate(),
+        environment: cowork ? "cowork" : "local",
+        workspace: configDir && fs3.existsSync(configDir) ? { configDir, persistent: !cowork || onCoworkMount(configDir) } : null,
+        account: profile?.email ? {
+          email: profile.email,
+          company: company ? { name: company.name, currency: company.currency } : null,
+          companyCount: profile.companies.length
+        } : null,
+        next
+      })
+    );
+  })
+);
 
 // src/core/api/fragments.ts
 var PAGE_INFO_FIELDS = `
@@ -40164,14 +40432,14 @@ function documentTypeByCode(code) {
 }
 
 // src/core/handles/HandleRegistry.ts
-import fs2 from "fs";
+import fs4 from "fs";
 import os2 from "os";
-import path3 from "path";
+import path5 from "path";
 var HANDLES_FILE = "handles.json";
-var LEGACY_HANDLES_PATH = path3.join(os2.homedir(), ".bookipi-handles.json");
+var LEGACY_HANDLES_PATH = path5.join(os2.homedir(), ".bookipi-handles.json");
 function getHandlesPath() {
   const configDir = getBookipiConfigDir();
-  return configDir ? path3.join(configDir, HANDLES_FILE) : LEGACY_HANDLES_PATH;
+  return configDir ? path5.join(configDir, HANDLES_FILE) : LEGACY_HANDLES_PATH;
 }
 var HandleRegistry = class _HandleRegistry {
   static instance;
@@ -40194,11 +40462,11 @@ var HandleRegistry = class _HandleRegistry {
    */
   load() {
     const primaryPath = getHandlesPath();
-    const sourcePath = fs2.existsSync(primaryPath) ? primaryPath : fs2.existsSync(LEGACY_HANDLES_PATH) ? LEGACY_HANDLES_PATH : null;
+    const sourcePath = fs4.existsSync(primaryPath) ? primaryPath : fs4.existsSync(LEGACY_HANDLES_PATH) ? LEGACY_HANDLES_PATH : null;
     if (!sourcePath) return;
     try {
       const data = JSON.parse(
-        fs2.readFileSync(sourcePath, "utf-8")
+        fs4.readFileSync(sourcePath, "utf-8")
       );
       this.handles = new Map(Object.entries(data.handles || {}));
       this.reverseHandles = new Map(
@@ -40218,14 +40486,14 @@ var HandleRegistry = class _HandleRegistry {
   save() {
     const targetPath = getHandlesPath();
     try {
-      const dir = path3.dirname(targetPath);
-      if (!fs2.existsSync(dir)) fs2.mkdirSync(dir, { recursive: true });
+      const dir = path5.dirname(targetPath);
+      if (!fs4.existsSync(dir)) fs4.mkdirSync(dir, { recursive: true });
       const data = {
         handles: Object.fromEntries(this.handles),
         reverseHandles: Object.fromEntries(this.reverseHandles),
         counters: Object.fromEntries(this.counters)
       };
-      fs2.writeFileSync(targetPath, JSON.stringify(data, null, 2));
+      fs4.writeFileSync(targetPath, JSON.stringify(data, null, 2));
     } catch {
     }
   }
@@ -40283,8 +40551,8 @@ var HandleRegistry = class _HandleRegistry {
     this.counters.clear();
     for (const p of [getHandlesPath(), LEGACY_HANDLES_PATH]) {
       try {
-        if (fs2.existsSync(p)) {
-          fs2.unlinkSync(p);
+        if (fs4.existsSync(p)) {
+          fs4.unlinkSync(p);
         }
       } catch {
       }
@@ -41028,7 +41296,7 @@ async function buildAuthenticatedUrl(baseUrl2) {
       process.stderr.write(
         `
 \u26A0 ${reason}
-  Run 'bookipi login --relay-start' to re-login and enable one-click web handoff.
+  Run 'bookipi setup' to sign in again and enable one-click web handoff.
   Suppress this warning with BOOKIPI_NO_AUTH_URL=1.
 
 `
@@ -41336,11 +41604,11 @@ function sweepTempRenders(opts = {}) {
   }
   for (const name of names) {
     if (!RENDER_FILE.test(name)) continue;
-    const path10 = join(dir, name);
-    if (opts.keep && path10 === opts.keep) continue;
+    const path12 = join(dir, name);
+    if (opts.keep && path12 === opts.keep) continue;
     try {
-      if (statSync(path10).mtimeMs >= cutoff) continue;
-      unlinkSync(path10);
+      if (statSync(path12).mtimeMs >= cutoff) continue;
+      unlinkSync(path12);
       removed++;
     } catch {
     }
@@ -42593,8 +42861,8 @@ async function resolveCustomer(value, companyId, extraFields) {
 }
 
 // src/usecases/invoice/uploadInvoiceImage.ts
-import fs3 from "node:fs";
-import path4 from "node:path";
+import fs5 from "node:fs";
+import path6 from "node:path";
 import { randomBytes } from "node:crypto";
 var EXT_TO_CONTENT_TYPE = {
   png: "image/png",
@@ -42615,10 +42883,10 @@ function shortId() {
   return randomBytes(8).readBigUInt64BE().toString(36).slice(0, 9);
 }
 async function uploadInvoiceImage(filePath) {
-  if (!fs3.existsSync(filePath)) {
+  if (!fs5.existsSync(filePath)) {
     throw new Error(`File not found: ${filePath}`);
   }
-  const ext = path4.extname(filePath).replace(/^\./, "").toLowerCase();
+  const ext = path6.extname(filePath).replace(/^\./, "").toLowerCase();
   const contentType3 = EXT_TO_CONTENT_TYPE[ext];
   if (!contentType3) {
     throw new Error(
@@ -45506,7 +45774,7 @@ var createCommand4 = new Command("create").description("Create a new item/produc
     if (opts.photo) {
       process.stderr.write(`  \u2022 Uploading ${opts.photo}...
 `);
-      const { uploadItemImage: uploadItemImage2 } = await import("./chunks/uploadItemImage-QL46TFFM.js");
+      const { uploadItemImage: uploadItemImage2 } = await import("./chunks/uploadItemImage-7MMB677C.js");
       const { filename } = await uploadItemImage2(opts.photo);
       record2.photos = [{ filename }];
     }
@@ -45684,8 +45952,8 @@ var categoriesCommand = new Command("categories").description("List available ex
 );
 
 // src/usecases/expense/uploadToS3.ts
-import fs4 from "fs";
-import path5 from "path";
+import fs6 from "fs";
+import path7 from "path";
 
 // src/usecases/expense/getUploadUrl.ts
 var GET_IMAGE_OCR_UPLOAD_URL_QUERY = `
@@ -45726,10 +45994,10 @@ var EXT_TO_CONTENT_TYPE2 = {
 };
 async function uploadReceiptFile(opts) {
   const { filePath, isThumbnail = false } = opts;
-  if (!fs4.existsSync(filePath)) {
+  if (!fs6.existsSync(filePath)) {
     throw new Error(`File not found: ${filePath}`);
   }
-  const extRaw = path5.extname(filePath).replace(/^\./, "").toLowerCase();
+  const extRaw = path7.extname(filePath).replace(/^\./, "").toLowerCase();
   if (!extRaw) {
     throw new Error(
       `File ${filePath} has no extension; cannot determine upload type`
@@ -45747,7 +46015,7 @@ async function uploadReceiptFile(opts) {
   }
   return {
     fullKey,
-    filename: path5.basename(fullKey),
+    filename: path7.basename(fullKey),
     contentType: contentType3
   };
 }
@@ -47901,8 +48169,8 @@ async function renderDashboard(input) {
 }
 
 // src/commands/report/dashboard.ts
-import fs5 from "fs";
-import path6 from "path";
+import fs7 from "fs";
+import path8 from "path";
 import { exec } from "child_process";
 function openInBrowser(filePath) {
   const platform = process.platform;
@@ -47937,21 +48205,21 @@ var dashboardCommand = new Command("dashboard").description(
     console.log("Fetching report data...");
     let companyName = "Your Company";
     try {
-      const configPath = path6.join(
+      const configPath = path8.join(
         process.env.HOME || process.env.USERPROFILE || "~",
         ".bookipi.json"
       );
-      if (fs5.existsSync(configPath)) {
-        const cfg = JSON.parse(fs5.readFileSync(configPath, "utf-8"));
+      if (fs7.existsSync(configPath)) {
+        const cfg = JSON.parse(fs7.readFileSync(configPath, "utf-8"));
         if (cfg.companyName) companyName = cfg.companyName;
       }
     } catch {
     }
     const { html } = await renderDashboard({ start, end, companyName });
-    const outputPath = path6.resolve(
+    const outputPath = path8.resolve(
       opts.output || "./bookipi-report.html"
     );
-    fs5.writeFileSync(outputPath, html, "utf-8");
+    fs7.writeFileSync(outputPath, html, "utf-8");
     console.log(`
 \u2705 Dashboard generated: ${outputPath}`);
     if (opts.open !== false) {
@@ -52368,19 +52636,19 @@ async function getDocumentWithClauses(opts) {
 }
 
 // src/core/cache/contractAiCache.ts
-import fs6 from "node:fs";
-import path7 from "node:path";
+import fs8 from "node:fs";
+import path9 from "node:path";
 var CACHE_SUBDIR = "contract-cache";
 function getCachePath(aiDocId) {
   const configDir = getBookipiConfigDir();
   if (!configDir) return null;
-  return path7.join(configDir, CACHE_SUBDIR, `${aiDocId}.json`);
+  return path9.join(configDir, CACHE_SUBDIR, `${aiDocId}.json`);
 }
 function saveContractAiCache(aiDocId, entry) {
   const file2 = getCachePath(aiDocId);
   if (!file2) return;
   try {
-    fs6.mkdirSync(path7.dirname(file2), { recursive: true });
+    fs8.mkdirSync(path9.dirname(file2), { recursive: true });
     const payload = {
       aiDocId,
       title: entry.title,
@@ -52388,15 +52656,15 @@ function saveContractAiCache(aiDocId, entry) {
       ...entry.signer ? { signer: entry.signer } : {},
       createdAt: Date.now()
     };
-    fs6.writeFileSync(file2, JSON.stringify(payload, null, 2), "utf-8");
+    fs8.writeFileSync(file2, JSON.stringify(payload, null, 2), "utf-8");
   } catch {
   }
 }
 function getContractAiCache(aiDocId) {
   const file2 = getCachePath(aiDocId);
-  if (!file2 || !fs6.existsSync(file2)) return null;
+  if (!file2 || !fs8.existsSync(file2)) return null;
   try {
-    const raw = fs6.readFileSync(file2, "utf-8");
+    const raw = fs8.readFileSync(file2, "utf-8");
     const parsed = JSON.parse(raw);
     if (parsed.aiDocId === aiDocId && typeof parsed.title === "string" && Array.isArray(parsed.clauses)) {
       return parsed;
@@ -52551,8 +52819,8 @@ var draftCommand = new Command("draft").description(
 );
 
 // src/usecases/contract/uploadContractDocument.ts
-import fs7 from "node:fs";
-import path8 from "node:path";
+import fs9 from "node:fs";
+import path10 from "node:path";
 
 // src/usecases/contract/uploadDocumentPDF.ts
 var GET_UPLOAD_URL_QUERY = `
@@ -52645,7 +52913,7 @@ var UPDATE_DOC = `
   }
 `;
 function contentTypeFor(filePath) {
-  const ext = path8.extname(filePath).replace(/^\./, "").toLowerCase();
+  const ext = path10.extname(filePath).replace(/^\./, "").toLowerCase();
   if (!ext) {
     throw new Error(`Can't determine file type from "${filePath}" \u2014 add an extension (e.g. .pdf)`);
   }
@@ -52653,11 +52921,11 @@ function contentTypeFor(filePath) {
 }
 async function uploadContractDocument(opts) {
   const { filePath } = opts;
-  if (!fs7.existsSync(filePath)) throw new Error(`File not found: ${filePath}`);
-  const bytes = fs7.readFileSync(filePath);
+  if (!fs9.existsSync(filePath)) throw new Error(`File not found: ${filePath}`);
+  const bytes = fs9.readFileSync(filePath);
   if (!bytes.length) throw new Error(`File is empty: ${filePath}`);
   const contentType3 = contentTypeFor(filePath);
-  const fileName = path8.basename(filePath);
+  const fileName = path10.basename(filePath);
   const nameNoExt = fileName.replace(/\.[^.]+$/, "");
   const title = opts.title?.trim() || nameNoExt;
   const documentId = await generateDocumentId();
@@ -53689,37 +53957,37 @@ function parseJson(text) {
     return void 0;
   }
 }
-async function builderRest(path10) {
-  const res = await builderFetch((s) => ({ url: `${s.origin}${path10}` }));
+async function builderRest(path12) {
+  const res = await builderFetch((s) => ({ url: `${s.origin}${path12}` }));
   if (res.status === 404) return null;
   const body = res.ok ? parseJson(res.text) : void 0;
-  if (body === void 0) throw builderError(res, path10);
+  if (body === void 0) throw builderError(res, path12);
   return body;
 }
-async function builderRestWrite(method, path10, body, parse3 = "json") {
+async function builderRestWrite(method, path12, body, parse3 = "json") {
   const res = await builderFetch(
     (s) => ({
-      url: `${s.origin}${path10}`,
+      url: `${s.origin}${path12}`,
       method,
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body)
     }),
     parse3 === "text" ? BUILDER_CHAT_TIMEOUT_MS : BUILDER_TIMEOUT_MS
   );
-  if (!res.ok) throw builderError(res, path10);
+  if (!res.ok) throw builderError(res, path12);
   if (parse3 === "text") return res.text;
   const json3 = parseJson(res.text);
-  if (json3 === void 0) throw builderError(res, path10);
+  if (json3 === void 0) throw builderError(res, path12);
   return json3;
 }
-function builderRestPost(path10, body) {
-  return builderRestWrite("POST", path10, body);
+function builderRestPost(path12, body) {
+  return builderRestWrite("POST", path12, body);
 }
-function builderRestPatch(path10, body) {
-  return builderRestWrite("PATCH", path10, body);
+function builderRestPatch(path12, body) {
+  return builderRestWrite("PATCH", path12, body);
 }
-function builderRestPostText(path10, body) {
-  return builderRestWrite("POST", path10, body, "text");
+function builderRestPostText(path12, body) {
+  return builderRestWrite("POST", path12, body, "text");
 }
 async function getBuilderWebsiteId() {
   return websiteIdFromToken((await builderSession()).token);
@@ -55194,8 +55462,8 @@ function pageAnchor(page, index) {
 }
 function rewriteInterPageLinks(html, slugToAnchor) {
   return html.replace(/href="([^"#][^"]*)"/g, (m, href) => {
-    const [path10, hash2] = String(href).split("#", 2);
-    const norm = path10.replace(/^\.\//, "").replace(/\/+$/, "") || "/";
+    const [path12, hash2] = String(href).split("#", 2);
+    const norm = path12.replace(/^\.\//, "").replace(/\/+$/, "") || "/";
     const anchor = slugToAnchor.get(norm) ?? // Templates link both with and without the leading slash.
     slugToAnchor.get(norm.startsWith("/") ? norm.slice(1) : `/${norm}`);
     if (!anchor) return m;
@@ -56528,8 +56796,8 @@ function getErrorMap() {
 
 // node_modules/.pnpm/zod@4.4.3/node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path10, errorMaps, issueData } = params;
-  const fullPath = [...path10, ...issueData.path || []];
+  const { data, path: path12, errorMaps, issueData } = params;
+  const fullPath = [...path12, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -56644,11 +56912,11 @@ var errorUtil;
 
 // node_modules/.pnpm/zod@4.4.3/node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path10, key2) {
+  constructor(parent, value, path12, key2) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path10;
+    this._path = path12;
     this._key = key2;
   }
   get path() {
@@ -60568,10 +60836,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path10) {
-  if (!path10)
+function getElementAtPath(obj, path12) {
+  if (!path12)
     return obj;
-  return path10.reduce((acc, key2) => acc?.[key2], obj);
+  return path12.reduce((acc, key2) => acc?.[key2], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -60980,11 +61248,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path10, issues) {
+function prefixIssues(path12, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path10);
+    iss.path.unshift(path12);
     return iss;
   });
 }
@@ -61131,16 +61399,16 @@ function flattenError(error51, mapper = (issue2) => issue2.message) {
 }
 function formatError2(error51, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error52, path10 = []) => {
+  const processError = (error52, path12 = []) => {
     for (const issue2 of error52.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path10, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path12, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path10, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path12, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path10, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path12, ...issue2.path]);
       } else {
-        const fullpath = [...path10, ...issue2.path];
+        const fullpath = [...path12, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -61167,17 +61435,17 @@ function formatError2(error51, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error51, mapper = (issue2) => issue2.message) {
   const result = { errors: [] };
-  const processError = (error52, path10 = []) => {
+  const processError = (error52, path12 = []) => {
     var _a3, _b;
     for (const issue2 of error52.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path10, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path12, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path10, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path12, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path10, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path12, ...issue2.path]);
       } else {
-        const fullpath = [...path10, ...issue2.path];
+        const fullpath = [...path12, ...issue2.path];
         if (fullpath.length === 0) {
           result.errors.push(mapper(issue2));
           continue;
@@ -61209,8 +61477,8 @@ function treeifyError(error51, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path10 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path10) {
+  const path12 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path12) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -72322,11 +72590,11 @@ function normalizeObjectSchema(schema) {
   }
   return void 0;
 }
-function getDotPath(path10) {
-  if (path10.length === 0) {
+function getDotPath(path12) {
+  if (path12.length === 0) {
     return "object root";
   }
-  return path10.reduce((acc, seg, index) => {
+  return path12.reduce((acc, seg, index) => {
     if (index === 0) {
       return String(seg);
     }
@@ -74351,13 +74619,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path10 = ref.slice(1).split("/").filter(Boolean);
-  if (path10.length === 0) {
+  const path12 = ref.slice(1).split("/").filter(Boolean);
+  if (path12.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path10[0] === defsKey) {
-    const key2 = path10[1];
+  if (path12[0] === defsKey) {
+    const key2 = path12[1];
     if (!key2 || !ctx.defs[key2]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -81309,10 +81577,10 @@ Returns per meeting: id, title, start, end, status, location, customerId and cus
 
 // src/mcp/uploadPath.ts
 import { existsSync } from "node:fs";
-function assertServerCanRead(path10) {
-  if (existsSync(path10)) return;
+function assertServerCanRead(path12) {
+  if (existsSync(path12)) return;
   throw new Error(
-    `This server cannot see ${path10}. \`file_path\` is read by the SERVER, not by you, so it only works when both are on the same machine \u2014 a stdio server, or one you started locally. If you are on a hosted connector the path is probably correct and simply not reachable from there; sending the file's bytes is not supported yet, so upload it from the web app or run a local server instead. Do not retry with a different path \u2014 the path is not the problem.`
+    `This server cannot see ${path12}. \`file_path\` is read by the SERVER, not by you, so it only works when both are on the same machine \u2014 a stdio server, or one you started locally. If you are on a hosted connector the path is probably correct and simply not reachable from there; sending the file's bytes is not supported yet, so upload it from the web app or run a local server instead. Do not retry with a different path \u2014 the path is not the problem.`
   );
 }
 
@@ -84115,7 +84383,7 @@ async function runMcpStdio(options = {}) {
 import http from "node:http";
 import { randomUUID as randomUUID2 } from "node:crypto";
 import { readFileSync as readFileSync2 } from "node:fs";
-import path9 from "node:path";
+import path11 from "node:path";
 
 // node_modules/.pnpm/@hono+node-server@2.1.4_hono@4.13.13/node_modules/@hono/node-server/dist/constants-BLSFu_RU.mjs
 var X_ALREADY_SENT = "x-hono-already-sent";
@@ -86483,11 +86751,11 @@ async function handleToken(body) {
     return { status: 200, json: issueTokens(payload) };
   }
   if (grantType === "refresh_token") {
-    const refresh = body.get("refresh_token");
-    if (!refresh) return err(400, "invalid_request", "missing refresh_token");
+    const refresh2 = body.get("refresh_token");
+    if (!refresh2) return err(400, "invalid_request", "missing refresh_token");
     let payload;
     try {
-      payload = open(refresh);
+      payload = open(refresh2);
     } catch {
       return err(400, "invalid_grant", "refresh token failed to decrypt");
     }
@@ -86602,7 +86870,7 @@ function favicon() {
   if (faviconCache !== void 0) return faviconCache;
   const candidates = [
     new URL("../../assets/icon.png", import.meta.url),
-    path9.join(process.cwd(), "assets", "icon.png")
+    path11.join(process.cwd(), "assets", "icon.png")
   ];
   for (const candidate of candidates) {
     try {
@@ -86826,7 +87094,7 @@ async function handleMcp(req, res, body) {
 }
 async function handleHttp(req, res) {
   const method = req.method ?? "GET";
-  const path10 = (req.url ?? "/").split("?")[0];
+  const path12 = (req.url ?? "/").split("?")[0];
   const search = new URLSearchParams((req.url ?? "").split("?")[1] ?? "");
   if (method === "OPTIONS") {
     res.writeHead(204, {
@@ -86839,11 +87107,11 @@ async function handleHttp(req, res) {
     res.end();
     return;
   }
-  if (method === "GET" && path10 === "/health") {
+  if (method === "GET" && path12 === "/health") {
     sendJson(res, 200, { status: "ok", service: "bookipi-mcp" });
     return;
   }
-  if (method === "GET" && path10 === "/favicon.ico") {
+  if (method === "GET" && path12 === "/favicon.ico") {
     const icon = favicon();
     if (!icon) {
       sendJson(res, 404, { error: "not_found" });
@@ -86857,8 +87125,8 @@ async function handleHttp(req, res) {
     res.end(icon);
     return;
   }
-  if (method === "GET" && path10.startsWith("/preview/")) {
-    const id = path10.slice("/preview/".length);
+  if (method === "GET" && path12.startsWith("/preview/")) {
+    const id = path12.slice("/preview/".length);
     const acceptsGzip = /\bgzip\b/i.test(String(req.headers["accept-encoding"] ?? ""));
     const isBrowser = /text\/html/i.test(String(req.headers["accept"] ?? ""));
     let body;
@@ -86887,7 +87155,7 @@ async function handleHttp(req, res) {
     res.end(body);
     return;
   }
-  if (method === "GET" && path10 === "/.well-known/openai-apps-challenge") {
+  if (method === "GET" && path12 === "/.well-known/openai-apps-challenge") {
     const token = (process.env["OPENAI_APPS_CHALLENGE_TOKEN"] ?? "").trim();
     if (!token) {
       sendJson(res, 404, { error: "not_found" });
@@ -86900,15 +87168,15 @@ async function handleHttp(req, res) {
     res.end(token);
     return;
   }
-  if (method === "GET" && path10.startsWith("/.well-known/oauth-protected-resource")) {
+  if (method === "GET" && path12.startsWith("/.well-known/oauth-protected-resource")) {
     sendJson(res, 200, protectedResourceMetadata());
     return;
   }
-  if (method === "GET" && (path10 === "/.well-known/oauth-authorization-server" || path10 === "/.well-known/openid-configuration")) {
+  if (method === "GET" && (path12 === "/.well-known/oauth-authorization-server" || path12 === "/.well-known/openid-configuration")) {
     sendJson(res, 200, authorizationServerMetadata());
     return;
   }
-  if (method === "POST" && path10 === "/oauth/register") {
+  if (method === "POST" && path12 === "/oauth/register") {
     const raw = await readRawBody(req);
     let parsed;
     try {
@@ -86921,7 +87189,7 @@ async function handleHttp(req, res) {
     sendJson(res, "error" in client ? 400 : 201, client);
     return;
   }
-  if (method === "GET" && path10 === "/oauth/authorize") {
+  if (method === "GET" && path12 === "/oauth/authorize") {
     try {
       const result = await buildAuthorizeRedirect(search);
       if ("location" in result) redirect2(res, result.location);
@@ -86934,7 +87202,7 @@ async function handleHttp(req, res) {
     }
     return;
   }
-  if (method === "GET" && path10 === "/oauth/callback") {
+  if (method === "GET" && path12 === "/oauth/callback") {
     try {
       const result = await handleCallback(search);
       if ("location" in result) {
@@ -86949,12 +87217,12 @@ async function handleHttp(req, res) {
     }
     return;
   }
-  if (method === "POST" && path10 === "/oauth/token") {
+  if (method === "POST" && path12 === "/oauth/token") {
     const out = await handleToken(new URLSearchParams(await readRawBody(req)));
     sendJson(res, out.status, out.json);
     return;
   }
-  if (path10 === MCP_PATH) {
+  if (path12 === MCP_PATH) {
     if (method !== "POST" && method !== "GET" && method !== "DELETE") {
       sendJsonRpcError(res, 405, -32601, "Method not allowed.");
       return;
@@ -87135,6 +87403,7 @@ program2.addCommand(loginCommand);
 program2.addCommand(logoutCommand);
 program2.addCommand(whoamiCommand);
 program2.addCommand(initCommand);
+program2.addCommand(setupCommand);
 program2.addCommand(invoiceCommand);
 program2.addCommand(customerCommand);
 program2.addCommand(itemCommand);
@@ -87158,9 +87427,16 @@ program2.hook("preAction", async (_thisCommand, actionCommand) => {
   const fullName = parts2.slice(1).join(" ");
   beginCommand(fullName, invocationShape(actionCommand));
   captureReferral(actionCommand.opts()["ref"]);
-  await installDetected(fullName, {
-    hostedServer: fullName === "mcp" && actionCommand.opts()["http"] === true
-  });
+  await Promise.all([
+    // Before the action, so an install whose first command exits early (login
+    // does, always) is still counted. A no-op after the first run.
+    installDetected(fullName, {
+      hostedServer: fullName === "mcp" && actionCommand.opts()["http"] === true
+    }),
+    // Not for the MCP server: no agent reads its stderr, and the hosted one
+    // must not call GitHub.
+    fullName === "mcp" ? void 0 : checkForUpdate()
+  ]);
 });
 program2.hook("postAction", async () => {
   commandCompleted();

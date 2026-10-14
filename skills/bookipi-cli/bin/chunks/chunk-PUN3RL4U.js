@@ -17658,8 +17658,8 @@ var {
 
 // src/config.ts
 var BUILD_ENV = "prod";
-var CLI_VERSION = "0.42.0";
-var BUILD_STAMP = "666cdfc 2026-10-13";
+var CLI_VERSION = "0.43.0";
+var BUILD_STAMP = "5f73ab5 2026-10-14";
 var config = {
   AUTH_SERVER: process.env["AUTH_SERVER"] ?? "https://auth.bookipi.com",
   APP_ID: process.env["APP_ID"] ?? "1dd166d9569f4f7eb0f08a22c8f0d54a",
@@ -17825,7 +17825,7 @@ function findBookipiConfigDir() {
     }
   } catch {
   }
-  const nativeDir = path.join(os.homedir(), CONFIG_DIR_NAME);
+  const nativeDir = nativeConfigDir();
   if (fs.existsSync(nativeDir)) {
     return nativeDir;
   }
@@ -17841,6 +17841,27 @@ function getBookipiConfigDir() {
 function resetBookipiConfigDirCache() {
   _bookipiConfigDir = void 0;
 }
+function useConfigDir(dir) {
+  process.env.BOOKIPI_CONFIG_DIR = dir;
+  resetBookipiConfigDirCache();
+}
+function nativeConfigDir() {
+  return path.join(os.homedir(), CONFIG_DIR_NAME);
+}
+function canWrite(dir) {
+  let probe = path.resolve(dir);
+  while (!fs.existsSync(probe)) {
+    const parent = path.dirname(probe);
+    if (parent === probe) return false;
+    probe = parent;
+  }
+  try {
+    fs.accessSync(probe, fs.constants.W_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
 function getCredentialsPath() {
   const dir = getBookipiConfigDir();
   return dir ? path.join(dir, CREDENTIALS_FILE) : null;
@@ -17852,7 +17873,7 @@ function getLegacyCredentialsPath() {
 function ensureConfigDir() {
   const existing = getBookipiConfigDir();
   if (existing) return existing;
-  const nativeDir = path.join(os.homedir(), CONFIG_DIR_NAME);
+  const nativeDir = nativeConfigDir();
   try {
     fs.mkdirSync(nativeDir, { recursive: true });
   } catch {
@@ -18502,6 +18523,10 @@ export {
   coworkMountDirs,
   getBookipiConfigDir,
   resetBookipiConfigDirCache,
+  useConfigDir,
+  nativeConfigDir,
+  canWrite,
+  ensureConfigDir,
   claimFirstRun,
   getReferral,
   rememberReferral,

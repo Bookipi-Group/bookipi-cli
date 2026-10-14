@@ -106,7 +106,7 @@ The CLI emits errors in a consistent format on stderr — the agent should **pas
 
 | Category (`code`) | Markdown summary | Hint | Exit |
 |---|---|---|---|
-| `auth` | *Your Bookipi session expired (or you're not logged in).* | *Re-run the login flow (`bookipi login --relay-start`, then `--relay-wait`), then retry the command.* | 2 |
+| `auth` | *Your Bookipi session expired (or you're not logged in).* | *Run `bookipi setup` (it starts a fresh login), then retry the command.* | 2 |
 | `no-company` | *No company is set as your default.* | *Run `bookipi whoami` after logging in to refresh the default company.* | 2 |
 | `network` | *Couldn't reach Bookipi (network issue).* | *Check your connection and try again in a moment.* | 1 |
 | `timeout` | *Request timed out.* | *The service might be slow — try the command again.* | 1 |
@@ -120,7 +120,7 @@ The CLI emits errors in a consistent format on stderr — the agent should **pas
 
 ### How the agent should react
 
-1. **Auth errors** (`code: "auth"`) — re-run the login flow (`bookipi login --relay-start`, share the new login link, then `--relay-wait`), then re-run the original command. Don't abandon the user's task.
+1. **Auth errors** (`code: "auth"`) — run `bookipi setup`, follow its `next` (share the login link, run `then`), then re-run the original command. Don't abandon the user's task.
 2. **Handle-not-found / not-found** — run the suggested `list` command, then retry — no need to narrate it. If still missing, surface the issue plainly: *"I can't find that record — it might've been deleted."*
 3. **Network / timeout / rate-limit** — wait briefly and retry once. If it fails again, surface the hint to the user.
 4. **Validation** — these are user-input issues. Surface the message + hint plainly and ask for the right value via `AskUserQuestion` if possible.
@@ -329,18 +329,18 @@ storage.
 
 ## Project-folder workspaces
 
-Run `bookipi init` in a folder to make it a self-contained Bookipi workspace.
-This stores credentials locally in `.bookipi/` inside the folder, isolating them
-from the global `~/.bookipi/` store. The folder can then be mounted into a
-Cowork project for a portable, per-project setup.
+Run `bookipi setup --folder <folder>` to make a folder a self-contained Bookipi
+workspace: it stores the sign-in in `.bookipi/` inside the folder (isolated from
+the global `~/.bookipi/`) and starts the login if needed. The folder can then be
+mounted into a Cowork project for a portable, per-project setup.
 
 Use when:
 - User says "set up bookipi in this project" or similar
 - User wants to use a different Bookipi account for a specific workspace
 - User wants their Bookipi setup to travel with a Cowork project
 
-Run with `--no-login` if the user wants to set up the structure first and
-authenticate later via `bookipi login`.
+`bookipi init <folder>` does the same folder setup on its own (`--no-login` to
+skip the sign-in).
 
 Run with `--with-cowork-instructions` to also write a `COWORK.md` capturing the
 multi-agent flow conventions.
