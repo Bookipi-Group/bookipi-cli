@@ -48,6 +48,16 @@ connector**, paste `https://mcp.bookipi.com/mcp`, and click **Add**.
 claude mcp add --transport http bookipi https://mcp.bookipi.com/mcp
 ```
 
+**Gemini CLI:** the `bookipi` extension
+(`gemini extensions install https://github.com/Bookipi-Group/bookipi-cli`)
+includes the connector. To add only the connector, without the skill:
+
+```
+gemini mcp add --scope user --transport http bookipi https://mcp.bookipi.com/mcp
+```
+
+Either way, run `/mcp auth bookipi` inside Gemini CLI to sign in.
+
 **Other MCP clients:** any client that supports remote MCP servers over
 streamable HTTP with OAuth discovery can use the same URL. No manual OAuth
 configuration is needed — the server advertises everything the client needs.

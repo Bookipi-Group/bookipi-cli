@@ -84,7 +84,10 @@ rather than a bare listing:
 gemini extensions install https://github.com/Bookipi-Group/bookipi-cli
 ```
 
-Upgrade later with `gemini extensions update bookipi`.
+Upgrade later with `gemini extensions update bookipi`. The extension also
+brings the [Bookipi connector](docs/connector.md) (MCP): run
+`/mcp auth bookipi` in Gemini CLI once to sign in, and the skill uses its tools
+instead of the CLI.
 
 **Other agents** — Cursor, GitHub Copilot, Antigravity, Windsurf — read
 skills from `.agents/skills/`, which this repo publishes alongside the Claude
