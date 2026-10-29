@@ -3,114 +3,105 @@
 [![release](https://img.shields.io/github/v/release/Bookipi-Group/bookipi-cli?label=release)](https://github.com/Bookipi-Group/bookipi-cli/releases/latest)
 [![release status](https://github.com/Bookipi-Group/bookipi-cli/actions/workflows/release.yml/badge.svg?event=release)](https://github.com/Bookipi-Group/bookipi-cli/actions/workflows/release.yml)
 
-**Bookipi CLI** turns your back office — invoices, payments, customers,
-expenses, proposals, contracts, and reports — into clean `--json` commands you
-can run directly or drive through Claude in plain English.
+Run your back office — invoices, payments, customers, expenses, proposals,
+contracts and reports — by asking Claude in plain English, or from your own
+code with `--json` commands.
 
-Full overview and docs: [Bookipi CLI](https://bookipi.com/cli/)
+Anything that emails someone, records a payment or publishes waits for your
+OK first, and Bookipi never moves money. Overview: [bookipi.com/cli](https://bookipi.com/cli/).
 
-Prefer zero setup? The **[Bookipi connector](docs/connector.md)** adds Bookipi
-to claude.ai, Claude Desktop, or any MCP client — nothing to install.
+**Contents**
 
-## Two ways to use it
+1. [Ways to use it](#ways-to-use-it)
+2. [Install the skill](#install-the-skill)
+   — [Claude Desktop & Cowork](#claude-desktop--cowork) ·
+   [Claude Code](#claude-code) · [Codex](#codex) ·
+   [Gemini CLI](#gemini-cli) · [Other agents](#other-agents)
+3. [Allow network access (Cowork)](#allow-network-access-cowork)
+4. [Sign in and workspaces](#sign-in-and-workspaces)
+5. [Things to ask](#things-to-ask)
+6. [Build on the CLI](#build-on-the-cli) — [Commands](#commands)
+7. [Help and bug reports](#help-and-bug-reports)
+8. [Privacy](#privacy)
+9. [License](#license)
 
-- **Talk to Claude** — install the skill and ask in plain English inside
-  Cowork, Claude Desktop, or Claude Code. Claude runs Bookipi CLI for you; no
-  commands to memorize. Setup is below.
-- **Build on the CLI** — install it, sign in, and pipe `--json`
-  output into your own agents, automations, and products. See
-  [Building on the CLI](#building-on-the-cli).
+## Ways to use it
 
-Either way it's the same tool underneath. Everything that emails someone,
-records a payment, or publishes stops for your confirmation first, and it never
-moves money.
+| You want to… | Use |
+| --- | --- |
+| Ask Claude (Cowork, Claude Desktop, Claude Code, Codex, Gemini CLI) | [The skill](#install-the-skill) — it includes the CLI |
+| Use Bookipi in claude.ai or any MCP client, nothing to install | [The Bookipi connector](docs/connector.md) |
+| Script it, or build it into your own agents and products | [The CLI](#build-on-the-cli) |
 
-## Talk to Claude
+It's the same tool underneath every option.
 
-The skill bundle is self-contained (it includes the Bookipi CLI), so no
-separate installation is required. You don't run commands — you talk to Claude
-and Claude does the work. This guide shows you how to set that up.
+## Install the skill
 
-### 1. Install the skill
+The skill includes the Bookipi CLI, so there's nothing else to install. When it
+runs on your own computer (Claude Code, Codex, Gemini CLI), it needs Node
+22.12+, and on first use it adds a `bookipi` command to `~/.local/bin` so you
+can run it yourself too.
 
-1. Download the latest `bookipi-cli.skill` from
-   [Releases](https://github.com/Bookipi-Group/bookipi-cli/releases).
-2. Double-click it. Cowork or Claude Desktop will prompt to install.
-3. Confirm. It now appears in your Skills list as `bookipi-cli`.
+### Claude Desktop & Cowork
 
-If double-click does nothing, drag the file into the Cowork window. If your
-browser stripped the `.skill` extension on download, rename it back.
+1. Download `bookipi-cli.skill` from the
+   [latest release](https://github.com/Bookipi-Group/bookipi-cli/releases/latest).
+2. Double-click it and confirm. It appears in your Skills list as `bookipi-cli`.
 
-**Claude Code:** install it as a plugin instead — no download, and upgrading
-later is two commands rather than a re-download:
+Nothing happens? Drag the file into the Cowork window. If your browser dropped
+the `.skill` extension, rename it back first.
+
+### Claude Code
 
 ```
 /plugin marketplace add Bookipi-Group/bookipi-cli
 /plugin install bookipi@bookipi-cli
 ```
 
-The plugin ships the CLI inside it, so there's nothing else to install. You
-need Node 22.12 or newer on your machine.
-
-To upgrade later, refresh the marketplace **first** — `install` and `update`
-both read a local copy of this repo, so without the refresh they will happily
-keep serving the version you originally cloned:
+To upgrade, refresh the marketplace **first**, then update (keep the
+`@bookipi-cli` part, or you get "Plugin not found"):
 
 ```
 /plugin marketplace update bookipi-cli
 /plugin update bookipi@bookipi-cli
 ```
 
-Include the `@bookipi-cli` part — `update bookipi` on its own reports
-"Plugin not found".
+A skill installed in Claude Desktop also works in Claude Code sessions started
+from the desktop app. To install by hand, unzip the `.skill` file into
+`~/.claude/skills/`.
 
-A skill installed via Claude Desktop is also available in Claude Code sessions
-started from the desktop app, so you may already have it. To install by hand
-instead, unzip the `.skill` file into `~/.claude/skills/` (it's a zip — you'll
-end up with `~/.claude/skills/bookipi-cli/`).
-
-**Codex:** add this repo as a marketplace and install from it — the plugin
-carries its own Codex manifest, so you get the Bookipi icon and starter prompts
-rather than a bare listing:
+### Codex
 
 ```
 /plugin marketplace add Bookipi-Group/bookipi-cli
 /plugin install bookipi
 ```
 
-**Gemini CLI:** install it as an extension:
+### Gemini CLI
 
 ```
 gemini extensions install https://github.com/Bookipi-Group/bookipi-cli
 ```
 
-Upgrade later with `gemini extensions update bookipi`. The extension also
-brings the [Bookipi connector](docs/connector.md) (MCP): run
-`/mcp auth bookipi` in Gemini CLI once to sign in, and the skill uses its tools
-instead of the CLI.
+Upgrade with `gemini extensions update bookipi`. The extension also includes
+the [Bookipi connector](docs/connector.md): run `/mcp auth bookipi` once to
+sign in, and the skill uses it instead of the CLI.
 
-**Other agents** — Cursor, GitHub Copilot, Antigravity, Windsurf — read
-skills from `.agents/skills/`, which this repo publishes alongside the Claude
-path. Copy `.agents/skills/bookipi-cli/` into your project or agent skills
-directory.
+### Other agents
 
-### 2. Allow network access (only on your own Claude subscription, one-time)
+Cursor, GitHub Copilot, Antigravity and Windsurf read skills from
+`.agents/skills/`. Copy `.agents/skills/bookipi-cli/` into your project's or
+agent's skills folder.
 
-You can skip this entirely if:
+## Allow network access (Cowork)
 
-- You're on Claude Code — it runs on your own machine with your normal network,
-  so an org allowlist doesn't apply.
-- Your workspace admin has already allowlisted the domains below.
+**Skip this** on Claude Code, or if your workspace admin has already added the
+domains below.
 
-You only need this if you're using Cowork / Claude Desktop on your own
-workspace/org. Cowork runs Claude in an Anthropic-hosted sandbox that blocks
-unknown websites, so Bookipi's servers must be on your org's allowlist —
-otherwise login will fail on the first try. (Tip: if you hit network trouble in
-Cowork, switching to Claude Code is a quick workaround.)
-
-Ask your workspace admin (or do it yourself if you're an admin):
+Cowork runs in a sandbox that blocks unknown websites, so Bookipi must be on
+your organization's allowlist or sign-in fails. An admin adds these under
 **Organization Settings → Capabilities → Code execution → Additional allowed
-domains**, and add:
+domains**:
 
 ```
 *.bkpi.co
@@ -120,137 +111,56 @@ domains**, and add:
 *.amplitude.com
 ```
 
-The first three are Bookipi servers (invoices, login, meetings, contracts, PDF
-rendering). The S3 one is only needed for uploading receipt photos and showing
-logos/QR codes in invoice previews.
+The first three are Bookipi's servers; S3 is for receipt uploads and images in
+invoice previews. If one is missing, Claude says so on the first request and
+lists these domains — forward that to your admin.
 
-**How you'll know it's missing:** Claude will tell you directly — something like
-"this environment is blocking network access to Bookipi's servers", usually on
-the very first request. That message includes the same list above; forward it to
-your admin.
+## Sign in and workspaces
 
-### 3. Set up your project folder
+Each Bookipi workspace is a folder on your computer. Your sign-in is saved in
+that folder's `.bookipi/` (git-ignored), so every session in it stays signed in.
 
-Every Bookipi workspace lives in its own **local folder**. This keeps your
-credentials and account-specific data scoped — no env-var juggling, no
-shared global state.
+1. **Cowork:** New Project → **Use a folder** → pick a folder.
+   **Claude Code:** start `claude` in any folder.
+2. Ask: *"Set up Bookipi in this folder."* Claude gives you a sign-in link.
+3. Check with: *"Who am I logged in as?"*
 
-> ⚠️ **Cowork changed how projects are stored.** New projects are now
-> **cloud-based by default** — they do _not_ create a local folder unless you
-> ask for one. A cloud-only project runs in a temporary space that's wiped
-> between chats, so your Bookipi login **won't survive** to the next session.
-> To stay logged in, you **must** attach a local folder when you create the
-> project (below).
+For another Bookipi account, use another folder.
 
-1. In Cowork, click **New Project**, give it a name like `bookipi-testing`,
-   then click **Use a folder** and pick (or create) a folder on your computer.
-   This is the important step — without it, the project is cloud-only and your
-   login won't persist.
-   **In Claude Code** there's no button — just start `claude` inside any
-   folder you want to use as the workspace.
-2. In the chat, say:
+> **Cowork projects without a folder** are cloud-only and wiped between chats,
+> so you'd sign in every time. Attach a folder, or use the
+> [Bookipi connector](docs/connector.md), which keeps the sign-in on your
+> Claude account.
 
-   > _Set up Bookipi in this folder._
+On Claude Code the folder is optional: just say *"log me in to Bookipi"* and
+the sign-in is saved to `~/.bookipi/`, for every folder on your machine.
 
-Claude opens a browser to sign you in to Bookipi, then saves your credentials
-inside the folder (under `.bookipi/`, auto-gitignored). Confirm with:
+## Things to ask
 
-> _Who am I logged in as?_
+| | Try |
+| --- | --- |
+| **Money owed** | "Who owes me money?" · "Show my overdue invoices." · "Send reminders to all my overdue invoices." |
+| **Invoices** | "Create an invoice for Acme — $5,000 for consulting." · "Show me what INV-650 looks like." · "Send INV-650 to alice@acme.com." · "Mark INV-650 as paid." |
+| **Customers** | "Pull up Wayne Construction." · "Add a new customer: Acme Corp, billing@acme.com." · "Email Maria — I'll be late to the call." |
+| **Deals & proposals** | "Add a deal — Stark kitchen renovation, $40,000." · "Draft a proposal for the Stark deal." · "Mark the Stark deal as won." |
+| **Contracts** | "Turn that accepted proposal into a contract." · "Send the MSA to Bruce." · "Has Bruce signed yet?" |
+| **Expenses** | Drop in a receipt: "Log this as an expense." · "Show my expenses this month." |
+| **Reports** | "Give me the morning brief." · "Who's my biggest customer this quarter?" · "Build me a dashboard for last quarter." |
+| **Calendar** | "What's on my calendar today?" · "Find my meetings with Maria this week." |
+| **Account** | "What companies do I have?" · "Switch to my other Bookipi account." · "Log me out." |
 
-Every session you open in that project is auto-logged-in. To work with a
-different Bookipi account, create a different folder and repeat — each
-folder is its own workspace.
+## Build on the CLI
 
-**If you skip the folder in Cowork** (a cloud-only project), you'll be asked to
-log in again every new chat — there's nowhere persistent to keep the
-credentials. Attaching a folder is the only way to stay logged in between
-sessions. _(A no-folder, zero-setup alternative: the
-**[Bookipi connector](docs/connector.md)** stores the login on your Claude
-account instead.)_
+A JSON-first command-line tool for scripts, automations and your own agents.
+Node 22.12+, no build step.
 
-**Claude Code only:** the folder is recommended, not required. If you skip
-it and just say _"log me in to Bookipi"_, credentials are saved globally
-(`~/.bookipi/`) and work from any directory on your machine — fine for a
-single account. Use per-folder workspaces when you want to test multiple
-accounts side by side.
+**Install** (macOS/Linux): run the one-line installer from the
+[latest release page](https://github.com/Bookipi-Group/bookipi-cli/releases/latest).
+It verifies the download, installs to `~/.local/share/bookipi-cli` and adds
+`bookipi` to `~/.local/bin`. It never installs Node or edits your shell
+profile. Run it again to update.
 
-### 4. Try things
-
-#### Reading
-
-- "Who owes me money?"
-- "Pull up Wayne Construction."
-- "Show my overdue invoices."
-- "Show me what INV-650 looks like." (you get a print-ready PDF)
-- "List my open proposals."
-- "Show my pending contracts."
-- "What deals are in proposal stage?"
-- "Show me my items / products."
-- "What's on my calendar today?"
-- "Find my meetings with Maria this week."
-- "Is my Google Calendar connected?"
-- "Give me the morning brief."
-- "How much did I invoice last month?"
-- "Who's my biggest customer this quarter?"
-- "What products are selling well?"
-
-#### Creating
-
-- "Add a new customer: Acme Corp, billing@acme.com."
-- "Add 'logo design' to my items list at $200."
-- "Add a new deal — Stark kitchen renovation, $40,000."
-- "Create an invoice for Acme — $5,000 for consulting."
-- "Draft a proposal for the Stark deal — kitchen renovation, $40,000."
-- "Turn that accepted proposal into a contract."
-
-#### Sending
-
-- "Send invoice INV-650 to alice@acme.com."
-- "Send the proposal to John."
-- "Send the MSA contract to Bruce."
-- "Email Maria — tell her I'll be late to the call."
-- "Send reminders to all my overdue invoices."
-
-#### Receipts & expenses (drag an image/PDF into chat)
-
-- (drop in a receipt photo) "Log this as an expense."
-- "What expense categories do I have?"
-- "Show my expenses this month."
-
-#### Reports & insights
-
-- "Build me a dashboard for last quarter." (opens an HTML report)
-- "Give me insights on my business this month."
-- "What should I focus on this week?"
-
-#### Acting / changing things
-
-- "Mark the Stark deal as won."
-- "Mark INV-650 as paid."
-- "Update Wayne's email to wayne@new-domain.com."
-- "Has Bruce signed the MSA yet?"
-- "Switch to my other Bookipi account."
-- "What companies do I have?"
-- "Log me out."
-
-Everything that emails someone, records a payment, or publishes stops for your
-confirmation first. Bookipi never moves money: no charges, refunds or transfers.
-
-## Building on the CLI
-
-Bookipi CLI is also a standalone, JSON-first command-line tool you can build on
-directly — for AI agents, automations, integrations, and your own products. It
-runs on Node 22.12+ with no build step.
-
-To install the `bookipi` command on macOS or Linux, use the one-line installer
-on the [latest release page](https://github.com/Bookipi-Group/bookipi-cli/releases/latest).
-It checks Node, downloads that release's CLI archive, verifies its SHA-256,
-installs it to `~/.local/share/bookipi-cli` and puts a `bookipi` launcher in
-`~/.local/bin`. It never installs Node or edits your shell profile — if
-`~/.local/bin` isn't on your PATH it tells you the line to add. Run it again to
-update.
-
-Or clone this repository — the same production build ships at
+Or run it from a clone — the production build is at
 `skills/bookipi-cli/bin/bookipi.js`:
 
 ```
@@ -258,124 +168,81 @@ git clone https://github.com/Bookipi-Group/bookipi-cli.git ~/bookipi-cli
 alias bookipi=~/bookipi-cli/skills/bookipi-cli/bin/bookipi.js
 ```
 
-Then:
+**Use:**
 
 ```
-bookipi init                                   # creates a workspace + browser OAuth sign-in (~5s)
-bookipi invoice list --status overdue --json   # structured output your code can act on
+bookipi init                                   # create a workspace and sign in
+bookipi invoice list --status overdue --json   # structured output
 ```
 
-For headless or CI use, skip the browser sign-in and set a token instead:
-
-```
-export BOOKIPI_TOKEN=...
-```
-
-Ready-to-run scripts (chase overdue invoices, a weekly digest to Slack, a
-folder of receipts into expenses) and prompts for whole Claude workflows are in
-[`examples/`](examples/).
-
-Add `--json` to any command for machine-readable output. A typical example:
-
-```
-$ bookipi invoice list --status overdue --json
-[
-  { "number": "INV-650", "customer": "Acme Corp", "amount": 5000, "currency": "USD", "status": "overdue", "days_late": 12 },
-  { "number": "INV-661", "customer": "Stark Ind.", "amount": 12000, "status": "overdue", "days_late": 4 }
-]
-```
+For CI or headless use, set `BOOKIPI_TOKEN` instead of signing in. Ready-made
+scripts (chase overdue invoices, weekly digest to Slack, receipts folder to
+expenses) are in [`examples/`](examples/).
 
 ### Commands
 
-A small, predictable, `--json`-first surface your code can call reliably. Every
-command accepts `--json`; run `bookipi <group> --help` for the flags on any one
-of them.
+Every command accepts `--json`; `bookipi <group> --help` lists the flags.
 
-| Group | What it covers | Subcommands |
+| Group | Covers | Subcommands |
 | --- | --- | --- |
-| `invoice` | Invoices and the wider document family | `list` `get` `preview` `create` `create-from-proposal` `duplicate` `update` `delete` `send` `send-receipt` `mark-paid` `void` `remind` `collections` `attach-photo` |
-| `customer` | Customers, their payment history and email | `list` `get` `payments` `create` `update` `delete` `send-email` `emails` |
-| `item` | Products and services you bill for | `list` `create` `set-photo` |
-| `expense` | Expenses and receipt scanning (OCR) | `categories` `list` `upload` `scan` `create` `delete` |
+| `invoice` | Invoices and related documents | `list` `get` `preview` `create` `create-from-proposal` `duplicate` `update` `delete` `send` `send-receipt` `mark-paid` `void` `remind` `collections` `attach-photo` |
+| `customer` | Customers, payments, email | `list` `get` `payments` `create` `update` `delete` `send-email` `emails` |
+| `item` | Products and services | `list` `create` `set-photo` |
+| `expense` | Expenses and receipt scanning | `categories` `list` `upload` `scan` `create` `delete` |
 | `paylink` | BPay payment links | `create` `list` `get` `status` `send` |
 | `deal` | Pipeline deals | `list` `create` `update` |
 | `proposal` | AI-written proposals | `list` `generate` `update` `duplicate` `send` `delete` |
 | `contract` | eSign contracts | `list` `draft` `upload` `create-from-proposal` `finalize` `send` |
-| `report` | Reports, dashboards and insights | `summary` `customers` `items` `dashboard` `insights` `digest` `suggest` `open` |
+| `report` | Reports, dashboards, insights | `summary` `customers` `items` `dashboard` `insights` `digest` `suggest` `open` |
 | `meeting` | Recorded meetings and bookings | `list` |
-| `calendar` | Calendar connection state | `status` |
+| `calendar` | Calendar connection | `status` |
 | `company` | The active company | `list` `set` |
 | `website` | The AI-built company website | `status` `content` `pages` `page` `create` `generate` `add-page` `update` `ask` `preview` `publish` `analytics` `open` |
 | — | Session and workspace | `setup` `login` `logout` `whoami` `init` `mcp` |
 
-`bookipi setup` is the one call an agent runs first: it checks the workspace and
-sign-in, starts a login if needed, and returns the next step as JSON.
+`bookipi setup` is the first call for an agent: it checks the sign-in, starts
+one if needed, and returns the next step as JSON.
 
 Commands that email someone, record or clear a payment, create or send a
-payment link, or publish the website refuse to run without `--yes`
-(`invoice send`, `send-receipt`, `mark-paid`, `void`, `paylink create`/`send`,
-`proposal send`, `contract send`, `customer send-email`, `website publish`). In
-chat the skill asks you first and adds it; in a script, pass `--yes` yourself.
-Other write subcommands run as soon as you call them.
+payment link, or publish the website refuse to run without `--yes`. In chat,
+Claude asks you first; in a script, pass `--yes` yourself.
 
-## Found a bug? Stuck?
+## Help and bug reports
 
-Open an issue on
-[GitHub](https://github.com/Bookipi-Group/bookipi-cli/issues) with:
+Open a [GitHub issue](https://github.com/Bookipi-Group/bookipi-cli/issues) with
+what you asked, what Claude did, and what you expected.
 
-- What you typed
-- What Claude did
-- What you expected
-
-The more detail, the faster we can help.
-
-**Security issues:** please don't open a public issue — see
-[SECURITY.md](SECURITY.md) for how to report privately.
+**Security issues:** please report privately — see [SECURITY.md](SECURITY.md).
 
 ## Privacy
 
-Bookipi CLI talks to Bookipi's own services on your behalf, using your own
-Bookipi account, plus Amplitude for usage analytics and GitHub for update
-checks (both below). Full policy: **[bookipi.com/privacy-policy](https://bookipi.com/privacy-policy/)**.
+Bookipi CLI works with your own Bookipi account. Full policy:
+[bookipi.com/privacy-policy](https://bookipi.com/privacy-policy/).
 
-**What it collects and where it goes**
+- **Business data** (invoices, customers, expenses, deals, proposals,
+  contracts, meetings, website) is read from and written to your Bookipi
+  account over HTTPS — nowhere else.
+- **Sign-in tokens** stay on your machine, in the workspace's `.bookipi/` or
+  `~/.bookipi/`, readable only by you. They go only to Bookipi's sign-in
+  service; `bookipi logout` deletes them.
+- **Receipt and logo images** are uploaded to Bookipi's S3 storage for scanning
+  and invoice previews.
+- **Usage analytics** go to Amplitude: which command ran, how long it took,
+  whether it failed, and the CLI version, OS and client. You're identified by a
+  one-way hash of your email or machine — never arguments, invoice contents,
+  customer records or credentials. Turn off with `BOOKIPI_NO_ANALYTICS=1` or
+  `DO_NOT_TRACK=1`.
+- **Update check:** once a day the CLI asks GitHub for the latest release,
+  sending only its version. Turn off with `BOOKIPI_NO_UPDATE_CHECK=1`.
 
-- **Your Bookipi business data** — invoices, customers, items, expenses, deals,
-  proposals, contracts, meetings, website content. Read from and written to
-  your Bookipi account over HTTPS. Nothing is stored anywhere else.
-- **Credentials** — an OAuth access token and refresh token, obtained by
-  browser sign-in. Stored **locally on your machine** in the workspace folder
-  (`.bookipi/`, auto-gitignored) or in `~/.bookipi/`. They are never sent
-  anywhere but Bookipi's auth service, and `bookipi logout` deletes them.
-- **Receipt and logo images** — uploaded to Bookipi's S3 storage so scanning and
-  invoice previews work.
-- **Usage analytics** — which command or tool ran, how long it took, whether it
-  failed, plus CLI version, OS and client platform, sent to Amplitude so we can
-  find broken flows. Identified by a one-way hash of your email and a hash of
-  the machine, never by either value itself. Command arguments, invoice
-  contents, customer records and credentials are not included. Turn it off with
-  `BOOKIPI_NO_ANALYTICS=1` or the cross-tool `DO_NOT_TRACK=1`.
-- **Update check** — once a day the CLI asks GitHub for this repository's latest
-  release, so it can tell you when a newer version is out. The request carries
-  only the CLI version; nothing about your account is sent, and nothing is
-  downloaded or installed. Turn it off with
-  `BOOKIPI_NO_UPDATE_CHECK=1`.
+It doesn't scan your files (only the workspace folder and files you point it
+at), doesn't collect your conversations with Claude, and doesn't share data for
+advertising or model training. Business data follows Bookipi's retention
+policy; local sign-ins last until you log out.
 
-**What it does not do**
-
-It does not scan your filesystem — it reads the workspace folder and whatever
-file you point it at, such as a receipt image. It does not collect your
-conversations with Claude, and it does not share your data with third parties
-for advertising or model training.
-
-**Retention** — business data lives in your Bookipi account and follows
-Bookipi's retention policy; delete it there or ask support to delete the
-account. Local credentials live only on your machine until you log out.
-
-**Questions or a deletion request:** [support@bookipi.com](mailto:support@bookipi.com).
+Questions or deletion requests: [support@bookipi.com](mailto:support@bookipi.com).
 
 ## License
 
-Copyright © Bookipi. All rights reserved — see [LICENSE](LICENSE). Use of
-Bookipi CLI is subject to Bookipi's
-[Terms of Service](https://bookipi.com/terms-of-service/).
+Copyright © Bookipi. All rights reserved — see [LICENSE](LICENSE). Use is
+subject to Bookipi's [Terms of Service](https://bookipi.com/terms-of-service/).
