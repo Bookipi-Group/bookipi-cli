@@ -17658,8 +17658,8 @@ var {
 
 // src/config.ts
 var BUILD_ENV = "prod";
-var CLI_VERSION = "0.43.0";
-var BUILD_STAMP = "5f73ab5 2026-10-14";
+var CLI_VERSION = "0.44.0";
+var BUILD_STAMP = "2e43872 2026-10-29";
 var config = {
   AUTH_SERVER: process.env["AUTH_SERVER"] ?? "https://auth.bookipi.com",
   APP_ID: process.env["APP_ID"] ?? "1dd166d9569f4f7eb0f08a22c8f0d54a",
@@ -17704,13 +17704,26 @@ function readConfig(filePath) {
     return {};
   }
 }
+function writePrivateFile(filePath, contents) {
+  fs.writeFileSync(filePath, contents, { mode: 384 });
+  try {
+    fs.chmodSync(filePath, 384);
+  } catch {
+  }
+}
 function mergeConfigAt(filePath, updates) {
   const existing = readConfig(filePath);
   const merged = { ...existing, ...updates };
   try {
     const dir = path.dirname(filePath);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(filePath, JSON.stringify(merged, null, 2));
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+      try {
+        fs.chmodSync(dir, 448);
+      } catch {
+      }
+    }
+    writePrivateFile(filePath, JSON.stringify(merged, null, 2));
   } catch {
   }
 }
@@ -17875,7 +17888,7 @@ function ensureConfigDir() {
   if (existing) return existing;
   const nativeDir = nativeConfigDir();
   try {
-    fs.mkdirSync(nativeDir, { recursive: true });
+    fs.mkdirSync(nativeDir, { recursive: true, mode: 448 });
   } catch {
     return null;
   }
@@ -17934,7 +17947,7 @@ function retireLegacyHomeConfig() {
     if (!fs.existsSync(LEGACY_HOME_CONFIG)) return;
     const legacy = readConfig(LEGACY_HOME_CONFIG);
     const current = readConfig(credentialsPath);
-    fs.writeFileSync(
+    writePrivateFile(
       credentialsPath,
       JSON.stringify({ ...legacy, ...current }, null, 2)
     );

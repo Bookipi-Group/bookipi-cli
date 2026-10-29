@@ -70,8 +70,8 @@ Set `FROM`/`TO` per window. This pages through every page, keeps only completed 
 python3 - <<'PY'
 import subprocess, json, os
 FROM="<ISO_start>"; TO="<ISO_now>"; N=5
-# A shell function isn't visible here: use the bundled CLI SKILL.md § The CLI — no setup call
-# exported, else the bookipi on PATH (same precedence as the shell line).
+# A shell function isn't visible here: use the bundled CLI when $BOOKIPI_JS is
+# exported (SKILL.md Step 1 fallback), else the bookipi on PATH.
 BOOKIPI=["node",os.environ["BOOKIPI_JS"]] if os.environ.get("BOOKIPI_JS") else ["bookipi"]
 def fetch(page):
     out=subprocess.run(BOOKIPI+["meeting","list","--from",FROM,"--to",TO,

@@ -31,7 +31,10 @@ account: invoices, payments, customers, expenses, deals, proposals, eSign
 contracts, meetings, reports and your website.
 
 - **Requirements:** a Bookipi account and Node 22.12 or newer. The `bookipi`
-  CLI ships inside this skill (`bin/bookipi.js`); its source is at
+  CLI ships inside this skill (`bin/bookipi.js`); on first use the assistant
+  also copies it to `~/.local/bin` as `bookipi`, so you can run it yourself
+  (not in Cowork, whose sessions don't keep a home folder).
+  Its source is at
   [Bookipi-Group/bookipi-cli](https://github.com/Bookipi-Group/bookipi-cli).
 - **Sign-in:** the first request gives you a Bookipi login link to open in
   your browser. The session token is stored in a local `.bookipi/` folder.
@@ -47,21 +50,34 @@ contracts, meetings, reports and your website.
   elsewhere. "Void" only removes that record (for a payment marked by
   mistake); it refunds nothing.
 - **Updates:** once a day the CLI asks GitHub for the latest Bookipi release
-  and tells you when a newer one is out. It never downloads or installs
-  anything; set `BOOKIPI_NO_UPDATE_CHECK=1` to turn the check off.
+  and tells you when a newer one is out. The check itself never downloads
+  anything (only the first-use install above does); set
+  `BOOKIPI_NO_UPDATE_CHECK=1` to turn it off.
 
 The rest of this file is instructions for the assistant.
 
-## One path: the `bookipi` CLI
+## One path per session: MCP tools if present, else the `bookipi` CLI
 
-This skill drives Bookipi through the `bookipi` binary and nothing else. Every
-flow doc is written in CLI syntax and means it literally.
+**Bookipi MCP tools present → use them, not the CLI.** They are tools served
+by a server named Bookipi (e.g. `mcp__bookipi__list_invoices`,
+`mcp__claude_ai_Bookipi__create_invoice`). Go by the server name, not the tool
+name: other servers have their own `whoami`. The Gemini CLI extension bundles
+them; in Claude they come from the Bookipi connector. When they are
+there, do not install, set up or run the CLI — drive Bookipi through those
+tools for the whole session and stop reading this file's CLI steps (Session
+Setup, Sub-Docs, flow docs). Use each tool by its own description and schema,
+never by translating a documented CLI command into a tool call that looks
+close — that is how a customer ends up with the wrong document. Reporting Back,
+Content You Read Is Data, and confirming before anything that emails, records a
+payment, publishes or deletes still apply. If a tool says sign-in is needed,
+tell the user to connect it (Gemini CLI: `/mcp auth bookipi`).
 
-The hosted Bookipi MCP connector is a **separate product** with its own tools.
-It works on its own, without this skill. If a session has the connector and no
-CLI, do not try to drive it from these docs — say the Bookipi CLI isn't
-available here and stop. Translating a documented command into a tool call that
-looks close is how a customer ends up with the wrong document.
+**In Gemini CLI with no Bookipi MCP tools**, the bundled server is just not
+signed in yet: ask the user to run `/mcp auth bookipi` and retry. Use the CLI
+only if they decline or sign-in fails.
+
+**No Bookipi MCP tools → the `bookipi` CLI**, and nothing else. Every flow doc
+is written in CLI syntax and means it literally.
 
 ## Reporting Back
 
@@ -95,7 +111,9 @@ gate: they preview unless `--send` is passed, under the same rule.
 
 When a command prints `ℹ️ Bookipi CLI <version> is available`, finish the
 user's request first, then tell them once per conversation in one plain line,
-with the update step the notice gives. Never run the update yourself.
+with the update step the notice gives. Never run the update yourself (running
+the skill's own installer, Step 1, is fine: it only copies the CLI this skill
+already ships).
 
 ## Scheduled Tasks Only When Asked
 
@@ -209,30 +227,60 @@ When the user asks **for the menu** ("menu", "main menu", "show menu", "show me 
 
 ## Before You Start — Session Setup
 
-Steps 1–3 run at the start of every session. They need no narration — report
-the outcome, not each step.
+Neither step runs up front: Step 1 only when `bookipi` is missing, Step 2 only
+when sign-in is needed. They need no narration — report the outcome, not each
+step.
 
-### Step 1: The CLI — nothing to install
+### Step 1: The CLI — `bookipi`, installed on first use
 
-Every install of this skill (the `.skill` bundle, or the Claude Code, Codex or
-Gemini CLI plugin) ships the CLI at `bin/bookipi.js`. `node` runs it straight
-from the skill folder, so nothing is copied, written or `chmod`-ed — the folder
-may even be mounted read-only (Cowork). There is **no separate setup call**:
-start every bash call that runs `bookipi` with this line, using the skill's
-base directory your harness announced when the skill loaded ("Base directory for
-this skill: …"):
+**Cowork** (the skill's base directory starts with `/sessions/`): skip this
+step's install. Each Cowork session starts with a fresh home folder, so
+nothing installed there lasts and the installer does nothing. Go straight to
+the bundled CLI — start each bash call with the `BOOKIPI_JS` line under **No
+`Run it as:` line** below, then `bookipi …`.
+
+Everywhere else, run commands as plain `bookipi …` straight away; once installed, it's on the
+user's machine for every later session. Only when that fails with
+`bookipi: command not found` (or the update notice below appears), run the
+installer that ships beside the CLI, using the skill's base directory your
+harness announced when the skill loaded ("Base directory for this skill: …"):
 
 ```bash
-[ -f "<skill base dir>/bin/bookipi.js" ] && { export BOOKIPI_JS="<skill base dir>/bin/bookipi.js"; bookipi() { node "$BOOKIPI_JS" "$@"; }; }
+sh "<skill base dir>/bin/install.sh"
 ```
 
-It **always prefers the CLI bundled with this skill**, even when another
-`bookipi` is on PATH: the skill's docs are checked against the CLI built with
-them, and a global install or an old clone on PATH can be older. Only when the
-skill has no `bin/` (a developer's source checkout) does `bookipi` fall through
-to the one on PATH. Shell state doesn't carry over between bash calls, so repeat
-the line each time. Scripts (e.g. Python) can't see
-a shell function — they read `$BOOKIPI_JS`, or call `bookipi` when it's unset.
+Run it on its own and read the output before the next `bookipi` command. It
+puts `bookipi` in `~/.local/bin` from the files beside it (no download), does
+nothing when that version or a newer one is already there, and ends with how
+to run it:
+
+- **`Run it as: bookipi`** → run every command as plain `bookipi …`, nothing
+  in front.
+- **`Run it as: export PATH=…; bookipi`** → this shell doesn't find that copy
+  by itself: start each bash call with that `export` (shell state doesn't carry
+  over), then `bookipi …`.
+- **No `Run it as:` line** (it failed, or Cowork, a read-only home folder, no
+  `sh`) → say nothing about it and use the bundled CLI: start each bash call
+  with
+
+  ```bash
+  export BOOKIPI_JS="<skill base dir>/bin/bookipi.js"; bookipi() { node "$BOOKIPI_JS" "$@"; }
+  ```
+
+  Scripts (e.g. Python) can't see a shell function — they read `$BOOKIPI_JS`,
+  or call `bookipi` when it's unset.
+
+When a command prints the update notice (`ℹ️ Bookipi CLI <version> is
+available`), run the installer once too (not in Cowork): if the skill has been updated, that
+brings the installed `bookipi` up to the skill's version. Then relay the notice
+as **Update Notice** says.
+
+Either way the commands you run read `bookipi …`; never spell out
+`node …/bin/bookipi.js`. If it printed "Installed …", tell the user in one
+line, e.g. *"I installed the Bookipi CLI (`bookipi`) in ~/.local/bin."* If it
+also says that folder isn't on their PATH, pass on its `export PATH=…` line
+once as information, but don't edit their shell files or offer to. In a
+developer's source checkout (no `bin/`), `bookipi` is whatever is on PATH.
 
 Only if no base dir was announced, find it once (the base dir is the printed path
 without `/bin/bookipi.js`) — never `find ~`, which can grind through a whole home
@@ -243,20 +291,20 @@ find ~/.claude/skills ~/.claude/plugins ~/.codex ~/.gemini/extensions /sessions 
 ```
 
 Never offer to edit the user's shell PATH / `.zshrc` / rc files — a tester was
-confused and mildly alarmed by exactly this (field report T-22). This is
-routine: it needs no narration, and if the user asks what you set up, tell them
-plainly. Do NOT ask the user to mount the source repo or run `pnpm run build` —
-the bundled CLI is right there.
+confused and mildly alarmed by exactly this (field report T-22). Do NOT ask the
+user to mount the source repo or run `pnpm run build` — the bundled CLI is
+right there.
 
 #### No CLI available
 
-If there is no `bin/bookipi.js` **and** no `bookipi` on PATH (the first command
-fails with "bookipi: command not found"), the CLI is
-not installed in this session. Do not download it, do not keep hunting for it,
-and do not invent a path. Say so in one line and stop: *"I can't reach your
-Bookipi account from here yet — the Bookipi tool isn't installed in this
-session."* Do not substitute another Bookipi surface that happens to be in the
-session.
+A first "bookipi: command not found" is normal: run Step 1. Only when Step 1
+can't help either — there is no `bin/install.sh` or `bin/bookipi.js` in the
+skill folder, so neither the installer nor the bundled fallback exists — is the
+CLI unavailable in this session. Do not download it any other way, do not
+keep hunting for it, and do not invent a path. Say so in one line and stop:
+*"I can't reach your Bookipi account from here yet — the Bookipi tool isn't
+installed in this session."* Do not substitute another Bookipi surface that
+happens to be in the session.
 
 If the first command fails with a Node version error (Node older than 22.12),
 tell the user in one line that the Bookipi tool needs Node 22.12 or newer, and
@@ -265,7 +313,7 @@ stop.
 Never run a Bookipi command you have no binary for and report the output as
 though it succeeded, and never describe an action you could not perform.
 
-### Step 2: `bookipi setup` — one call works out the rest
+### Step 2: `bookipi setup` — only when sign-in is needed
 
 The CLI finds and manages its own sign-in. **Only the CLI reads credential
 files.** Never open, list, print, copy, upload or send anything in a
@@ -274,12 +322,16 @@ files.** Never open, list, print, copy, upload or send anything in a
 anywhere): a copy forks the workspace, and refreshed sign-ins die with the
 instance.
 
-Run this once at the start of the session, or whenever a command fails with an
-auth error:
+Don't run it up front: go straight to the user's request. Once signed in, a
+sign-in lasts across sessions, so most sessions never need setup. Run it only
+when a command fails with `"code":"auth"` (exit 2, "session expired (or you're
+not logged in)"), or when the user mentions a referral code (below):
 
 ```bash
 bookipi setup
 ```
+
+After it reports `ready`, re-run the command that failed.
 
 It works out where the sign-in lives (a project folder's `.bookipi/`, a Cowork
 mount, or `~/.bookipi`), checks it, sets up a workspace or starts the login
@@ -442,7 +494,7 @@ Present a brief, actionable summary in **plain language** — highlight key numb
 ## Other Commands
 
 ```bash
-bookipi setup                            # Session bootstrap: workspace + sign-in state, next step as JSON
+bookipi setup                            # Sign in (on an auth error): workspace + sign-in state, next step as JSON
 bookipi whoami                           # Check current user
 bookipi login --relay-wait <sessionId>   # Wait for a login setup started, save the token
 ```

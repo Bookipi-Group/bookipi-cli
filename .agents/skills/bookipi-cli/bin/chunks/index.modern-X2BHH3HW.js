@@ -3388,109 +3388,6 @@ var require_is_plain_object = __commonJS({
   }
 });
 
-// node_modules/.pnpm/deepmerge@4.3.1/node_modules/deepmerge/dist/cjs.js
-var require_cjs = __commonJS({
-  "node_modules/.pnpm/deepmerge@4.3.1/node_modules/deepmerge/dist/cjs.js"(exports, module) {
-    "use strict";
-    var isMergeableObject = function isMergeableObject2(value) {
-      return isNonNullObject(value) && !isSpecial(value);
-    };
-    function isNonNullObject(value) {
-      return !!value && typeof value === "object";
-    }
-    function isSpecial(value) {
-      var stringValue = Object.prototype.toString.call(value);
-      return stringValue === "[object RegExp]" || stringValue === "[object Date]" || isReactElement(value);
-    }
-    var canUseSymbol = typeof Symbol === "function" && Symbol.for;
-    var REACT_ELEMENT_TYPE = canUseSymbol ? /* @__PURE__ */ Symbol.for("react.element") : 60103;
-    function isReactElement(value) {
-      return value.$$typeof === REACT_ELEMENT_TYPE;
-    }
-    function emptyTarget(val) {
-      return Array.isArray(val) ? [] : {};
-    }
-    function cloneUnlessOtherwiseSpecified(value, options) {
-      return options.clone !== false && options.isMergeableObject(value) ? deepmerge(emptyTarget(value), value, options) : value;
-    }
-    function defaultArrayMerge(target, source, options) {
-      return target.concat(source).map(function(element) {
-        return cloneUnlessOtherwiseSpecified(element, options);
-      });
-    }
-    function getMergeFunction(key, options) {
-      if (!options.customMerge) {
-        return deepmerge;
-      }
-      var customMerge = options.customMerge(key);
-      return typeof customMerge === "function" ? customMerge : deepmerge;
-    }
-    function getEnumerableOwnPropertySymbols(target) {
-      return Object.getOwnPropertySymbols ? Object.getOwnPropertySymbols(target).filter(function(symbol) {
-        return Object.propertyIsEnumerable.call(target, symbol);
-      }) : [];
-    }
-    function getKeys(target) {
-      return Object.keys(target).concat(getEnumerableOwnPropertySymbols(target));
-    }
-    function propertyIsOnObject(object, property) {
-      try {
-        return property in object;
-      } catch (_) {
-        return false;
-      }
-    }
-    function propertyIsUnsafe(target, key) {
-      return propertyIsOnObject(target, key) && !(Object.hasOwnProperty.call(target, key) && Object.propertyIsEnumerable.call(target, key));
-    }
-    function mergeObject(target, source, options) {
-      var destination = {};
-      if (options.isMergeableObject(target)) {
-        getKeys(target).forEach(function(key) {
-          destination[key] = cloneUnlessOtherwiseSpecified(target[key], options);
-        });
-      }
-      getKeys(source).forEach(function(key) {
-        if (propertyIsUnsafe(target, key)) {
-          return;
-        }
-        if (propertyIsOnObject(target, key) && options.isMergeableObject(source[key])) {
-          destination[key] = getMergeFunction(key, options)(target[key], source[key], options);
-        } else {
-          destination[key] = cloneUnlessOtherwiseSpecified(source[key], options);
-        }
-      });
-      return destination;
-    }
-    function deepmerge(target, source, options) {
-      options = options || {};
-      options.arrayMerge = options.arrayMerge || defaultArrayMerge;
-      options.isMergeableObject = options.isMergeableObject || isMergeableObject;
-      options.cloneUnlessOtherwiseSpecified = cloneUnlessOtherwiseSpecified;
-      var sourceIsArray = Array.isArray(source);
-      var targetIsArray = Array.isArray(target);
-      var sourceAndTargetTypesMatch = sourceIsArray === targetIsArray;
-      if (!sourceAndTargetTypesMatch) {
-        return cloneUnlessOtherwiseSpecified(source, options);
-      } else if (sourceIsArray) {
-        return options.arrayMerge(target, source, options);
-      } else {
-        return mergeObject(target, source, options);
-      }
-    }
-    deepmerge.all = function deepmergeAll(array, options) {
-      if (!Array.isArray(array)) {
-        throw new Error("first argument should be an array");
-      }
-      return array.reduce(function(prev, next) {
-        return deepmerge(prev, next, options);
-      }, {});
-    };
-    var deepmerge_1 = deepmerge;
-    module.exports = deepmerge_1;
-  }
-});
-
 // node_modules/.pnpm/parse-srcset@1.0.2/node_modules/parse-srcset/src/parse-srcset.js
 var require_parse_srcset = __commonJS({
   "node_modules/.pnpm/parse-srcset@1.0.2/node_modules/parse-srcset/src/parse-srcset.js"(exports, module) {
@@ -10513,13 +10410,12 @@ var require_launder = __commonJS({
   }
 });
 
-// node_modules/.pnpm/sanitize-html@2.18.0/node_modules/sanitize-html/index.js
+// node_modules/.pnpm/sanitize-html@2.18.1/node_modules/sanitize-html/index.js
 var require_sanitize_html = __commonJS({
-  "node_modules/.pnpm/sanitize-html@2.18.0/node_modules/sanitize-html/index.js"(exports, module) {
+  "node_modules/.pnpm/sanitize-html@2.18.1/node_modules/sanitize-html/index.js"(exports, module) {
     var htmlparser = (init_dist6(), __toCommonJS(dist_exports3));
     var escapeStringRegexp = require_escape_string_regexp();
     var { isPlainObject } = require_is_plain_object();
-    var deepmerge = require_cjs();
     var parseSrcset = require_parse_srcset();
     var { parse: postcssParse } = require_postcss();
     var { naughtyHref: launderNaughtyHref } = require_launder();
@@ -10562,6 +10458,21 @@ var require_sanitize_html = __commonJS({
     function has(obj, key) {
       return {}.hasOwnProperty.call(obj, key);
     }
+    function mergeClasses(specific, wildcard) {
+      if (!Array.isArray(specific) || !Array.isArray(wildcard)) {
+        return wildcard;
+      }
+      return specific.concat(wildcard);
+    }
+    function mergeStyles(specific, wildcard) {
+      const merged = /* @__PURE__ */ Object.create(null);
+      for (const rules of [specific, wildcard]) {
+        for (const prop of Object.keys(rules)) {
+          merged[prop] = has(merged, prop) ? merged[prop].concat(rules[prop]) : rules[prop];
+        }
+      }
+      return merged;
+    }
     function filter2(a, cb) {
       const n = [];
       each(a, function(v) {
@@ -10589,10 +10500,13 @@ var require_sanitize_html = __commonJS({
     }
     module.exports = sanitizeHtml2;
     var VALID_HTML_ATTRIBUTE_NAME = /^[^\0\t\n\f\r /<=>]+$/;
-    function sanitizeHtml2(html2, options, _recursing) {
+    var MAX_IFRAME_FALLBACK_DEPTH = 8;
+    function sanitizeHtml2(html2, options, _fallback) {
       if (html2 == null) {
         return "";
       }
+      const baseDepth = _fallback && _fallback.depth || 0;
+      const iframeFallbackDepth = _fallback && _fallback.iframeFallbackDepth || 0;
       if (typeof html2 === "number") {
         html2 = html2.toString();
       }
@@ -10927,7 +10841,7 @@ var require_sanitize_html = __commonJS({
                   if (allowedSpecificClasses && allowedWildcardClasses) {
                     value = filterClasses(
                       value,
-                      deepmerge(allowedSpecificClasses, allowedWildcardClasses),
+                      mergeClasses(allowedSpecificClasses, allowedWildcardClasses),
                       allowedClassesGlobs
                     );
                   } else {
@@ -11025,9 +10939,14 @@ var require_sanitize_html = __commonJS({
             // (including after an unclosed <iframe>) arrives as a single text node.
             // When the iframe is discarded, re-sanitize that fallback markup as HTML
             // instead of escaping it as plain text (issue #5550).
-            tag === "iframe" && !tagAllowed(tag) && options.disallowedTagsMode === "discard"
+            // The nested call continues from the current depth so that
+            // `nestingLimit` applies to the whole output.
+            tag === "iframe" && !tagAllowed(tag) && options.disallowedTagsMode === "discard" && iframeFallbackDepth < MAX_IFRAME_FALLBACK_DEPTH
           ) {
-            result += sanitizeHtml2(text, options);
+            result += sanitizeHtml2(text, options, {
+              depth,
+              iframeFallbackDepth: iframeFallbackDepth + 1
+            });
           } else if (!addedText) {
             const escaped = escapeHtml(text, false);
             if (options.textFilter) {
@@ -11135,7 +11054,7 @@ var require_sanitize_html = __commonJS({
       return result;
       function initializeState() {
         result = "";
-        depth = 0;
+        depth = baseDepth;
         stack = [];
         skipMap = {};
         transformMap = {};
@@ -11290,7 +11209,7 @@ var require_sanitize_html = __commonJS({
         const astRules = abstractSyntaxTree.nodes[0];
         let selectedRule;
         if (allowedStyles[astRules.selector] && allowedStyles["*"]) {
-          selectedRule = deepmerge(
+          selectedRule = mergeStyles(
             allowedStyles[astRules.selector],
             allowedStyles["*"]
           );
