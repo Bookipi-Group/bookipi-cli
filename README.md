@@ -89,9 +89,16 @@ sign in, and the skill uses it instead of the CLI.
 
 ### Other agents
 
-Cursor, GitHub Copilot, Antigravity and Windsurf read skills from
-`.agents/skills/`. Copy `.agents/skills/bookipi-cli/` into your project's or
-agent's skills folder.
+For Cursor, GitHub Copilot, Antigravity, Windsurf and other agents that read
+skills, install it with the [skills CLI](https://skills.sh/Bookipi-Group/bookipi-cli):
+
+```
+npx skills add Bookipi-Group/bookipi-cli --skill bookipi-cli
+```
+
+Upgrade with `npx skills update bookipi-cli`. Or copy
+`.agents/skills/bookipi-cli/` from this repo into your project's or agent's
+skills folder by hand.
 
 ## Allow network access (Cowork)
 
