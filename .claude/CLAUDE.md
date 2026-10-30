@@ -21,17 +21,19 @@ crossed against the GitHub names, so confirm `git remote -v` before editing.)
 | `gemini-extension.json` | same path |
 | `assets/` | same path |
 | `examples/` | same path |
+| `server.json` (MCP Registry listing) | same path |
 
-Version strings in all four manifests are **stamped at publish time** from the
+Version strings in all four manifests and `server.json` are **stamped at publish time** from the
 source repo's `package.json`. Never bump them here — the plugin cache is keyed
 by version, so a mismatch ships a manifest claiming the wrong release.
 
 ### Maintained here (safe to edit)
 
 `README.md`, `SECURITY.md`, `LICENSE`, `CHANGELOG.md`,
-`.github/ISSUE_TEMPLATE/`, and `.github/workflows/release.yml` (the `.skill`
+`.github/ISSUE_TEMPLATE/`, `.github/workflows/release.yml` (the `.skill`
 bundle smoke test — distinct from the source repo's release pipeline of the
-same name).
+same name), and `.github/workflows/publish-mcp.yml` (sends `server.json` to
+the official MCP Registry on each release).
 
 **No manifest-checking script lives here.** A script in this repo that reads
 `.codex-plugin/plugin.json` gets the plugin held by the directory review

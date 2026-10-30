@@ -1,0 +1,27 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.Bookipi-Group/bookipi",
+  "title": "Bookipi",
+  "description": "Invoices, payments, expenses, customers, deals, proposals, eSign and reports for small businesses.",
+  "version": "0.46.1",
+  "websiteUrl": "https://bookipi.com",
+  "repository": {
+    "url": "https://github.com/Bookipi-Group/bookipi-cli",
+    "source": "github"
+  },
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/assets/icon.png",
+      "mimeType": "image/png",
+      "sizes": [
+        "256x256"
+      ]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.bookipi.com/mcp"
+    }
+  ]
+}
