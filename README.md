@@ -30,7 +30,7 @@ OK first, and Bookipi never moves money. Overview: [bookipi.com/cli](https://boo
 | You want to… | Use |
 | --- | --- |
 | Ask Claude (Cowork, Claude Desktop, Claude Code, Codex, Gemini CLI) | [The skill](#install-the-skill) — it includes the CLI |
-| Use Bookipi in claude.ai or any MCP client, nothing to install | [The Bookipi connector](docs/connector.md) |
+| Use Bookipi in claude.ai or any MCP client, nothing to install | [The Bookipi connector](docs/connector.md) — also in the [MCP Registry](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.Bookipi-Group) as `io.github.Bookipi-Group/bookipi` |
 | Script it, or build it into your own agents and products | [The CLI](#build-on-the-cli) |
 
 It's the same tool underneath every option.
