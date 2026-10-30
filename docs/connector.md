@@ -62,7 +62,7 @@ Either way, run `/mcp auth bookipi` inside Gemini CLI to sign in.
 streamable HTTP with OAuth discovery can use the same URL. No manual OAuth
 configuration is needed — the server advertises everything the client needs.
 It is also listed in the official
-[MCP Registry](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.Bookipi-Group)
+[MCP Registry](https://registry.modelcontextprotocol.io/?q=bookipi)
 as `io.github.Bookipi-Group/bookipi`, so clients and directories that read the
 registry can find it by name.
 
