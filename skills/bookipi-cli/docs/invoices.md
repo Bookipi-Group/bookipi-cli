@@ -63,10 +63,10 @@ bookipi invoice create --type credit-note --customer "Acme" --date 2026-04-14 \
 bookipi invoice list --type estimate
 bookipi invoice list --type credit-note --status sent
 
-# Recurring document — repeats on a schedule (day / week / month / year).
-# Next-run date is auto-computed from --date + one interval (override with --next-run).
-bookipi invoice create --customer @c1 --date 2026-04-14 --item @t1 --recurring month
-bookipi invoice create --customer @c1 --date 2026-04-14 --item @t1 --recurring week --next-run 2026-04-21
+# Recurring document — repeats on a schedule (day / week / month / year). --yes is
+# required: Bookipi may email the customer on every run. See § Recurring invoices.
+bookipi invoice create --customer @c1 --date 2026-04-14 --item @t1 --recurring month --yes
+bookipi invoice create --customer @c1 --date 2026-04-14 --item @t1 --recurring week --every 2 --yes
 
 # Duplicate an invoice — makes a fresh editable DRAFT copy (same customer/items/totals)
 bookipi invoice duplicate @i1
@@ -276,13 +276,34 @@ All of these are the **same** `invoice create` command with `--type` — they sh
 
 Numbering and the document label adapt to the type (e.g. it continues that type's own number sequence, and `invoice get`/`list` show "Credit Note", "Estimate", etc.). To **view** non-invoice docs, pass the same `--type` to `invoice list` (e.g. `bookipi invoice list --type estimate`) — a plain `invoice list` only shows invoices. Everything else (send, duplicate, delete, preview, convert) works the same regardless of type.
 
-### "Set up a recurring invoice" / "Bill them every month" / "Weekly invoice"
+### Recurring invoices — "Bill them every month" / "Weekly invoice" / "What's on repeat?" / "Stop billing Acme monthly"
 
-Add `--recurring <day|week|month|year>` to `invoice create`. The CLI sets the document's `schedule` and the backend repeats it on that cadence (it assigns a Recurring ID). The first recurrence (`nextRunDateUtc`) is auto-computed as the document `--date` + one interval; override with `--next-run <YYYY-MM-DD>`.
+**Set one up.** Add `--recurring <day|week|month|year>` to `invoice create`. The backend repeats the document on that cadence. Cadence and limits:
 
-`bookipi invoice create --customer @c1 --date 2026-04-14 --item @t1 --recurring month`
+- `--every <n>` repeats every N units: `--recurring week --every 2` is every 2 weeks, `--recurring month --every 3` is quarterly. Allowed: daily, every 1–52 weeks, every 1–12 months, yearly. "Twice a month" can't be expressed — offer every 2 weeks.
+- `--next-run <YYYY-MM-DD>` sets the first repeat; the default is the invoice `--date` plus one interval.
+- `--every` and `--next-run` need `--recurring`.
+- **There is no end date.** A repeat runs until it is stopped: Bookipi's scheduler doesn't honour an end date yet, so the CLI doesn't offer one. For "until June" or "for 6 months", say so and offer to stop it then (`invoice recurring stop`), or to schedule a reminder.
 
-Works with any document type too (`--type estimate --recurring month`, etc.). For exotic cadences (e.g. every 2 weeks), the backend supports multiples but the CLI exposes the four base intervals — use `--data '{"schedule":{"interval":"<exact>","nextRunDateUtc":"<iso>"}}'` if you need one. `invoice get` shows the schedule under a **Recurring** section.
+`bookipi invoice create --customer @c1 --date 2026-11-09 --item @t1 --recurring month --every 3 --yes`
+
+**🔴 `--yes` is required with `--recurring`.** Each run may email the customer and uses subscription quota. Say the schedule in plain words, get the user's yes, then add `--yes`.
+
+**See what's repeating.** `bookipi invoice recurring list` (`--page`, `--limit`, `--json`) shows each repeating invoice with its cadence and next run (and an end date only if one was set in the web app — it is not enforced). `--type estimate|invoice|delivery-note|credit-note|purchase-order` lists another document type (default invoice) — "which quotes repeat?" is `--type estimate`. In `invoice list`, a `↻` after the heading marks a repeating invoice; `invoice get` shows a **Recurring** section.
+
+**Change a repeat.** `invoice update <invoice>` with `--every` or `--next-run` changes only that part; the rest of the schedule stays. These need no `--yes` on an invoice that is already repeating. `--recurring <unit>` on an invoice that isn't repeating **starts** one (next run from the invoice date, or from today if that's already past) and needs `--yes`. A `schedule` inside `--data` is refused on create and update — always use these flags.
+
+`bookipi invoice update @i1 --every 4`
+
+**Stop one.** `bookipi invoice recurring stop @i1` (same as `invoice update @i1 --stop-recurring`). No `--yes`. Invoices already generated are kept. Stopping an invoice that isn't repeating just says so. Don't re-list with `invoice list` to confirm — the list's search index lags and may still show it; trust the command's output, or use `invoice recurring list`.
+
+If the invoice was itself generated by a repeat, the CLI names the original invoice that holds the schedule — change or stop that one.
+
+**"Bill them now instead of waiting"** has no recurring shortcut. Create a normal one-off invoice for this period (`invoice create`) — the repeat's own schedule is untouched, so warn the user if a scheduled run falls in the same period.
+
+**What has it produced?** `bookipi invoice recurring history @i1` (`--page`, `--limit`, `--json`) lists the invoices a repeat generated, newest first, with date, total and status ("not sent" marks ones nobody has sent yet). Give it the repeating invoice or any invoice it generated. An invoice that hasn't generated anything says so.
+
+Works with any document type on create (`--type estimate --recurring month`) and in `recurring list --type`.
 
 ### "Preview / print invoice X" / "Show me what INV-696 looks like"
 

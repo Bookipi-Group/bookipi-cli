@@ -1,0 +1,69 @@
+# Bookipi CLI
+
+> Bookipi CLI lets an AI agent run a small business's back office in plain English: invoices, payments, customers, expenses, deals, AI proposals, eSign contracts, meetings, reports and the company website. It comes two ways that share the same tools underneath: the `bookipi` command-line tool (also packaged as a skill/plugin for Claude Code, Claude Desktop, Cowork, Codex, Gemini CLI and other coding agents), and the hosted MCP connector at `https://mcp.bookipi.com/mcp` (nothing to install; also the Bookipi app in ChatGPT). The user signs in once in their browser; there is no API key to copy.
+
+Key facts for agents:
+
+- Works on a real Bookipi account. A free account is enough, and one can be created during sign-in with Google or Apple.
+- Sign-in is browser OAuth at auth.bookipi.com, for both the CLI and the connector. For headless or CI use of the CLI, set `BOOKIPI_TOKEN` instead.
+- Anything that emails someone, records or clears a payment, creates a payment link or publishes the website needs the user's approval. The CLI enforces this: those commands refuse to run without `--yes`, which an agent passes only after the user agrees. The skill and connector ask first too.
+- Payments are taken only on Bookipay's hosted checkout in the customer's browser. The CLI and connector issue payment links and record payments; they never move money.
+- This file is served at `https://web.bookipi.com/llms.txt`.
+
+## Connect over MCP (no install)
+
+- Server URL: `https://mcp.bookipi.com/mcp` (streamable HTTP, OAuth). Listed in the official MCP Registry as `io.github.Bookipi-Group/bookipi`.
+- claude.ai or Claude Desktop: Settings → Connectors → Add custom connector, paste the URL.
+- ChatGPT: the Bookipi app is in the ChatGPT app directory. Open Apps, search "Bookipi", click Connect and sign in. Same connector, minus receipt and photo uploads (those need a local file).
+- Claude Code: `claude mcp add --transport http bookipi https://mcp.bookipi.com/mcp`.
+- Gemini CLI: the extension below bundles the connector; run `/mcp auth bookipi` once to sign in.
+- Any other MCP client: add the URL as a remote (streamable HTTP) server; the client handles the OAuth sign-in.
+- Local MCP instead: with the CLI installed, `bookipi mcp` runs the same server over stdio on the user's machine, using the CLI's sign-in.
+
+## Use the CLI
+
+- Claude Code: `/plugin marketplace add Bookipi-Group/bookipi-cli`, then `/plugin install bookipi@bookipi-cli`. Needs Node 22.12 or newer.
+- Claude Desktop or Cowork skill: download `bookipi-cli.skill` from https://github.com/Bookipi-Group/bookipi-cli/releases/latest and open it.
+- Codex: `/plugin marketplace add Bookipi-Group/bookipi-cli`, then `/plugin install bookipi`.
+- Gemini CLI: `gemini extensions install https://github.com/Bookipi-Group/bookipi-cli`.
+- Cursor, GitHub Copilot, Windsurf, Antigravity and other skill-reading agents: `npx skills add Bookipi-Group/bookipi-cli --skill bookipi-cli`.
+- The skill includes the CLI; on first use it adds a `bookipi` command to `~/.local/bin`.
+- Standalone, for scripts and your own agents (macOS/Linux, Node 22.12+): run the one-line installer from the latest release page (https://github.com/Bookipi-Group/bookipi-cli/releases/latest); it installs `bookipi` to `~/.local/bin`; run it again to update.
+- First run: `bookipi setup` reports the CLI, workspace and sign-in state as JSON and names the one next step (`next.action`). `bookipi init` creates a project-folder workspace and signs in; `bookipi login` signs in for every folder.
+- Commands take `--json` for machine-readable output (`whoami` prints JSON already). Run `bookipi <group> --help` for flags.
+
+Command groups: `invoice`, `customer`, `item`, `expense`, `paylink`, `deal`, `proposal`, `contract`, `report`, `meeting`, `calendar`, `company`, `website`, plus `setup`, `init`, `login`, `logout`, `whoami` and `mcp`.
+
+## Docs
+
+- [README](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/README.md): install for every agent, workspace setup, network allowlist for Cowork, command table
+- [Hosted connector](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/docs/connector.md): the MCP server at mcp.bookipi.com, what it can read and write, sign-in, privacy
+- [Skill instructions](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/skills/bookipi-cli/SKILL.md): how an agent drives the CLI or connector, including login, handles and confirmation rules
+- [Common reference](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/skills/bookipi-cli/docs/common.md): handles, output format, error codes
+- [Examples](https://github.com/Bookipi-Group/bookipi-cli/tree/main/examples): ready-to-run scripts (chase overdue invoices, weekly digest, receipts to expenses) and prompts
+
+## Workflows
+
+- [Invoices](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/skills/bookipi-cli/docs/invoices.md): create, send, mark paid, remind, receipts and related documents
+- [Collections](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/skills/bookipi-cli/docs/collections.md): staged follow-up on overdue invoices
+- [Payment links](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/skills/bookipi-cli/docs/payment-links.md): shareable Bookipay payment links
+- [Bank reconciliation](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/skills/bookipi-cli/docs/reconcile.md): match deposits to invoices, then mark them paid
+- [Expenses](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/skills/bookipi-cli/docs/expenses.md): log expenses from receipt photos and PDFs
+- [Customers and items](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/skills/bookipi-cli/docs/customers-and-items.md): customer records, email history, products and services
+- [Customer 360](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/skills/bookipi-cli/docs/customer-360.md): everything about one customer in one view
+- [Proposals](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/skills/bookipi-cli/docs/quick-quote.md): AI proposal, send, then turn an accepted proposal into an invoice
+- [Contracts](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/skills/bookipi-cli/docs/win-deal.md): eSign contracts after a proposal is accepted, or standalone
+- [Stalled deals](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/skills/bookipi-cli/docs/stalled-recovery.md): re-engage deals that went quiet
+- [Meetings](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/skills/bookipi-cli/docs/meetings.md): recorded meetings, transcripts and AI summaries
+- [Reports](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/skills/bookipi-cli/docs/reports.md): revenue, top customers, dashboards and insights
+- [Morning brief](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/skills/bookipi-cli/docs/morning-brief.md): a daily summary with the day's actions prepared as drafts
+- [Automations](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/skills/bookipi-cli/docs/automations.md): recurring scheduled checks that draft and ask before sending
+- [Website](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/skills/bookipi-cli/docs/website.md): the AI-built company website, its content and publishing
+
+## Optional
+
+- [Landing page](https://bookipi.com/cli/): overview for people
+- [MCP Registry entry](https://registry.modelcontextprotocol.io/?q=bookipi): `io.github.Bookipi-Group/bookipi`
+- [Releases](https://github.com/Bookipi-Group/bookipi-cli/releases): skill bundles, installer and changelog per version
+- [Security policy](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/SECURITY.md): how to report a vulnerability
+- [Issues](https://github.com/Bookipi-Group/bookipi-cli/issues): bug reports and feature requests

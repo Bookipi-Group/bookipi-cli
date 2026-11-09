@@ -3,7 +3,7 @@
   "name": "io.github.Bookipi-Group/bookipi",
   "title": "Bookipi",
   "description": "Invoices, payments, expenses, customers, deals, proposals, eSign and reports for small businesses.",
-  "version": "0.46.1",
+  "version": "0.47.0",
   "websiteUrl": "https://bookipi.com",
   "repository": {
     "url": "https://github.com/Bookipi-Group/bookipi-cli",

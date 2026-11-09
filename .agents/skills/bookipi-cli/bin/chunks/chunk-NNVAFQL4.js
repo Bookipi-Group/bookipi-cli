@@ -9969,7 +9969,7 @@ var require_form_data = __commonJS({
     var parseUrl2 = __require("url").parse;
     var fs4 = __require("fs");
     var Stream = __require("stream").Stream;
-    var crypto2 = __require("crypto");
+    var crypto3 = __require("crypto");
     var mime = require_mime_types();
     var asynckit = require_asynckit();
     var setToStringTag = require_es_set_tostringtag();
@@ -10178,7 +10178,7 @@ var require_form_data = __commonJS({
       return Buffer.concat([dataBuffer, Buffer.from(this._lastBoundary())]);
     };
     FormData3.prototype._generateBoundary = function() {
-      this._boundary = "--------------------------" + crypto2.randomBytes(12).toString("hex");
+      this._boundary = "--------------------------" + crypto3.randomBytes(12).toString("hex");
     };
     FormData3.prototype.getLengthSync = function() {
       var knownLength = this._overheadLength + this._valueLength;
@@ -10414,12 +10414,12 @@ var require_common = __commonJS({
       createDebug.skips = [];
       createDebug.formatters = {};
       function selectColor(namespace) {
-        let hash = 0;
+        let hash2 = 0;
         for (let i = 0; i < namespace.length; i++) {
-          hash = (hash << 5) - hash + namespace.charCodeAt(i);
-          hash |= 0;
+          hash2 = (hash2 << 5) - hash2 + namespace.charCodeAt(i);
+          hash2 |= 0;
         }
-        return createDebug.colors[Math.abs(hash) % createDebug.colors.length];
+        return createDebug.colors[Math.abs(hash2) % createDebug.colors.length];
       }
       createDebug.selectColor = selectColor;
       function createDebug(namespace) {
@@ -11331,7 +11331,7 @@ var require_agent = __commonJS({
             reject(e);
           }
         }
-        function rejected(value) {
+        function rejected2(value) {
           try {
             step(generator["throw"](value));
           } catch (e) {
@@ -11339,7 +11339,7 @@ var require_agent = __commonJS({
           }
         }
         function step(result) {
-          result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
+          result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected2);
         }
         step((generator = generator.apply(thisArg, _arguments || [])).next());
       });
@@ -13441,10 +13441,10 @@ var InterceptorManager = class {
    *
    * @return {Number} An ID used to remove interceptor later
    */
-  use(fulfilled, rejected, options) {
+  use(fulfilled, rejected2, options) {
     const handler = {
       fulfilled,
-      rejected,
+      rejected: rejected2,
       synchronous: options ? options.synchronous : false,
       runWhen: options ? options.runWhen : null
     };
@@ -15316,7 +15316,7 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config2) {
     const maxContentLength = own2("maxContentLength");
     const decompress = own2("decompress");
     let isDone;
-    let rejected = false;
+    let rejected2 = false;
     let req;
     let connectPhaseTimer;
     try {
@@ -15397,7 +15397,7 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config2) {
       isDone = true;
       clearConnectPhaseTimer();
       if (isRejected) {
-        rejected = true;
+        rejected2 = true;
         onFinished();
         return;
       }
@@ -15833,7 +15833,7 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config2) {
           responseBuffer.push(chunk);
           totalResponseBytes += chunk.length;
           if (maxContentLength > -1 && totalResponseBytes > maxContentLength) {
-            rejected = true;
+            rejected2 = true;
             responseStream.destroy();
             abort(
               new AxiosError_default(
@@ -15846,7 +15846,7 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config2) {
           }
         });
         responseStream.on("aborted", function handlerStreamAborted() {
-          if (rejected) {
+          if (rejected2) {
             return;
           }
           const err = new AxiosError_default(
@@ -15860,7 +15860,7 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config2) {
           reject(err);
         });
         responseStream.on("error", function handleStreamError(err) {
-          if (rejected) return;
+          if (rejected2) return;
           reject(AxiosError_default.from(err, null, config2, lastRequest, response));
         });
         responseStream.on("end", function handleStreamEnd() {
@@ -17658,8 +17658,8 @@ var {
 
 // src/config.ts
 var BUILD_ENV = "prod";
-var CLI_VERSION = "0.46.1";
-var BUILD_STAMP = "618228a 2026-10-29";
+var CLI_VERSION = "0.47.0";
+var BUILD_STAMP = "4f9ebf2 2026-11-09";
 var config = {
   AUTH_SERVER: process.env["AUTH_SERVER"] ?? "https://auth.bookipi.com",
   APP_ID: process.env["APP_ID"] ?? "1dd166d9569f4f7eb0f08a22c8f0d54a",
@@ -17689,6 +17689,9 @@ function runWithRequestAuth(ctx, fn) {
 }
 function currentRequestAuth() {
   return storage.getStore();
+}
+function forwardedIpHeaders(ip = currentRequestAuth()?.clientIp) {
+  return ip ? { "X-Real-IP": ip, "X-Forwarded-For": ip } : {};
 }
 
 // src/core/auth/tokenStore.ts
@@ -18015,8 +18018,8 @@ function getDefaultCompany() {
   if (process.env.BOOKIPI_COMPANY) return process.env.BOOKIPI_COMPANY;
   return readStored((c) => c.defaultCompany || null);
 }
-function saveAnalyticsUserId(hash) {
-  writeConfigFields({ analyticsUserId: hash });
+function saveAnalyticsUserId(hash2) {
+  writeConfigFields({ analyticsUserId: hash2 });
 }
 function saveInternalTesterEmail(email) {
   writeConfigFields({ internalTesterEmail: email });
@@ -18240,6 +18243,7 @@ async function graphqlRequest({
           // Analytics attribution — identifies CLI traffic. Sent on every
           // request; callers can override via the passed-in headers.
           "x-attribution": getAttributionHeader(),
+          ...forwardedIpHeaders(),
           ...headers
         }
       }
@@ -18269,36 +18273,88 @@ async function graphqlRequest({
   }
 }
 
+// src/core/auth/bookipiExchange.ts
+async function exchangeTokenWithExpiry(authToken, opts = {}) {
+  const res = await graphqlRequest({
+    url: config.BOOKIPI_URL,
+    query: `
+      mutation ExchangeAuthTokenForBookipiToken($authToken: String!) {
+        auth: exchangeAuthTokenForBookipiToken(authToken: $authToken) {
+          token
+          expiration
+        }
+      }
+    `,
+    variables: { authToken },
+    headers: forwardedIpHeaders(opts.clientIp)
+  });
+  const ms = normaliseExpiry(res.auth.expiration);
+  return {
+    token: res.auth.token,
+    ...ms !== null ? { expiresAt: Math.floor(ms / 1e3) } : {}
+  };
+}
+function normaliseExpiry(value) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value > 1e12 ? value : value * 1e3;
+  }
+  if (typeof value === "string" && value) {
+    const parsed = Date.parse(value);
+    if (!Number.isNaN(parsed)) return parsed;
+    const asNumber = Number(value);
+    if (Number.isFinite(asNumber)) {
+      return asNumber > 1e12 ? asNumber : asNumber * 1e3;
+    }
+  }
+  return null;
+}
+
 // src/core/auth/oidcRefresh.ts
+var REFRESH_TIMEOUT_MS = 3e4;
+var REFUSAL_MEMO_MS = 60 * 6e4;
+var standardGrantRefusedAt = 0;
 async function refreshOidcTokenWith(refreshToken) {
   const appId = config.APP_ID;
   if (!appId) {
     throw new Error("Missing required config value: APP_ID");
   }
-  let res;
+  if (Date.now() - standardGrantRefusedAt < REFUSAL_MEMO_MS) {
+    return refreshLegacy(refreshToken, appId);
+  }
+  let data;
   try {
-    res = await axios_default.post(
-      `${config.AUTH_SERVER}/api/auth/token/refresh`,
-      { refreshToken },
-      {
-        // Bound the refresh call too — a hung auth server must not stall the
-        // command that triggered the token refresh.
-        timeout: 3e4,
-        headers: {
-          "Content-Type": "application/json",
-          "x-app-id": appId
-        }
-      }
+    data = await post(
+      "/api/oauth/token",
+      new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
+        client_id: appId
+      })
     );
   } catch (err) {
-    const status = err?.response?.status;
-    const body = err?.response?.data;
-    const bodyStr = typeof body === "string" ? body : JSON.stringify(body ?? {});
+    if (err.oauthError !== "invalid_client") throw err;
+    standardGrantRefusedAt = Date.now();
+    return refreshLegacy(refreshToken, appId);
+  }
+  if (!data?.access_token) {
     throw new Error(
-      `OIDC refresh failed${status ? ` (HTTP ${status})` : ""}: ${bodyStr || err?.message || "unknown error"}`
+      `OIDC refresh response missing access_token: ${JSON.stringify(data)}`
     );
   }
-  const data = res.data;
+  return {
+    accessToken: data.access_token,
+    refreshToken: data.refresh_token ?? refreshToken,
+    // `expires_in` is seconds from now; we store Unix ms throughout. Same
+    // 1h default as login (relayLogin) when the server omits it.
+    expireAt: Date.now() + (Number(data.expires_in) || 3600) * 1e3
+  };
+}
+async function refreshLegacy(refreshToken, appId) {
+  const data = await post(
+    "/api/auth/token/refresh",
+    { refreshToken },
+    { "x-app-id": appId }
+  );
   if (!data?.accessToken || typeof data.expireAt !== "number") {
     throw new Error(
       `OIDC refresh response missing accessToken/expireAt: ${JSON.stringify(data)}`
@@ -18306,13 +18362,28 @@ async function refreshOidcTokenWith(refreshToken) {
   }
   return {
     accessToken: data.accessToken,
-    // Server doesn't rotate refresh tokens — keep the existing one.
-    // If a future server version starts returning one, honor it.
     refreshToken: data.refreshToken ?? refreshToken,
-    // Response `expireAt` is Unix seconds; we store as Unix ms throughout
-    // the codebase (getWebAuthParams compares against Date.now()).
     expireAt: data.expireAt * 1e3
+    // Unix seconds → ms
   };
+}
+async function post(path4, body, headers = {}) {
+  try {
+    const res = await axios_default.post(`${config.AUTH_SERVER}${path4}`, body, {
+      timeout: REFRESH_TIMEOUT_MS,
+      headers
+    });
+    return res.data;
+  } catch (err) {
+    const status = err?.response?.status;
+    const resBody = err?.response?.data;
+    const bodyStr = typeof resBody === "string" ? resBody : JSON.stringify(resBody ?? {});
+    const out = new Error(
+      `OIDC refresh failed${status ? ` (HTTP ${status})` : ""}: ${bodyStr || err?.message || "unknown error"}`
+    );
+    out.oauthError = resBody?.error;
+    throw out;
+  }
 }
 async function refreshOidcToken() {
   const stored = getOidcTokens();
@@ -18324,36 +18395,44 @@ async function refreshOidcToken() {
   return refreshed;
 }
 
+// src/core/auth/rejectedTokens.ts
+import crypto2 from "node:crypto";
+var rejected = /* @__PURE__ */ new Set();
+var MAX_ENTRIES = 1e4;
+function hash(token) {
+  return crypto2.createHash("sha256").update(token).digest("base64url");
+}
+function markBookipiTokenRejected(token) {
+  if (rejected.size >= MAX_ENTRIES) rejected.clear();
+  rejected.add(hash(token));
+}
+function wasBookipiTokenRejected(token) {
+  return rejected.has(hash(token));
+}
+
 // src/core/auth/autoRefresh.ts
 function isAuthExpiredError(err) {
   const msg = err instanceof Error ? err.message : String(err);
   const lower = msg.toLowerCase();
   return lower.includes("unauthorized") || /\b401\b/.test(lower);
 }
-async function exchangeForBookipiToken(accessToken) {
-  const res = await graphqlRequest({
-    url: config.BOOKIPI_URL,
-    query: `
-      mutation ExchangeAuthTokenForBookipiToken($authToken: String!) {
-        auth: exchangeAuthTokenForBookipiToken(authToken: $authToken) {
-          token
-        }
-      }
-    `,
-    variables: { authToken: accessToken }
-  });
-  return res.auth.token;
-}
 var renewInFlight = null;
 async function renewBookipiToken() {
-  if (process.env["BOOKIPI_TOKEN"] || currentRequestAuth()) return false;
+  const hosted = currentRequestAuth();
+  if (hosted) {
+    markBookipiTokenRejected(hosted.token);
+    return false;
+  }
+  if (process.env["BOOKIPI_TOKEN"]) return false;
   if (renewInFlight) return renewInFlight;
   renewInFlight = (async () => {
     const { refreshToken } = getOidcTokens();
     if (!refreshToken) return false;
     try {
       const refreshed = await refreshOidcToken();
-      const bookipiToken = await exchangeForBookipiToken(refreshed.accessToken);
+      const { token: bookipiToken } = await exchangeTokenWithExpiry(
+        refreshed.accessToken
+      );
       saveToken(bookipiToken);
       process.stderr.write("(session expired \u2014 refreshed automatically)\n");
       renewInFlight = null;
@@ -18533,6 +18612,7 @@ export {
   AxiosError2 as AxiosError,
   runWithRequestAuth,
   currentRequestAuth,
+  forwardedIpHeaders,
   coworkMountDirs,
   getBookipiConfigDir,
   resetBookipiConfigDirCache,
@@ -18565,8 +18645,11 @@ export {
   clearAllCredentials,
   RECORD_SOURCE_APP,
   graphqlRequest,
+  exchangeTokenWithExpiry,
+  normaliseExpiry,
   refreshOidcTokenWith,
   refreshOidcToken,
+  wasBookipiTokenRejected,
   bookipiGraphql,
   postToS3,
   uploadItemImage

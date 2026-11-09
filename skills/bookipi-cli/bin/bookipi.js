@@ -17,6 +17,8 @@ import {
   coworkMountDirs,
   currentRequestAuth,
   ensureConfigDir,
+  exchangeTokenWithExpiry,
+  forwardedIpHeaders,
   getAnalyticsUserId,
   getBookipiConfigDir,
   getCurrentCurrency,
@@ -30,6 +32,7 @@ import {
   getToken,
   graphqlRequest,
   nativeConfigDir,
+  normaliseExpiry,
   postToS3,
   refreshOidcToken,
   refreshOidcTokenWith,
@@ -46,8 +49,9 @@ import {
   saveSignitToken,
   saveToken,
   uploadItemImage,
-  useConfigDir
-} from "./chunks/chunk-FFGOJ4GE.js";
+  useConfigDir,
+  wasBookipiTokenRejected
+} from "./chunks/chunk-NNVAFQL4.js";
 import {
   __commonJS,
   __export,
@@ -18515,7 +18519,7 @@ var require_dump = __commonJS({
 var require_dns = __commonJS({
   "node_modules/.pnpm/undici@7.30.1/node_modules/undici/lib/interceptor/dns.js"(exports, module) {
     "use strict";
-    var { isIP } = __require("node:net");
+    var { isIP: isIP2 } = __require("node:net");
     var { lookup } = __require("node:dns");
     var DecoratorHandler = require_decorator_handler();
     var { InvalidArgumentError: InvalidArgumentError2, InformationalError } = require_errors();
@@ -18921,7 +18925,7 @@ var require_dns = __commonJS({
       return (dispatch) => {
         return function dnsInterceptor(origDispatchOpts, handler) {
           const origin = origDispatchOpts.origin.constructor === URL ? origDispatchOpts.origin : new URL(origDispatchOpts.origin);
-          if (isIP(origin.hostname) !== 0) {
+          if (isIP2(origin.hostname) !== 0) {
             return dispatch(origDispatchOpts, handler);
           }
           instance.runLookup(origin, origDispatchOpts, (err2, newOrigin) => {
@@ -32198,9 +32202,9 @@ var require_validate = __commonJS({
       }
     }
     function returnResults(it) {
-      const { gen, schemaEnv, validateName, ValidationError, opts } = it;
+      const { gen, schemaEnv, validateName, ValidationError: ValidationError2, opts } = it;
       if (schemaEnv.$async) {
-        gen.if((0, codegen_1._)`${names_1.default.errors} === 0`, () => gen.return(names_1.default.data), () => gen.throw((0, codegen_1._)`new ${ValidationError}(${names_1.default.vErrors})`));
+        gen.if((0, codegen_1._)`${names_1.default.errors} === 0`, () => gen.return(names_1.default.data), () => gen.throw((0, codegen_1._)`new ${ValidationError2}(${names_1.default.vErrors})`));
       } else {
         gen.assign((0, codegen_1._)`${validateName}.errors`, names_1.default.vErrors);
         if (opts.unevaluated)
@@ -32552,14 +32556,14 @@ var require_validation_error = __commonJS({
   "node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/runtime/validation_error.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    var ValidationError = class extends Error {
+    var ValidationError2 = class extends Error {
       constructor(errors) {
         super("validation failed");
         this.errors = errors;
         this.ajv = this.validation = true;
       }
     };
-    exports.default = ValidationError;
+    exports.default = ValidationError2;
   }
 });
 
@@ -33091,8 +33095,8 @@ var require_utils2 = __commonJS({
     var HOST_DELIMS = { "@": "%40", "/": "%2F", "?": "%3F", "#": "%23", ":": "%3A" };
     var HOST_DELIM_RE = /[@/?#:]/g;
     var HOST_DELIM_NO_COLON_RE = /[@/?#]/g;
-    function reescapeHostDelimiters(host, isIP) {
-      const re = isIP ? HOST_DELIM_NO_COLON_RE : HOST_DELIM_RE;
+    function reescapeHostDelimiters(host, isIP2) {
+      const re = isIP2 ? HOST_DELIM_NO_COLON_RE : HOST_DELIM_RE;
       re.lastIndex = 0;
       return host.replace(re, (ch) => HOST_DELIMS[ch]);
     }
@@ -33789,12 +33793,12 @@ var require_fast_uri = __commonJS({
       const host = matches[4];
       return hasMalformedPercentEncoding(matches[3]) || host !== void 0 && !isIPLiteral(host) && hasMalformedPercentEncoding(host) || hasMalformedPercentEncoding(matches[6]) || hasMalformedPercentEncoding(matches[7]) || hasMalformedPercentEncoding(matches[8]);
     }
-    function canonicalizeHost(parsed, options, schemeHandler, isIP) {
-      if (hasForbiddenDomainHost(parsed, options, schemeHandler, isIP)) {
+    function canonicalizeHost(parsed, options, schemeHandler, isIP2) {
+      if (hasForbiddenDomainHost(parsed, options, schemeHandler, isIP2)) {
         parsed.error = parsed.error || MALFORMED_HOST_ERROR;
         return true;
       }
-      if (!options.unicodeSupport && (!schemeHandler || !schemeHandler.unicodeSupport) && parsed.host && !isIPLiteral(parsed.host) && (options.domainHost || schemeHandler && schemeHandler.domainHost) && isIP === false && nonSimpleDomain(parsed.host)) {
+      if (!options.unicodeSupport && (!schemeHandler || !schemeHandler.unicodeSupport) && parsed.host && !isIPLiteral(parsed.host) && (options.domainHost || schemeHandler && schemeHandler.domainHost) && isIP2 === false && nonSimpleDomain(parsed.host)) {
         let url2;
         try {
           url2 = new URL("http://" + parsed.host);
@@ -33810,9 +33814,9 @@ var require_fast_uri = __commonJS({
       }
       return false;
     }
-    function hasForbiddenDomainHost(parsed, options, schemeHandler, isIP) {
+    function hasForbiddenDomainHost(parsed, options, schemeHandler, isIP2) {
       return Boolean(
-        parsed.host && isIP === false && !isIPLiteral(parsed.host) && (options.domainHost || schemeHandler && schemeHandler.domainHost) && FORBIDDEN_DOMAIN_HOST_CHARACTER.test(parsed.host)
+        parsed.host && isIP2 === false && !isIPLiteral(parsed.host) && (options.domainHost || schemeHandler && schemeHandler.domainHost) && FORBIDDEN_DOMAIN_HOST_CHARACTER.test(parsed.host)
       );
     }
     function isHostOnlyURL(url2) {
@@ -33835,7 +33839,7 @@ var require_fast_uri = __commonJS({
       let malformedHost = false;
       let malformedIPLiteral = false;
       let malformedScheme = false;
-      let isIP = false;
+      let isIP2 = false;
       if (options.reference === "suffix") {
         if (options.scheme) {
           uri = options.scheme + ":" + uri;
@@ -33897,15 +33901,15 @@ var require_fast_uri = __commonJS({
             const bracketedIPLiteral = isIPLiteral(parsed.host);
             const hasIPLiteralBracket = parsed.host.indexOf("[") !== -1 || parsed.host.indexOf("]") !== -1;
             const ipv6result = normalizeIPv6(parsed.host);
-            isIP = ipv6result.isIPV6 || ipv6result.isIPVFuture === true;
+            isIP2 = ipv6result.isIPV6 || ipv6result.isIPVFuture === true;
             malformedIPLiteral = hasIPLiteralBracket && (!bracketedIPLiteral || ipv6result.error === true);
-            parsed.host = isIP ? ipv6result.host : ipv6result.host.toLowerCase();
+            parsed.host = isIP2 ? ipv6result.host : ipv6result.host.toLowerCase();
             if (malformedIPLiteral) {
               parsed.error = parsed.error || MALFORMED_HOST_ERROR;
               malformedAuthorityOrPort = true;
             }
           } else {
-            isIP = true;
+            isIP2 = true;
           }
         }
         if (parsed.scheme === void 0 && parsed.userinfo === void 0 && parsed.host === void 0 && parsed.port === void 0 && parsed.query === void 0 && !parsed.path) {
@@ -33922,14 +33926,14 @@ var require_fast_uri = __commonJS({
         }
         const schemeHandler = getSchemeHandler(options.scheme || parsed.scheme);
         if (!malformedIPLiteral) {
-          malformedHost = canonicalizeHost(parsed, options, schemeHandler, isIP);
+          malformedHost = canonicalizeHost(parsed, options, schemeHandler, isIP2);
         }
         if (uri.indexOf("%") !== -1 && parsed.host !== void 0 && !malformedIPLiteral) {
-          let host = isIP ? parsed.host : normalizePercentEncoding(parsed.host, true);
-          if (!isIP) {
+          let host = isIP2 ? parsed.host : normalizePercentEncoding(parsed.host, true);
+          if (!isIP2) {
             host = normalizePercentEncoding(host.toLowerCase());
           }
-          parsed.host = isIP || options.scheme !== "null" ? reescapeHostDelimiters(host, isIP) : host;
+          parsed.host = isIP2 || options.scheme !== "null" ? reescapeHostDelimiters(host, isIP2) : host;
         }
         if (!schemeHandler || schemeHandler && !schemeHandler.skipNormalize) {
           if (parsed.path) {
@@ -37161,21 +37165,8 @@ function generateCodeChallenge(verifier) {
 }
 
 // src/usecases/auth/exchangeToken.ts
-var BOOKIPI_URL = config.BOOKIPI_URL;
-async function exchangeToken(authToken) {
-  const query = `
-    mutation ExchangeAuthTokenForBookipiToken($authToken: String!) {
-      auth: exchangeAuthTokenForBookipiToken(authToken: $authToken) {
-        token
-      }
-    }
-  `;
-  const res = await graphqlRequest({
-    url: BOOKIPI_URL,
-    query,
-    variables: { authToken }
-  });
-  return res.auth.token;
+async function exchangeToken(authToken, opts = {}) {
+  return (await exchangeTokenWithExpiry(authToken, opts)).token;
 }
 
 // src/usecases/auth/relayLogin.ts
@@ -37791,15 +37782,18 @@ async function persistLoginProfile(prefetched) {
 }
 
 // src/core/errors/formatError.ts
+var ValidationError = class extends Error {
+};
 function formatError(err2, opts = {}) {
   const raw = err2 instanceof Error ? err2.message : String(err2);
   const lower = raw.toLowerCase();
   const debug = process.env.BOOKIPI_DEBUG === "1";
   let friendly = raw;
   let hint;
-  let code = opts.code ?? "unknown";
-  let exitCode = opts.exitCode ?? 1;
-  const autoDetect = !opts.code;
+  const isValidation = err2 instanceof ValidationError;
+  let code = opts.code ?? (isValidation ? "validation" : "unknown");
+  let exitCode = opts.exitCode ?? (isValidation ? 3 : 1);
+  const autoDetect = !opts.code && !isValidation;
   if (autoDetect) {
     if (lower.includes("not logged in") || lower.includes("invalid token") || lower.includes("token expired") || lower.includes("unauthorized") || /\b401\b/.test(lower)) {
       friendly = "Your Bookipi session expired (or you're not logged in).";
@@ -37932,19 +37926,22 @@ var CONFIRM_REQUIRED = {
   "customer send-email": "email this customer",
   "website publish": "publish the website"
 };
+function yesOption(what, required2 = "required") {
+  return new Option("-y, --yes", `Confirm the user approved this (${what}); ${required2}`);
+}
+function requireConfirmation(opts, what) {
+  if (opts.yes !== true) {
+    failWith(
+      `Refusing to ${what} without --yes. Show the user what will happen, get their approval, then re-run with --yes.`,
+      { json: opts.json === true }
+    );
+  }
+}
 function applyConfirmGates(program3) {
   for (const [path12, what] of Object.entries(CONFIRM_REQUIRED)) {
     const command = path12.split(" ").reduce((cmd, name) => cmd?.commands.find((c) => c.name() === name), program3);
     if (!command) throw new Error(`applyConfirmGates: no command "${path12}"`);
-    command.option("-y, --yes", `Confirm the user approved this (${what}); required`).hook("preAction", (cmd) => {
-      const opts = cmd.opts();
-      if (opts["yes"] !== true) {
-        failWith(
-          `Refusing to ${what} without --yes. Show the user what will happen, get their approval, then re-run with --yes.`,
-          { json: opts["json"] === true }
-        );
-      }
-    });
+    command.addOption(yesOption(what)).hook("preAction", (cmd) => requireConfirmation(cmd.opts(), what));
   }
 }
 function parsePaging(opts) {
@@ -38867,8 +38864,10 @@ var INVOICE_CORE_FIELDS = `
   schedule {
     interval
     nextRunDateUtc
+    endDate
   }
   recurringId
+  recurringGraceDeadline
   docNumber
   docPrefix
   updatedAt
@@ -39484,6 +39483,241 @@ function invoiceLifecycleLabel(invoice) {
   return mapped ?? raw.charAt(0).toUpperCase() + raw.slice(1);
 }
 
+// src/usecases/invoice/dueDate.ts
+var DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+var MS_PER_DAY2 = 24 * 60 * 60 * 1e3;
+function parseDateOnly(value, flag) {
+  if (!DATE_ONLY.test(value)) {
+    throw new ValidationError(`${flag} must be YYYY-MM-DD, got "${value}"`);
+  }
+  const parsed = /* @__PURE__ */ new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new ValidationError(`${flag}: "${value}" is not a real date`);
+  }
+  if (parsed.toISOString().slice(0, 10) !== value) {
+    throw new ValidationError(`${flag}: "${value}" is not a real date`);
+  }
+  return value;
+}
+function computeDueIn(invoiceDate, dueDate) {
+  const from = new Date(invoiceDate).getTime();
+  const to = new Date(
+    DATE_ONLY.test(dueDate) ? `${dueDate}T00:00:00.000Z` : dueDate
+  ).getTime();
+  if (Number.isNaN(from) || Number.isNaN(to)) {
+    throw new Error(
+      `Cannot compute days between "${invoiceDate}" and "${dueDate}"`
+    );
+  }
+  return Math.round((to - from) / MS_PER_DAY2);
+}
+function localStartOfDayIso(dateOnly) {
+  const [y, m, d] = dateOnly.split("-").map(Number);
+  return new Date(y, m - 1, d, 0, 0, 0, 0).toISOString();
+}
+function dueDateFromDueIn(invoiceDate, days) {
+  const base = new Date(invoiceDate);
+  if (Number.isNaN(base.getTime())) {
+    throw new Error(`Invoice has an unparseable date: "${invoiceDate}"`);
+  }
+  const snapped = new Date(
+    Math.round(base.getTime() / MS_PER_DAY2) * MS_PER_DAY2
+  );
+  snapped.setUTCDate(snapped.getUTCDate() + days);
+  return snapped.toISOString().slice(0, 10);
+}
+
+// src/usecases/invoice/recurringSchedule.ts
+var RECURRING_UNITS = ["day", "week", "month", "year"];
+function toScheduleChange(fields) {
+  return Object.fromEntries(
+    Object.entries(fields).filter(([, v]) => v !== void 0)
+  );
+}
+var MCP_LABELS = { nextRun: "first_run", until: "until" };
+var STOPPED_SCHEDULE = {
+  interval: null,
+  nextRunDateUtc: null,
+  endDate: null
+};
+var BOUNDS = {
+  day: 1,
+  week: 52,
+  month: 12,
+  year: 1
+};
+var ALL_INTERVALS = RECURRING_UNITS.flatMap(
+  (unit2) => Array.from({ length: BOUNDS[unit2] }, (_, i) => i === 0 ? unit2 : `${unit2}${i + 1}`)
+);
+var ADVERB = {
+  day: "daily",
+  week: "weekly",
+  month: "monthly",
+  year: "yearly"
+};
+function isRecurringUnit(value) {
+  return RECURRING_UNITS.includes(value);
+}
+function toInterval(unit2, every2 = 1) {
+  if (!isRecurringUnit(unit2)) {
+    throw new ValidationError(
+      `Invalid --recurring value '${String(unit2)}'. Valid intervals: ${RECURRING_UNITS.join(", ")}.`
+    );
+  }
+  if (!Number.isInteger(every2) || every2 < 1 || every2 > BOUNDS[unit2]) {
+    throw new ValidationError(
+      `every ${every2} ${unit2}${every2 === 1 ? "" : "s"} isn't supported \u2014 Bookipi repeats daily, or every 1\u201352 weeks, 1\u201312 months, or yearly.`
+    );
+  }
+  return every2 === 1 ? unit2 : `${unit2}${every2}`;
+}
+function parseInterval(interval) {
+  const m = /^(day|week|month|year)(\d*)$/.exec(interval ?? "");
+  if (!m) return null;
+  const unit2 = m[1];
+  if (m[2] === "") return { unit: unit2, every: 1 };
+  const every2 = Number(m[2]);
+  if (every2 < 2 || every2 > BOUNDS[unit2]) return null;
+  return { unit: unit2, every: every2 };
+}
+function toUtcMidnight(dateStr) {
+  const iso2 = /^\d{4}-\d{2}-\d{2}$/.test(dateStr.trim()) ? `${dateStr.trim()}T00:00:00.000Z` : dateStr;
+  const d = new Date(iso2);
+  if (isNaN(d.getTime())) throw new ValidationError(`Invalid date: ${dateStr}`);
+  return new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
+  );
+}
+function userDateUtc(value, label) {
+  return `${parseDateOnly(value, label)}T00:00:00.000Z`;
+}
+function anyTimezoneToday(now2 = /* @__PURE__ */ new Date()) {
+  return new Date(now2.getTime() - MS_PER_DAY).toISOString().slice(0, 10);
+}
+function explicitRunUtc(value, label, today) {
+  const run = userDateUtc(value, label);
+  if (run.slice(0, 10) < today) {
+    throw new ValidationError(
+      `${label} (${value}) is in the past \u2014 pick today or a later date.`
+    );
+  }
+  return run;
+}
+function companyToday(storedDate, now2) {
+  const day = calendarDate(storedDate);
+  const stored = Date.parse(storedDate);
+  const offset = day && !isNaN(stored) ? Date.parse(`${day}T00:00:00.000Z`) - stored : 0;
+  const bounded = Math.abs(offset) <= 14 * 60 * 60 * 1e3 ? offset : 0;
+  return new Date(now2.getTime() + bounded).toISOString().slice(0, 10);
+}
+function addMonthsClamped(d, months) {
+  const y = d.getUTCFullYear();
+  const m = d.getUTCMonth() + months;
+  const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  return new Date(Date.UTC(y, m, Math.min(d.getUTCDate(), lastDay)));
+}
+function computeNextRunUtc(documentDate, unit2, every2 = 1) {
+  toInterval(unit2, every2);
+  const d = toUtcMidnight(documentDate);
+  switch (unit2) {
+    case "day":
+      d.setUTCDate(d.getUTCDate() + every2);
+      return d.toISOString();
+    case "week":
+      d.setUTCDate(d.getUTCDate() + 7 * every2);
+      return d.toISOString();
+    case "month":
+      return addMonthsClamped(d, every2).toISOString();
+    case "year":
+      return addMonthsClamped(d, 12 * every2).toISOString();
+  }
+}
+function assertUntilAfterRun(untilIso, nextRunIso) {
+  if (untilIso < nextRunIso) {
+    throw new ValidationError(
+      `The end date (${calendarDate(untilIso)}) is before the first run (${calendarDate(nextRunIso)}) \u2014 pick a later end date.`
+    );
+  }
+}
+function buildSchedule(spec, documentDate, labels = MCP_LABELS, today = anyTimezoneToday()) {
+  const every2 = spec.every ?? 1;
+  const interval = toInterval(spec.unit, every2);
+  let nextRunDateUtc = spec.nextRun ? explicitRunUtc(spec.nextRun, labels.nextRun, today) : computeNextRunUtc(documentDate, spec.unit, every2);
+  if (!spec.nextRun && nextRunDateUtc.slice(0, 10) < today) {
+    nextRunDateUtc = computeNextRunUtc(today, spec.unit, every2);
+  }
+  const endDate = spec.until ? userDateUtc(spec.until, labels.until) : null;
+  if (endDate) assertUntilAfterRun(endDate, nextRunDateUtc);
+  return { interval, nextRunDateUtc, endDate };
+}
+function describeCadence(interval) {
+  if (!interval) return "not repeating";
+  const p = parseInterval(interval);
+  if (!p) return interval;
+  return p.every === 1 ? ADVERB[p.unit] : `every ${p.every} ${p.unit}s`;
+}
+var NO_LONGER_REPEATING = "no longer repeating";
+function describeSchedule(schedule, whenNone = "not repeating") {
+  if (!schedule?.interval) return whenNone;
+  const parts2 = [describeCadence(schedule.interval)];
+  const next = calendarDate(schedule.nextRunDateUtc);
+  const until = calendarDate(schedule.endDate);
+  if (next) parts2.push(`next ${next}`);
+  if (until) parts2.push(`until ${until}`);
+  return parts2.join(" \xB7 ");
+}
+var iso = (v) => v ? new Date(v).toISOString() : null;
+function applyScheduleChange(current, change, now2 = /* @__PURE__ */ new Date(), labels = MCP_LABELS) {
+  const cur = current.schedule ?? null;
+  const active = Boolean(cur?.interval);
+  const from = describeSchedule(cur);
+  const today = companyToday(current.date, now2);
+  const documentDate = calendarDate(current.date) ?? current.date;
+  if (change === "stop") {
+    return {
+      schedule: { ...STOPPED_SCHEDULE },
+      from,
+      to: describeSchedule(null),
+      noop: !active,
+      starts: false
+    };
+  }
+  let schedule;
+  if (!active) {
+    const unit2 = change.unit;
+    if (!unit2) {
+      throw new ValidationError(
+        "This invoice isn't set to repeat. Say how often it should (day, week, month or year) to start one."
+      );
+    }
+    schedule = buildSchedule({ ...change, unit: unit2 }, documentDate, labels, today);
+  } else {
+    const parsed = parseInterval(cur?.interval);
+    if (!parsed && !change.unit) {
+      throw new ValidationError(
+        `This invoice repeats on '${cur?.interval}', which the CLI doesn't recognise. Give the full cadence (unit and every) to replace it.`
+      );
+    }
+    const unit2 = change.unit ?? parsed.unit;
+    const every2 = change.every ?? (parsed && parsed.unit === unit2 ? parsed.every : 1);
+    const interval = toInterval(unit2, every2);
+    const nextRunDateUtc = change.nextRun ? explicitRunUtc(change.nextRun, labels.nextRun, today) : iso(cur?.nextRunDateUtc) ?? computeNextRunUtc(documentDate, unit2, every2);
+    const endDate = change.until === void 0 ? iso(cur?.endDate) : change.until ? userDateUtc(change.until, labels.until) : null;
+    if (endDate && (change.until || change.nextRun)) {
+      assertUntilAfterRun(endDate, nextRunDateUtc);
+    }
+    schedule = { interval, nextRunDateUtc, endDate };
+  }
+  const noop = active && schedule.interval === cur?.interval && schedule.nextRunDateUtc === iso(cur?.nextRunDateUtc) && schedule.endDate === iso(cur?.endDate);
+  return {
+    schedule,
+    from,
+    to: describeSchedule(schedule),
+    noop,
+    starts: !active
+  };
+}
+
 // src/core/formatters/InvoiceFormatter.ts
 var InvoiceFormatter = class extends BaseFormatter {
   registry;
@@ -39616,12 +39850,12 @@ var InvoiceFormatter = class extends BaseFormatter {
     if (invoice.recurringId || invoice.schedule?.interval) {
       output2 += this.section("Recurring");
       if (invoice.schedule?.interval) {
-        output2 += this.listItem("Repeats", `every ${invoice.schedule.interval}`);
+        output2 += this.listItem("Repeats", describeSchedule(invoice.schedule));
       }
-      if (invoice.schedule?.nextRunDateUtc) {
+      if (invoice.recurringGraceDeadline) {
         output2 += this.listItem(
-          "Next run",
-          this.formatDate(invoice.schedule.nextRunDateUtc)
+          "Warning",
+          `grace period until ${this.formatDate(invoice.recurringGraceDeadline)} \u2014 check your plan limits`
         );
       }
       if (invoice.templateNo) {
@@ -39676,7 +39910,9 @@ var InvoiceFormatter = class extends BaseFormatter {
       const invoiceId = invoice._id || `temp-${index}`;
       const handle = this.registry.register("i", invoiceId);
       const customerHandle = invoice.customer && invoice.customer._id ? this.registry.register("c", invoice.customer._id) : "";
-      output2 += this.section(`${this.docHeading(invoice)} [${handle}]`);
+      output2 += this.section(
+        `${this.docHeading(invoice)} [${handle}]${invoice.schedule?.interval ? " \u21BB" : ""}`
+      );
       if (invoice.customer) {
         output2 += this.listItem(
           "Customer",
@@ -40545,6 +40781,7 @@ var INVOICES_CREATE_ONE_MUTATION = `
         schedule {
           interval
           nextRunDateUtc
+          endDate
         }
         recurringId
         docNumber
@@ -40740,50 +40977,6 @@ async function getNextInvoiceNumber(docType = 1, companyId) {
   }
 }
 
-// src/usecases/invoice/dueDate.ts
-var DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
-var MS_PER_DAY2 = 24 * 60 * 60 * 1e3;
-function parseDateOnly(value, flag) {
-  if (!DATE_ONLY.test(value)) {
-    throw new Error(`${flag} must be YYYY-MM-DD, got "${value}"`);
-  }
-  const parsed = /* @__PURE__ */ new Date(`${value}T00:00:00.000Z`);
-  if (Number.isNaN(parsed.getTime())) {
-    throw new Error(`${flag}: "${value}" is not a real date`);
-  }
-  if (parsed.toISOString().slice(0, 10) !== value) {
-    throw new Error(`${flag}: "${value}" is not a real date`);
-  }
-  return value;
-}
-function computeDueIn(invoiceDate, dueDate) {
-  const from = new Date(invoiceDate).getTime();
-  const to = new Date(
-    DATE_ONLY.test(dueDate) ? `${dueDate}T00:00:00.000Z` : dueDate
-  ).getTime();
-  if (Number.isNaN(from) || Number.isNaN(to)) {
-    throw new Error(
-      `Cannot compute days between "${invoiceDate}" and "${dueDate}"`
-    );
-  }
-  return Math.round((to - from) / MS_PER_DAY2);
-}
-function localStartOfDayIso(dateOnly) {
-  const [y, m, d] = dateOnly.split("-").map(Number);
-  return new Date(y, m - 1, d, 0, 0, 0, 0).toISOString();
-}
-function dueDateFromDueIn(invoiceDate, days) {
-  const base = new Date(invoiceDate);
-  if (Number.isNaN(base.getTime())) {
-    throw new Error(`Invoice has an unparseable date: "${invoiceDate}"`);
-  }
-  const snapped = new Date(
-    Math.round(base.getTime() / MS_PER_DAY2) * MS_PER_DAY2
-  );
-  snapped.setUTCDate(snapped.getUTCDate() + days);
-  return snapped.toISOString().slice(0, 10);
-}
-
 // src/usecases/invoice/deposit.ts
 var DATE_ONLY2 = /^\d{4}-\d{2}-\d{2}$/;
 function parseDepositSpec(value, flag = "--deposit") {
@@ -40915,7 +41108,7 @@ function computeInvoiceTotals(items, invoice = {}) {
 }
 
 // src/usecases/invoice/draftInvoice.ts
-var MCP_LABELS = {
+var MCP_LABELS2 = {
   date: "date",
   dueDate: "due_date",
   deposit: "deposit",
@@ -40923,7 +41116,7 @@ var MCP_LABELS = {
 };
 async function draftInvoice(input2) {
   const docType = input2.docType ?? 1;
-  const labels = { ...MCP_LABELS, ...input2.labels };
+  const labels = { ...MCP_LABELS2, ...input2.labels };
   if (input2.items.length === 0) {
     throw new Error("An invoice needs at least one line item.");
   }
@@ -40987,47 +41180,6 @@ async function draftInvoice(input2) {
     record2.recipientEmail = email3;
   }
   return { record: record2, numberAssigned };
-}
-
-// src/usecases/invoice/recurringSchedule.ts
-var RECURRING_INTERVALS = ["day", "week", "month", "year"];
-function isRecurringInterval(value) {
-  return RECURRING_INTERVALS.includes(value);
-}
-function toUtcMidnight(dateStr) {
-  const iso = /^\d{4}-\d{2}-\d{2}$/.test(dateStr.trim()) ? `${dateStr.trim()}T00:00:00.000Z` : dateStr;
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) throw new Error(`Invalid date: ${dateStr}`);
-  return new Date(
-    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
-  );
-}
-function computeNextRunUtc(documentDate, interval) {
-  const d = toUtcMidnight(documentDate);
-  switch (interval) {
-    case "day":
-      d.setUTCDate(d.getUTCDate() + 1);
-      break;
-    case "week":
-      d.setUTCDate(d.getUTCDate() + 7);
-      break;
-    case "month":
-      d.setUTCMonth(d.getUTCMonth() + 1);
-      break;
-    case "year":
-      d.setUTCFullYear(d.getUTCFullYear() + 1);
-      break;
-  }
-  return d.toISOString();
-}
-function buildSchedule(interval, documentDate, nextRunOverride) {
-  if (!isRecurringInterval(interval)) {
-    throw new Error(
-      `Invalid --recurring value '${interval}'. Valid intervals: ${RECURRING_INTERVALS.join(", ")}.`
-    );
-  }
-  const nextRunDateUtc = nextRunOverride ? toUtcMidnight(nextRunOverride).toISOString() : computeNextRunUtc(documentDate, interval);
-  return { interval, nextRunDateUtc };
 }
 
 // src/usecases/item/listItems.ts
@@ -41678,6 +41830,7 @@ var INVOICES_UPDATE_ONE_MUTATION = `
         schedule {
           interval
           nextRunDateUtc
+          endDate
         }
         recurringId
         docNumber
@@ -41714,6 +41867,61 @@ async function updateInvoice(id, record2, shouldResetInvoiceStatus) {
   });
 }
 
+// src/commands/invoice/repeat.ts
+var REPEAT_GATE = "schedule repeating invoices that may be emailed to this customer";
+var SCHEDULE_FLAG_LABELS = {
+  nextRun: "--next-run",
+  until: "--until"
+};
+function everyOption(description) {
+  return new Option("--every <n>", description).argParser((value) => {
+    const n = Number(value);
+    if (!Number.isInteger(n) || n < 1) {
+      throw new InvalidArgumentError("must be a whole number of 1 or more.");
+    }
+    return n;
+  });
+}
+function rejectScheduleInData(extra, json3) {
+  if (extra && typeof extra === "object" && "schedule" in extra) {
+    failWith(
+      "Set the repeat with --recurring/--every/--next-run (or --stop-recurring), not --data.",
+      { json: json3 }
+    );
+  }
+}
+function printNoop(message, json3) {
+  console.log(json3 ? JSON.stringify({ success: true, noop: true, message }) : message);
+}
+async function finishStop(invoiceId, plan, label, json3) {
+  if (plan.noop) {
+    printNoop(plan.message ?? `${label} isn't set to repeat.`, json3);
+    return;
+  }
+  const data = await updateInvoice(invoiceId, { schedule: plan.schedule });
+  const updated = data.invoicesUpdateOne?.record;
+  if (!updated) {
+    throw new Error("Failed to stop the repeat - no record returned");
+  }
+  if (json3) {
+    console.log(
+      JSON.stringify(
+        { success: true, invoice: label, from: plan.from, to: plan.to, schedule: updated.schedule ?? null },
+        null,
+        2
+      )
+    );
+  } else {
+    console.log(`\u2705 **Stopped repeating ${label}**
+`);
+    console.log(`Was: ${plan.from}`);
+    console.log(`Invoices already generated are kept.`);
+    console.log(
+      `\`invoice list\` may still show it as repeating for a few minutes while search catches up; \`invoice get\` is current.`
+    );
+  }
+}
+
 // src/commands/invoice/create.ts
 var createCommand2 = new Command("create").description(
   "Create a new document \u2014 invoice (default), estimate, credit note, delivery note, or purchase order (all share this endpoint)."
@@ -41743,8 +41951,12 @@ var createCommand2 = new Command("create").description(
   },
   []
 ).option(
-  "--recurring <interval>",
-  `Make this a recurring document \u2014 repeats every ${RECURRING_INTERVALS.join(" / ")}.`
+  "--recurring <unit>",
+  `Make this a recurring document \u2014 repeats every ${RECURRING_UNITS.join(" / ")}. Needs --yes: Bookipi may email each run to the customer.`
+).addOption(
+  everyOption(
+    "Repeat every N units \u2014 1\u201352 weeks, 1\u201312 months (e.g. --recurring month --every 3 for quarterly). Requires --recurring."
+  )
 ).option(
   "--next-run <date>",
   "First recurrence date (YYYY-MM-DD). Defaults to the document date + one interval. Requires --recurring."
@@ -41760,15 +41972,30 @@ var createCommand2 = new Command("create").description(
 ).option(
   "--link",
   "Also print the signed web link. Off by default: the link embeds a live authToken, and an agent that sees it tends to paste it into chat."
-).option("--json", "Output raw JSON instead of formatted").action(
+).addOption(yesOption(REPEAT_GATE, "required with --recurring")).option("--json", "Output raw JSON instead of formatted").action(
   withErrors(async (opts) => {
     const docType = resolveDocumentType(opts.type ?? "invoice");
     parseDateOnly(opts.date, "--date");
     if (opts.dueDate) parseDateOnly(opts.dueDate, "--due-date");
-    if (opts.nextRun && !opts.recurring) {
-      failWith("--next-run requires --recurring", { json: opts?.json });
+    const scheduleFlag = [
+      opts.every != null && "--every",
+      opts.nextRun && "--next-run"
+    ].find(Boolean);
+    if (scheduleFlag && !opts.recurring) {
+      failWith(`${scheduleFlag} requires --recurring`, { json: opts?.json });
     }
-    const schedule = opts.recurring ? buildSchedule(opts.recurring, opts.date, opts.nextRun) : void 0;
+    const schedule = opts.recurring ? buildSchedule(
+      {
+        ...toScheduleChange({
+          every: opts.every,
+          nextRun: opts.nextRun
+        }),
+        unit: opts.recurring
+      },
+      opts.date,
+      SCHEDULE_FLAG_LABELS
+    ) : void 0;
+    if (schedule) requireConfirmation(opts, REPEAT_GATE);
     let extra = {};
     if (opts.data) {
       try {
@@ -41776,6 +42003,7 @@ var createCommand2 = new Command("create").description(
       } catch {
         failWith("Invalid JSON provided for --data", { json: opts?.json });
       }
+      rejectScheduleInData(extra, opts.json === true);
     }
     const registry3 = HandleRegistry.getInstance();
     const rawCompany = opts.company || getDefaultCompany();
@@ -42214,6 +42442,40 @@ function applyLineItemEdits(items, edits) {
   return out;
 }
 
+// src/usecases/invoice/planScheduleChange.ts
+function buildScheduleChangePlan(invoice, change, options = {}) {
+  const schedule = invoice["schedule"] ?? null;
+  const number4 = invoice["no"] ?? null;
+  const label = number4 ?? "This invoice";
+  const parent = invoice["parentRecurringInvoice"];
+  if (!schedule?.interval && parent) {
+    const head = parent.no ?? "the original invoice";
+    throw new ValidationError(
+      `${label} was generated by ${head} \u2014 change the repeat on ${head}.`
+    );
+  }
+  const result = applyScheduleChange(
+    { schedule, date: invoice["date"] },
+    change,
+    options.now,
+    options.labels
+  );
+  return {
+    ...result,
+    invoiceNumber: number4,
+    ...result.noop ? {
+      message: change === "stop" ? `${label} isn't set to repeat.` : `${label} already repeats ${result.to} \u2014 nothing to change.`
+    } : {}
+  };
+}
+async function planScheduleChange(options) {
+  const invoice = await getInvoice(
+    options.invoiceId,
+    options.companyId
+  );
+  return buildScheduleChangePlan(invoice, options.change);
+}
+
 // src/commands/invoice/update.ts
 function collect(value, previous) {
   return [...previous, value];
@@ -42251,6 +42513,18 @@ var updateCommand = new Command("update").description("Update an existing invoic
   "--deposit-due <date>",
   "When the deposit is due (YYYY-MM-DD)"
 ).option("--remove-deposit", "Remove the deposit request from the invoice").option(
+  "--recurring <unit>",
+  `Start or change the repeat \u2014 ${RECURRING_UNITS.join(" / ")}. Starting a repeat needs --yes: Bookipi may email each run to the customer.`
+).addOption(
+  everyOption(
+    "Repeat every N units \u2014 1\u201352 weeks, 1\u201312 months. On an invoice already repeating, changes only the cadence."
+  )
+).option("--next-run <date>", "Set the next run date (YYYY-MM-DD)").addOption(
+  new Option(
+    "--stop-recurring",
+    "Stop the invoice repeating. Cannot be combined with the other repeat flags."
+  ).conflicts(["recurring", "every", "nextRun"])
+).addOption(yesOption(REPEAT_GATE, "required when starting a repeat")).option(
   "-d, --data <json>",
   "Additional fields to update as JSON (merged with other options; explicit totals here win over recomputed ones)"
 ).option("--reset-status", "Reset the invoice status after update", false).option("--json", "Output raw JSON instead of formatted").action(
@@ -42264,6 +42538,7 @@ var updateCommand = new Command("update").description("Update an existing invoic
       } catch {
         failWith("Invalid JSON provided for --data", { json: opts?.json });
       }
+      rejectScheduleInData(extra, opts.json === true);
     }
     const itemOpsRequested = opts.item.length > 0 || opts.addItem.length > 0 || opts.setItem.length > 0 || opts.removeItem.length > 0;
     const dueDateFlags = [
@@ -42290,14 +42565,30 @@ var updateCommand = new Command("update").description("Update an existing invoic
     }
     const depositSpec = opts.deposit ? parseDepositSpec(opts.deposit) : void 0;
     const depositDueInput = opts.depositDue ? depositDueEndOfDay(opts.depositDue) : void 0;
+    const scheduleRequested = Boolean(
+      opts.stopRecurring || opts.recurring || opts.every != null || opts.nextRun
+    );
+    const needsCurrent = scheduleRequested || itemOpsRequested || Array.isArray(extra.items) || opts.dueDate || opts.dueIn != null || depositSpec != null || depositDueInput != null;
+    const current = needsCurrent ? await getInvoice(resolvedId) : null;
+    let plan;
+    if (scheduleRequested) {
+      plan = buildScheduleChangePlan(
+        current,
+        opts.stopRecurring ? "stop" : toScheduleChange({
+          unit: opts.recurring,
+          every: opts.every,
+          nextRun: opts.nextRun
+        }),
+        { labels: SCHEDULE_FLAG_LABELS }
+      );
+      if (plan.starts) requireConfirmation(opts, REPEAT_GATE);
+    }
     const record2 = { ...extra };
     if (opts.status) record2.status = opts.status;
     if (opts.note) record2.note = opts.note;
     if (opts.number) record2.no = opts.number;
     if (opts.removeDueDate) record2.removeDueDate = true;
     if (opts.removeDeposit) Object.assign(record2, removedDepositFields());
-    const needsCurrent = itemOpsRequested || Array.isArray(extra.items) || opts.dueDate || opts.dueIn != null || depositSpec != null || depositDueInput != null;
-    const current = needsCurrent ? await getInvoice(resolvedId) : null;
     if (dueDateInput) {
       const dueDateIso = localStartOfDayIso(dueDateInput);
       const dueIn = computeDueIn(current.date, dueDateIso);
@@ -42411,9 +42702,28 @@ var updateCommand = new Command("update").description("Update an existing invoic
         );
       }
     }
+    if (plan) {
+      const json3 = opts.json === true;
+      const otherEdits = Object.keys(record2).length > 0;
+      if (opts.stopRecurring && !otherEdits) {
+        await finishStop(resolvedId, plan, plan.invoiceNumber ?? id, json3);
+        return;
+      }
+      if (plan.noop) {
+        const message = plan.message ?? "Nothing to change.";
+        if (!otherEdits) {
+          printNoop(message, json3);
+          return;
+        }
+        console.error(`Note: ${message} Repeat left as it is.`);
+      } else {
+        record2.schedule = plan.schedule;
+        console.error(`Repeat: ${plan.from} \u2192 ${plan.to}`);
+      }
+    }
     if (Object.keys(record2).length === 0) {
       failWith(
-        "No fields to update. Provide --status, --note, --due-date, --number, --deposit, --item/--add-item/--set-item/--remove-item, or --data.",
+        "No fields to update. Provide --status, --note, --due-date, --number, --deposit, --item/--add-item/--set-item/--remove-item, --recurring/--every/--next-run/--stop-recurring, or --data.",
         { json: opts?.json }
       );
     }
@@ -42584,8 +42894,8 @@ async function sendPaymentReceipt(invoiceId, options) {
 // src/commands/invoice/send-receipt.ts
 function normalizeDate(input2) {
   if (!input2) return void 0;
-  const iso = /^\d{4}-\d{2}-\d{2}$/.test(input2.trim()) ? `${input2.trim()}T00:00:00.000Z` : input2;
-  const d = new Date(iso);
+  const iso2 = /^\d{4}-\d{2}-\d{2}$/.test(input2.trim()) ? `${input2.trim()}T00:00:00.000Z` : input2;
+  const d = new Date(iso2);
   if (isNaN(d.getTime())) throw new Error(`Invalid --date: ${input2}`);
   return d.toISOString();
 }
@@ -43491,8 +43801,275 @@ var attachPhotoCommand = new Command("attach-photo").description(
   })
 );
 
+// src/usecases/invoice/listRecurringHistory.ts
+var RECURRING_HISTORY_QUERY = `
+  query RecurringHistory($page: Int, $perPage: Int, $filter: CompatFilterFindManyinvoicesInput, $sort: SortFindManyinvoicesInput) {
+    invoicesPagination(page: $page, perPage: $perPage, filter: $filter, sort: $sort) {
+      count
+      pageInfo {${PAGE_INFO_FIELDS}      }
+      items {
+        _id
+        no
+        date
+        total
+        status
+        computedStatus
+        sent
+      }
+    }
+  }
+`;
+async function listRecurringHistory(options) {
+  const { invoiceId, companyId, page = 1, perPage = 15 } = options;
+  const invoice = await getInvoice(invoiceId, companyId);
+  const parent = invoice.parentRecurringInvoice;
+  const head = !invoice.schedule?.interval && parent?._id ? await getInvoice(parent._id, companyId).catch(() => {
+    throw new ValidationError(
+      `${invoice.no} was generated by ${parent.no ?? "an invoice"}, which no longer exists.`
+    );
+  }) : invoice;
+  const data = await bookipiGraphql({
+    query: RECURRING_HISTORY_QUERY,
+    variables: {
+      page,
+      perPage,
+      // A repeating head carries its own recurringId; exclude it server-side.
+      filter: {
+        recurringId: head._id,
+        isTrashed: false,
+        _operators: { _id: { ne: head._id } }
+      },
+      sort: "D_DESC"
+    },
+    ...companyId ? { companyId } : {}
+  });
+  const result = data.invoicesPagination ?? {};
+  const count = result.count ?? 0;
+  if (count === 0 && !head.schedule?.interval) {
+    throw new ValidationError(`${head.no} hasn't generated any invoices.`);
+  }
+  return {
+    head: { _id: head._id, no: head.no, schedule: head.schedule ?? null },
+    items: result.items ?? [],
+    count,
+    pageInfo: result.pageInfo ?? null
+  };
+}
+
+// src/core/formatters/RecurringHistoryFormatter.ts
+var RecurringHistoryFormatter = class extends BaseFormatter {
+  registry = HandleRegistry.getInstance();
+  format(data, options) {
+    if (options?.json === true) return JSON.stringify(data, null, 2);
+    const { head, items, count, pageInfo } = data;
+    const headHandle = this.registry.register("i", head._id);
+    const repeats = describeSchedule(head.schedule, NO_LONGER_REPEATING);
+    let output2 = `# Generated from ${head.no ?? "N/A"} [${headHandle}] (${repeats})
+`;
+    if (items.length === 0) {
+      output2 += "\nNothing generated yet.\n";
+      return output2;
+    }
+    output2 += `
+${count} generated, newest first
+
+`;
+    const rows = items.map((inv) => {
+      const handle = this.registry.register("i", inv._id ?? inv.no ?? "");
+      const status = invoiceLifecycleLabel(inv) ?? "\u2014";
+      return [
+        `${inv.no ?? "N/A"} [${handle}]`,
+        calendarDate(inv.date) ?? "\u2014",
+        inv.total !== void 0 ? this.formatCurrency(inv.total) : "\u2014",
+        inv.sent === false ? `${status} (not sent)` : status
+      ];
+    });
+    output2 += this.createTable(["Invoice", "Date", "Total", "Status"], rows, [2]);
+    if (pageInfo?.hasNextPage) {
+      output2 += `
+More on the next page: \`bookipi invoice recurring history ${headHandle} --page ${(pageInfo.currentPage ?? 1) + 1}\`
+`;
+    }
+    output2 += this.separator();
+    output2 += this.nextActions("Actions", [
+      "View: `bookipi invoice get @i1`",
+      "Send an unsent one: `bookipi invoice send @i1 --yes`"
+    ]);
+    return output2;
+  }
+};
+
+// src/commands/invoice/recurring/history.ts
+var recurringHistoryCommand = new Command("history").description(
+  "List the invoices a repeat has generated, newest first. Give the repeating invoice or any invoice it generated."
+).argument("<invoice>", "Invoice ID or handle (@i1) of the repeating invoice, or one it generated").option("-p, --page <number>", "Page number", "1").option("-l, --limit <number>", "Items per page", "15").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (invoice, opts) => {
+    const { page, perPage } = parsePaging(opts);
+    const data = await listRecurringHistory({
+      invoiceId: HandleRegistry.getInstance().resolve(invoice),
+      page,
+      perPage
+    });
+    console.log(new RecurringHistoryFormatter().format(data, opts));
+  })
+);
+
+// src/usecases/invoice/listRecurringInvoices.ts
+var RECURRING_INVOICES_QUERY = `
+  query RecurringInvoicesList($page: Int, $perPage: Int, $filter: CompatFilterFindManyinvoicesInput) {
+    invoicesPagination(page: $page, perPage: $perPage, filter: $filter) {
+      count
+      pageInfo {${PAGE_INFO_FIELDS}      }
+      items {
+        _id
+        no
+        total
+        schedule {
+          interval
+          nextRunDateUtc
+          endDate
+        }
+        recurringId
+        recurringGraceDeadline
+        customer {
+          firstName
+          lastName
+          companyName
+          email
+        }
+      }
+    }
+  }
+`;
+var NON_INVOICE_FETCH = 500;
+async function listRecurringInvoices(options = {}) {
+  const { page = 1, perPage = 15, companyId, docType = 1 } = options;
+  const invoicesOnly = docType === 1;
+  const filter = invoicesOnly ? { isRecurringInvoice: true, isTrashed: false } : {
+    type: docType,
+    isTrashed: false,
+    OR: ALL_INTERVALS.map((interval) => ({ schedule: { interval } }))
+  };
+  const data = await bookipiGraphql({
+    query: RECURRING_INVOICES_QUERY,
+    variables: invoicesOnly ? { page, perPage, filter } : { page: 1, perPage: NON_INVOICE_FETCH, filter },
+    ...companyId ? { companyId } : {}
+  });
+  const result = data.invoicesPagination ?? {};
+  const rows = result.items ?? [];
+  if (invoicesOnly) {
+    return { count: result.count ?? 0, pageInfo: result.pageInfo ?? null, items: rows };
+  }
+  const live = rows.filter((r) => r["recurringId"] != null);
+  const pageCount = Math.max(1, Math.ceil(live.length / perPage));
+  return {
+    count: live.length,
+    pageInfo: {
+      currentPage: page,
+      perPage,
+      pageCount,
+      itemCount: live.length,
+      hasNextPage: page < pageCount,
+      hasPreviousPage: page > 1
+    },
+    items: live.slice((page - 1) * perPage, page * perPage)
+  };
+}
+
+// src/core/formatters/RecurringInvoiceFormatter.ts
+var RecurringInvoiceFormatter = class extends BaseFormatter {
+  registry = HandleRegistry.getInstance();
+  format(data, options) {
+    if (options?.json === true) return JSON.stringify(data, null, 2);
+    const { items, count, pageInfo } = data;
+    const type = documentTypeByCode(options?.docType);
+    const noun = type.label.toLowerCase();
+    const typeFlag = type.code === 1 ? "" : ` --type ${type.name}`;
+    let output2 = `# Repeating ${noun}s (${count} total)
+`;
+    if (items.length === 0) {
+      output2 += `
+No ${noun}s are set to repeat.
+`;
+      output2 += this.nextActions("Get started", [
+        `Create one: \`bookipi invoice create${typeFlag} --recurring month ... --yes\``,
+        `Make an existing ${noun} repeat: \`bookipi invoice update @i1 --recurring month --yes\``
+      ]);
+      return output2;
+    }
+    const rows = items.map((inv) => {
+      const handle = this.registry.register("i", inv._id ?? inv.no ?? "");
+      const name = customerName(inv.customer, {
+        preferCompany: true,
+        fallback: inv.customer?.email || "\u2014"
+      });
+      const grace = inv.recurringGraceDeadline ? " \u26A0" : "";
+      return [
+        `${inv.no ?? "N/A"} [${handle}]${grace}`,
+        name,
+        inv.total !== void 0 ? this.formatCurrency(inv.total) : "\u2014",
+        describeCadence(inv.schedule?.interval),
+        calendarDate(inv.schedule?.nextRunDateUtc) ?? "\u2014",
+        calendarDate(inv.schedule?.endDate) ?? "\u2014"
+      ];
+    });
+    output2 += "\n" + this.createTable(
+      [type.label, "Customer", "Total", "Repeats", "Next run", "Ends"],
+      rows,
+      [2]
+    );
+    const graced = items.filter((i) => i.recurringGraceDeadline);
+    if (graced.length > 0) {
+      output2 += `
+\u26A0 ${graced.length} in a grace period \u2014 check your plan limits.
+`;
+    }
+    if (pageInfo?.hasNextPage) {
+      output2 += `
+More on the next page: \`bookipi invoice recurring list${typeFlag} --page ${(pageInfo.currentPage ?? 1) + 1}\`
+`;
+    }
+    output2 += this.separator();
+    output2 += this.nextActions("Actions", [
+      "View: `bookipi invoice get @i1`",
+      "Change cadence: `bookipi invoice update @i1 --every 2`",
+      "See what it produced: `bookipi invoice recurring history @i1`",
+      "Stop: `bookipi invoice recurring stop @i1`"
+    ]);
+    return output2;
+  }
+};
+
+// src/commands/invoice/recurring/list.ts
+var recurringListCommand = new Command("list").description("List documents that are set to repeat (invoices unless --type says otherwise)").option(
+  "--type <type>",
+  `Document type to list: ${DOCUMENT_TYPE_NAMES.join(", ")} (default: invoice)`
+).option("-p, --page <number>", "Page number", "1").option("-l, --limit <number>", "Items per page", "15").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (opts) => {
+    const { page, perPage } = parsePaging(opts);
+    const docType = resolveDocumentType(opts.type ?? "invoice");
+    const data = await listRecurringInvoices({ page, perPage, docType: docType.code });
+    console.log(new RecurringInvoiceFormatter().format(data, { ...opts, docType: docType.code }));
+  })
+);
+
+// src/commands/invoice/recurring/stop.ts
+var recurringStopCommand = new Command("stop").description(
+  "Stop an invoice repeating (same as `invoice update <invoice> --stop-recurring`). Invoices already generated are kept."
+).argument("<invoice>", "Invoice ID or handle (@i1) of the repeating invoice").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (invoice, opts) => {
+    const json3 = opts.json === true;
+    const resolvedId = HandleRegistry.getInstance().resolve(invoice);
+    const plan = await planScheduleChange({ invoiceId: resolvedId, change: "stop" });
+    await finishStop(resolvedId, plan, plan.invoiceNumber ?? invoice, json3);
+  })
+);
+
+// src/commands/invoice/recurring/index.ts
+var recurringCommand = new Command("recurring").description("Repeating invoices \u2014 list, stop, or see what one produced").addCommand(recurringListCommand).addCommand(recurringStopCommand).addCommand(recurringHistoryCommand);
+
 // src/commands/invoice/index.ts
-var invoiceCommand = new Command("invoice").description("Manage invoices").addCommand(listCommand).addCommand(getCommand).addCommand(previewCommand).addCommand(createCommand2).addCommand(createFromProposalCommand).addCommand(duplicateCommand).addCommand(updateCommand).addCommand(deleteCommand).addCommand(sendCommand).addCommand(sendReceiptCommand).addCommand(markPaidCommand).addCommand(voidCommand).addCommand(remindCommand).addCommand(collectionsCommand).addCommand(attachPhotoCommand);
+var invoiceCommand = new Command("invoice").description("Manage invoices").addCommand(listCommand).addCommand(getCommand).addCommand(previewCommand).addCommand(createCommand2).addCommand(createFromProposalCommand).addCommand(duplicateCommand).addCommand(updateCommand).addCommand(deleteCommand).addCommand(sendCommand).addCommand(sendReceiptCommand).addCommand(markPaidCommand).addCommand(voidCommand).addCommand(remindCommand).addCommand(collectionsCommand).addCommand(attachPhotoCommand).addCommand(recurringCommand);
 
 // src/core/formatters/CustomerFormatter.ts
 var CustomerFormatter = class extends BaseFormatter {
@@ -44345,7 +44922,7 @@ var createCommand4 = new Command("create").description("Create a new item/produc
     if (opts.photo) {
       process.stderr.write(`  \u2022 Uploading ${opts.photo}...
 `);
-      const { uploadItemImage: uploadItemImage2 } = await import("./chunks/uploadItemImage-4AWUE6KI.js");
+      const { uploadItemImage: uploadItemImage2 } = await import("./chunks/uploadItemImage-P76FFFZG.js");
       const { filename } = await uploadItemImage2(opts.photo);
       record2.photos = [{ filename }];
     }
@@ -47508,8 +48085,8 @@ async function fetchInvoiceAnalysisData(start, end, company) {
     paymentRecords
   };
 }
-function expenseMonthKey(iso) {
-  return monthKey(iso) || null;
+function expenseMonthKey(iso2) {
+  return monthKey(iso2) || null;
 }
 function analyzeExpenseTrend(expenses, now2 = /* @__PURE__ */ new Date()) {
   const curKey = monthKey(now2);
@@ -49145,10 +49722,10 @@ var MeetingFormatter = class extends BaseFormatter {
     }
     return "Unknown";
   }
-  formatWhen(iso, timezone) {
-    if (!iso) return "N/A";
+  formatWhen(iso2, timezone) {
+    if (!iso2) return "N/A";
     try {
-      const d = new Date(iso);
+      const d = new Date(iso2);
       if (timezone) {
         return d.toLocaleString("en-US", {
           timeZone: timezone,
@@ -49162,7 +49739,7 @@ var MeetingFormatter = class extends BaseFormatter {
       }
       return d.toISOString();
     } catch {
-      return iso;
+      return iso2;
     }
   }
   computeDuration(startIso, endIso) {
@@ -50775,20 +51352,6 @@ async function mintSignitToken() {
 function isExpired2(expiryMs) {
   return expiryMs - Date.now() < REFRESH_LEEWAY_MS2;
 }
-function normaliseExpiry(value) {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value > 1e12 ? value : value * 1e3;
-  }
-  if (typeof value === "string" && value) {
-    const parsed = Date.parse(value);
-    if (!Number.isNaN(parsed)) return parsed;
-    const asNumber = Number(value);
-    if (Number.isFinite(asNumber)) {
-      return asNumber > 1e12 ? asNumber : asNumber * 1e3;
-    }
-  }
-  return null;
-}
 
 // src/core/api/signitClient.ts
 async function signitRequest({
@@ -51542,10 +52105,10 @@ function sumProposalValue(items) {
     return sum + (typeof item["totalAmount"] === "number" ? item["totalAmount"] : 0);
   }, 0);
 }
-function fmtDate(iso, fallback) {
-  if (!iso || typeof iso !== "string") return fallback;
+function fmtDate(iso2, fallback) {
+  if (!iso2 || typeof iso2 !== "string") return fallback;
   try {
-    return new Date(iso).toISOString().slice(0, 10);
+    return new Date(iso2).toISOString().slice(0, 10);
   } catch {
     return fallback;
   }
@@ -52472,7 +53035,12 @@ async function builderFetch(request, timeoutMs = BUILDER_TIMEOUT_MS) {
       const res = await fetch(url2, {
         ...method ? { method } : {},
         ...body !== void 0 ? { body } : {},
-        headers: { ...headers, cookie: `token=${session.token}`, platform: "web" },
+        headers: {
+          ...forwardedIpHeaders(),
+          ...headers,
+          cookie: `token=${session.token}`,
+          platform: "web"
+        },
         signal: AbortSignal.timeout(timeoutMs)
       });
       if (res.status === 401 || res.status === 403) {
@@ -64359,8 +64927,8 @@ var error3 = () => {
         const sizing = getSizing(issue2.origin);
         if (sizing) {
           const maxValue = Number(issue2.maximum);
-          const unit = getBelarusianPlural(maxValue, sizing.unit.one, sizing.unit.few, sizing.unit.many);
-          return `\u0417\u0430\u043D\u0430\u0434\u0442\u0430 \u0432\u044F\u043B\u0456\u043A\u0456: \u0447\u0430\u043A\u0430\u043B\u0430\u0441\u044F, \u0448\u0442\u043E ${issue2.origin ?? "\u0437\u043D\u0430\u0447\u044D\u043D\u043D\u0435"} \u043F\u0430\u0432\u0456\u043D\u043D\u0430 ${sizing.verb} ${adj}${issue2.maximum.toString()} ${unit}`;
+          const unit2 = getBelarusianPlural(maxValue, sizing.unit.one, sizing.unit.few, sizing.unit.many);
+          return `\u0417\u0430\u043D\u0430\u0434\u0442\u0430 \u0432\u044F\u043B\u0456\u043A\u0456: \u0447\u0430\u043A\u0430\u043B\u0430\u0441\u044F, \u0448\u0442\u043E ${issue2.origin ?? "\u0437\u043D\u0430\u0447\u044D\u043D\u043D\u0435"} \u043F\u0430\u0432\u0456\u043D\u043D\u0430 ${sizing.verb} ${adj}${issue2.maximum.toString()} ${unit2}`;
         }
         return `\u0417\u0430\u043D\u0430\u0434\u0442\u0430 \u0432\u044F\u043B\u0456\u043A\u0456: \u0447\u0430\u043A\u0430\u043B\u0430\u0441\u044F, \u0448\u0442\u043E ${issue2.origin ?? "\u0437\u043D\u0430\u0447\u044D\u043D\u043D\u0435"} \u043F\u0430\u0432\u0456\u043D\u043D\u0430 \u0431\u044B\u0446\u044C ${adj}${issue2.maximum.toString()}`;
       }
@@ -64369,8 +64937,8 @@ var error3 = () => {
         const sizing = getSizing(issue2.origin);
         if (sizing) {
           const minValue = Number(issue2.minimum);
-          const unit = getBelarusianPlural(minValue, sizing.unit.one, sizing.unit.few, sizing.unit.many);
-          return `\u0417\u0430\u043D\u0430\u0434\u0442\u0430 \u043C\u0430\u043B\u044B: \u0447\u0430\u043A\u0430\u043B\u0430\u0441\u044F, \u0448\u0442\u043E ${issue2.origin} \u043F\u0430\u0432\u0456\u043D\u043D\u0430 ${sizing.verb} ${adj}${issue2.minimum.toString()} ${unit}`;
+          const unit2 = getBelarusianPlural(minValue, sizing.unit.one, sizing.unit.few, sizing.unit.many);
+          return `\u0417\u0430\u043D\u0430\u0434\u0442\u0430 \u043C\u0430\u043B\u044B: \u0447\u0430\u043A\u0430\u043B\u0430\u0441\u044F, \u0448\u0442\u043E ${issue2.origin} \u043F\u0430\u0432\u0456\u043D\u043D\u0430 ${sizing.verb} ${adj}${issue2.minimum.toString()} ${unit2}`;
         }
         return `\u0417\u0430\u043D\u0430\u0434\u0442\u0430 \u043C\u0430\u043B\u044B: \u0447\u0430\u043A\u0430\u043B\u0430\u0441\u044F, \u0448\u0442\u043E ${issue2.origin} \u043F\u0430\u0432\u0456\u043D\u043D\u0430 \u0431\u044B\u0446\u044C ${adj}${issue2.minimum.toString()}`;
       }
@@ -66997,8 +67565,8 @@ var error24 = () => {
         const sizing = getSizing(issue2.origin);
         if (sizing) {
           const maxValue = Number(issue2.maximum);
-          const unit = getArmenianPlural(maxValue, sizing.unit.one, sizing.unit.many);
-          return `\u0549\u0561\u0583\u0561\u0566\u0561\u0576\u0581 \u0574\u0565\u056E \u0561\u0580\u056A\u0565\u0584\u2024 \u057D\u057A\u0561\u057D\u057E\u0578\u0582\u0574 \u0567, \u0578\u0580 ${withDefiniteArticle(issue2.origin ?? "\u0561\u0580\u056A\u0565\u0584")} \u056F\u0578\u0582\u0576\u0565\u0576\u0561 ${adj}${issue2.maximum.toString()} ${unit}`;
+          const unit2 = getArmenianPlural(maxValue, sizing.unit.one, sizing.unit.many);
+          return `\u0549\u0561\u0583\u0561\u0566\u0561\u0576\u0581 \u0574\u0565\u056E \u0561\u0580\u056A\u0565\u0584\u2024 \u057D\u057A\u0561\u057D\u057E\u0578\u0582\u0574 \u0567, \u0578\u0580 ${withDefiniteArticle(issue2.origin ?? "\u0561\u0580\u056A\u0565\u0584")} \u056F\u0578\u0582\u0576\u0565\u0576\u0561 ${adj}${issue2.maximum.toString()} ${unit2}`;
         }
         return `\u0549\u0561\u0583\u0561\u0566\u0561\u0576\u0581 \u0574\u0565\u056E \u0561\u0580\u056A\u0565\u0584\u2024 \u057D\u057A\u0561\u057D\u057E\u0578\u0582\u0574 \u0567, \u0578\u0580 ${withDefiniteArticle(issue2.origin ?? "\u0561\u0580\u056A\u0565\u0584")} \u056C\u056B\u0576\u056B ${adj}${issue2.maximum.toString()}`;
       }
@@ -67007,8 +67575,8 @@ var error24 = () => {
         const sizing = getSizing(issue2.origin);
         if (sizing) {
           const minValue = Number(issue2.minimum);
-          const unit = getArmenianPlural(minValue, sizing.unit.one, sizing.unit.many);
-          return `\u0549\u0561\u0583\u0561\u0566\u0561\u0576\u0581 \u0583\u0578\u0584\u0580 \u0561\u0580\u056A\u0565\u0584\u2024 \u057D\u057A\u0561\u057D\u057E\u0578\u0582\u0574 \u0567, \u0578\u0580 ${withDefiniteArticle(issue2.origin)} \u056F\u0578\u0582\u0576\u0565\u0576\u0561 ${adj}${issue2.minimum.toString()} ${unit}`;
+          const unit2 = getArmenianPlural(minValue, sizing.unit.one, sizing.unit.many);
+          return `\u0549\u0561\u0583\u0561\u0566\u0561\u0576\u0581 \u0583\u0578\u0584\u0580 \u0561\u0580\u056A\u0565\u0584\u2024 \u057D\u057A\u0561\u057D\u057E\u0578\u0582\u0574 \u0567, \u0578\u0580 ${withDefiniteArticle(issue2.origin)} \u056F\u0578\u0582\u0576\u0565\u0576\u0561 ${adj}${issue2.minimum.toString()} ${unit2}`;
         }
         return `\u0549\u0561\u0583\u0561\u0566\u0561\u0576\u0581 \u0583\u0578\u0584\u0580 \u0561\u0580\u056A\u0565\u0584\u2024 \u057D\u057A\u0561\u057D\u057E\u0578\u0582\u0574 \u0567, \u0578\u0580 ${withDefiniteArticle(issue2.origin)} \u056C\u056B\u0576\u056B ${adj}${issue2.minimum.toString()}`;
       }
@@ -67922,18 +68490,18 @@ var error32 = () => {
         const adj = issue2.inclusive ? "\uC774\uD558" : "\uBBF8\uB9CC";
         const suffix = adj === "\uBBF8\uB9CC" ? "\uC774\uC5B4\uC57C \uD569\uB2C8\uB2E4" : "\uC5EC\uC57C \uD569\uB2C8\uB2E4";
         const sizing = getSizing(issue2.origin);
-        const unit = sizing?.unit ?? "\uC694\uC18C";
+        const unit2 = sizing?.unit ?? "\uC694\uC18C";
         if (sizing)
-          return `${issue2.origin ?? "\uAC12"}\uC774 \uB108\uBB34 \uD07D\uB2C8\uB2E4: ${issue2.maximum.toString()}${unit} ${adj}${suffix}`;
+          return `${issue2.origin ?? "\uAC12"}\uC774 \uB108\uBB34 \uD07D\uB2C8\uB2E4: ${issue2.maximum.toString()}${unit2} ${adj}${suffix}`;
         return `${issue2.origin ?? "\uAC12"}\uC774 \uB108\uBB34 \uD07D\uB2C8\uB2E4: ${issue2.maximum.toString()} ${adj}${suffix}`;
       }
       case "too_small": {
         const adj = issue2.inclusive ? "\uC774\uC0C1" : "\uCD08\uACFC";
         const suffix = adj === "\uC774\uC0C1" ? "\uC774\uC5B4\uC57C \uD569\uB2C8\uB2E4" : "\uC5EC\uC57C \uD569\uB2C8\uB2E4";
         const sizing = getSizing(issue2.origin);
-        const unit = sizing?.unit ?? "\uC694\uC18C";
+        const unit2 = sizing?.unit ?? "\uC694\uC18C";
         if (sizing) {
-          return `${issue2.origin ?? "\uAC12"}\uC774 \uB108\uBB34 \uC791\uC2B5\uB2C8\uB2E4: ${issue2.minimum.toString()}${unit} ${adj}${suffix}`;
+          return `${issue2.origin ?? "\uAC12"}\uC774 \uB108\uBB34 \uC791\uC2B5\uB2C8\uB2E4: ${issue2.minimum.toString()}${unit2} ${adj}${suffix}`;
         }
         return `${issue2.origin ?? "\uAC12"}\uC774 \uB108\uBB34 \uC791\uC2B5\uB2C8\uB2E4: ${issue2.minimum.toString()} ${adj}${suffix}`;
       }
@@ -69746,8 +70314,8 @@ var error46 = () => {
         const sizing = getSizing(issue2.origin);
         if (sizing) {
           const maxValue = Number(issue2.maximum);
-          const unit = getRussianPlural(maxValue, sizing.unit.one, sizing.unit.few, sizing.unit.many);
-          return `\u0421\u043B\u0438\u0448\u043A\u043E\u043C \u0431\u043E\u043B\u044C\u0448\u043E\u0435 \u0437\u043D\u0430\u0447\u0435\u043D\u0438\u0435: \u043E\u0436\u0438\u0434\u0430\u043B\u043E\u0441\u044C, \u0447\u0442\u043E ${issue2.origin ?? "\u0437\u043D\u0430\u0447\u0435\u043D\u0438\u0435"} \u0431\u0443\u0434\u0435\u0442 \u0438\u043C\u0435\u0442\u044C ${adj}${issue2.maximum.toString()} ${unit}`;
+          const unit2 = getRussianPlural(maxValue, sizing.unit.one, sizing.unit.few, sizing.unit.many);
+          return `\u0421\u043B\u0438\u0448\u043A\u043E\u043C \u0431\u043E\u043B\u044C\u0448\u043E\u0435 \u0437\u043D\u0430\u0447\u0435\u043D\u0438\u0435: \u043E\u0436\u0438\u0434\u0430\u043B\u043E\u0441\u044C, \u0447\u0442\u043E ${issue2.origin ?? "\u0437\u043D\u0430\u0447\u0435\u043D\u0438\u0435"} \u0431\u0443\u0434\u0435\u0442 \u0438\u043C\u0435\u0442\u044C ${adj}${issue2.maximum.toString()} ${unit2}`;
         }
         return `\u0421\u043B\u0438\u0448\u043A\u043E\u043C \u0431\u043E\u043B\u044C\u0448\u043E\u0435 \u0437\u043D\u0430\u0447\u0435\u043D\u0438\u0435: \u043E\u0436\u0438\u0434\u0430\u043B\u043E\u0441\u044C, \u0447\u0442\u043E ${issue2.origin ?? "\u0437\u043D\u0430\u0447\u0435\u043D\u0438\u0435"} \u0431\u0443\u0434\u0435\u0442 ${adj}${issue2.maximum.toString()}`;
       }
@@ -69756,8 +70324,8 @@ var error46 = () => {
         const sizing = getSizing(issue2.origin);
         if (sizing) {
           const minValue = Number(issue2.minimum);
-          const unit = getRussianPlural(minValue, sizing.unit.one, sizing.unit.few, sizing.unit.many);
-          return `\u0421\u043B\u0438\u0448\u043A\u043E\u043C \u043C\u0430\u043B\u0435\u043D\u044C\u043A\u043E\u0435 \u0437\u043D\u0430\u0447\u0435\u043D\u0438\u0435: \u043E\u0436\u0438\u0434\u0430\u043B\u043E\u0441\u044C, \u0447\u0442\u043E ${issue2.origin} \u0431\u0443\u0434\u0435\u0442 \u0438\u043C\u0435\u0442\u044C ${adj}${issue2.minimum.toString()} ${unit}`;
+          const unit2 = getRussianPlural(minValue, sizing.unit.one, sizing.unit.few, sizing.unit.many);
+          return `\u0421\u043B\u0438\u0448\u043A\u043E\u043C \u043C\u0430\u043B\u0435\u043D\u044C\u043A\u043E\u0435 \u0437\u043D\u0430\u0447\u0435\u043D\u0438\u0435: \u043E\u0436\u0438\u0434\u0430\u043B\u043E\u0441\u044C, \u0447\u0442\u043E ${issue2.origin} \u0431\u0443\u0434\u0435\u0442 \u0438\u043C\u0435\u0442\u044C ${adj}${issue2.minimum.toString()} ${unit2}`;
         }
         return `\u0421\u043B\u0438\u0448\u043A\u043E\u043C \u043C\u0430\u043B\u0435\u043D\u044C\u043A\u043E\u0435 \u0437\u043D\u0430\u0447\u0435\u043D\u0438\u0435: \u043E\u0436\u0438\u0434\u0430\u043B\u043E\u0441\u044C, \u0447\u0442\u043E ${issue2.origin} \u0431\u0443\u0434\u0435\u0442 ${adj}${issue2.minimum.toString()}`;
       }
@@ -84585,6 +85153,13 @@ async function buildInvoicePreview(invoiceDoc, companyId, label, opts = {}) {
 
 // src/mcp/projections.ts
 var MAX_GUESTS = 20;
+function repeatsOf(doc) {
+  return doc.schedule?.interval ? describeSchedule(doc.schedule) : null;
+}
+function planLimitField(doc) {
+  const until = calendarDate(doc.recurringGraceDeadline);
+  return until ? { planLimit: `grace until ${until}` } : {};
+}
 function asRows(value) {
   return Array.isArray(value) ? value : [];
 }
@@ -84615,7 +85190,9 @@ function projectInvoiceList(raw) {
         // Derived server-side, and the one to trust for overdue: `status` can
         // still read "sent" on an invoice whose due date has passed.
         computedStatus: invoice.computedStatus ?? null,
-        paymentStatus: invoice.paymentStatus ?? null
+        paymentStatus: invoice.paymentStatus ?? null,
+        // Null for a one-off; the cadence for a repeating invoice.
+        repeats: repeatsOf(invoice)
       };
     }),
     // Kept whole. An agent that cannot tell there are 46 more pages will report
@@ -84824,8 +85401,47 @@ function projectInvoice(raw) {
       ...rest,
       // Flattened alongside the object, so an agent does not have to reach into
       // a nested shape for the one field it almost always wants.
-      customerName: customerName(customer, { preferCompany: true })
+      customerName: customerName(customer, { preferCompany: true }),
+      repeats: repeatsOf(doc),
+      ...planLimitField(doc)
     }
+  };
+}
+function projectRecurringList(raw) {
+  const result = raw;
+  return {
+    invoices: asRows(result?.items).map((doc) => ({
+      id: doc._id ?? null,
+      invoiceNumber: doc.no ?? null,
+      customerName: customerName(doc.customer, { preferCompany: true }),
+      total: doc.total ?? null,
+      repeats: describeCadence(doc.schedule?.interval),
+      nextRun: calendarDate(doc.schedule?.nextRunDateUtc),
+      until: calendarDate(doc.schedule?.endDate),
+      recurringId: doc.recurringId ?? null,
+      ...planLimitField(doc)
+    })),
+    count: result?.count ?? 0,
+    pageInfo: result?.pageInfo ?? null
+  };
+}
+function projectRecurringHistory(raw) {
+  const result = raw;
+  const head = result?.head;
+  return {
+    generatedFrom: {
+      invoiceNumber: head?.no ?? null,
+      repeats: (head && repeatsOf(head)) ?? NO_LONGER_REPEATING
+    },
+    invoices: asRows(result?.items).map((doc) => ({
+      id: doc._id ?? null,
+      invoiceNumber: doc.no ?? null,
+      date: calendarDate(doc.date),
+      total: doc.total ?? null,
+      status: doc.computedStatus ?? doc.status ?? null
+    })),
+    count: result?.count ?? 0,
+    pageInfo: result?.pageInfo ?? null
   };
 }
 function projectCustomer(raw) {
@@ -84868,6 +85484,7 @@ function projectPaymentLinkList(raw) {
 function projectCreatedInvoice(raw) {
   const doc = raw ?? void 0;
   if (!doc || typeof doc !== "object") return { invoice: null };
+  const repeats = repeatsOf(doc);
   return {
     id: doc._id ?? null,
     invoiceNumber: doc.no ?? null,
@@ -84877,6 +85494,7 @@ function projectCreatedInvoice(raw) {
     dueDate: calendarDate(doc.dueDate),
     status: doc.status ?? null,
     paymentStatus: doc.paymentStatus ?? null,
+    ...repeats ? { repeats } : {},
     // Only when a deposit was actually requested. Echoing it back matters
     // because the caller asked in one unit ("25%") and the document stores
     // another (101.375) — without this the agent reports the percentage it
@@ -84891,12 +85509,14 @@ function projectPlannedInvoice(raw) {
   const doc = raw ?? void 0;
   if (!doc || typeof doc !== "object") return null;
   const customer = doc.customer;
+  const repeats = repeatsOf(doc);
   return {
     invoiceNumber: doc.no ?? null,
     customerName: customerName(customer, { preferCompany: true }),
     total: doc.total ?? null,
     date: calendarDate(doc.date),
     dueDate: calendarDate(doc.dueDate),
+    ...repeats ? { repeats } : {},
     items: asRows(doc.items).map((i) => ({
       name: i.name ?? null,
       quantity: i.quantity ?? null,
@@ -85090,12 +85710,13 @@ function projectPaylinkStatus(link, payments) {
 }
 
 // src/mcp/reads/invoices.ts
+var DOCUMENT_TYPE_ARGS = DOCUMENT_TYPE_NAMES.map((n) => n.replace(/-/g, "_"));
 var invoiceReads = [
   {
     name: "list_invoices",
     group: "invoices",
     title: "List invoices, newest first",
-    description: "List the active company's invoices, most recent first. Filter by status and free-text search, and page through results. For 'who owes me money', filter to overdue plus sent/read/partialPaid and read `amountDue`.\nReturns one row per invoice with exactly these fields: id, invoiceNumber, customerId, customerName, customerEmail, date, dueDate, total, amountDue, status, computedStatus, paymentStatus \u2014 plus pageInfo. `computedStatus` is the one to trust for overdue; `status` can still read 'sent' past the due date. Line items, tax breakdown and payment history are NOT returned here \u2014 fetch a single invoice for those. No currency field: it belongs to the company, see whoami.",
+    description: "List the active company's invoices, most recent first. Filter by status and free-text search, and page through results. For 'who owes me money', filter to overdue plus sent/read/partialPaid and read `amountDue`.\nReturns one row per invoice with exactly these fields: id, invoiceNumber, customerId, customerName, customerEmail, date, dueDate, total, amountDue, status, computedStatus, paymentStatus, repeats (null for a one-off) \u2014 plus pageInfo. `computedStatus` is the one to trust for overdue; `status` can still read 'sent' past the due date. Line items, tax breakdown and payment history are NOT returned here \u2014 fetch a single invoice for those. No currency field: it belongs to the company, see whoami.",
     readOnly: true,
     inputSchema: external_exports.object({
       ...companyScope,
@@ -85113,6 +85734,46 @@ var invoiceReads = [
             page: a.page,
             perPage: a.per_page,
             companyId: a.company_id
+          })
+        )
+      );
+    }
+  },
+  {
+    name: "list_recurring_invoices",
+    group: "invoices",
+    title: "List documents set to repeat",
+    description: "List what is set to repeat \u2014 'what am I billing on repeat?', 'which quotes repeat?'. Invoices unless `document_type` says otherwise. Pass `generated_from` (a repeating invoice id) instead to list what that repeat has produced. To stop one, use update_invoice `stop_repeating`.",
+    readOnly: true,
+    inputSchema: external_exports.object({
+      ...companyScope,
+      document_type: external_exports.enum(DOCUMENT_TYPE_ARGS).optional().describe("Default invoice."),
+      generated_from: external_exports.string().optional().describe("Repeating invoice id, or one it generated: list its history."),
+      ...paging
+    }),
+    run: async (args) => {
+      const a = args;
+      if (a.generated_from && a.document_type) {
+        throw new ValidationError("Pass `generated_from` or `document_type`, not both.");
+      }
+      if (a.generated_from) {
+        return projectRecurringHistory(
+          await listRecurringHistory({
+            invoiceId: a.generated_from,
+            page: a.page,
+            perPage: a.per_page,
+            companyId: a.company_id
+          })
+        );
+      }
+      const docType = a.document_type ? resolveDocumentType(a.document_type).code : void 0;
+      return projectRecurringList(
+        await listRecurringInvoices(
+          compact({
+            page: a.page,
+            perPage: a.per_page,
+            companyId: a.company_id,
+            docType
           })
         )
       );
@@ -85965,14 +86626,14 @@ function buildInvoiceUpdate(invoice, input2) {
     note("amountDue", invoice["amountDue"], totals.amountDue);
   }
   if (input2.dueDate) {
-    const iso = localStartOfDayIso(parseDateOnly(input2.dueDate, labels.dueDate));
-    record2["dueDate"] = iso;
+    const iso2 = localStartOfDayIso(parseDateOnly(input2.dueDate, labels.dueDate));
+    record2["dueDate"] = iso2;
     const date5 = invoice["date"];
     if (typeof date5 === "string") {
-      record2["dueIn"] = computeDueIn(date5, iso);
+      record2["dueIn"] = computeDueIn(date5, iso2);
     }
     record2["removeDueDate"] = false;
-    note("dueDate", invoice["dueDate"], iso);
+    note("dueDate", invoice["dueDate"], iso2);
   }
   if (input2.note !== void 0) {
     record2["note"] = input2.note;
@@ -86009,12 +86670,25 @@ function buildInvoiceUpdate(invoice, input2) {
       );
     }
   }
+  let starts = false;
+  let noopReason;
+  if (input2.schedule) {
+    const plan = buildScheduleChangePlan(invoice, input2.schedule);
+    noopReason = plan.message;
+    if (!plan.noop) {
+      record2["schedule"] = plan.schedule;
+      note("repeats", plan.from, plan.to);
+      starts = plan.starts;
+    }
+  }
   return {
     record: record2,
     invoiceNumber: invoice["no"] ?? null,
     changes,
     noop: changes.length === 0,
-    warnings
+    starts,
+    warnings,
+    ...noopReason ? { noopReason } : {}
   };
 }
 function asRows2(v) {
@@ -86046,6 +86720,23 @@ var lineItem = external_exports.object({
 function planArg(description) {
   return external_exports.boolean().optional().describe(description);
 }
+var unit = external_exports.enum(RECURRING_UNITS);
+var every = external_exports.number().int().min(1).optional().describe("Every N units, default 1 (weeks up to 52, months up to 12).");
+var firstRun = external_exports.string().optional().describe("First repeat, YYYY-MM-DD. Default: invoice date plus one interval.");
+var createRepeatArg = external_exports.object({
+  unit,
+  every,
+  first_run: firstRun
+}).optional().describe(
+  "Repeat schedule. Set it whenever the user says monthly, weekly, every quarter (month, every 3) or ongoing billing \u2014 without it the invoice is a one-off. It runs until stopped: there is no end date (Bookipi doesn't enforce one), so for 'until June' say so and offer to stop it then. Each run may email the customer and uses subscription quota: preview with `plan: true`, show the schedule, get an explicit yes first."
+);
+var updateRepeatArg = external_exports.object({
+  unit: unit.optional(),
+  every,
+  first_run: firstRun
+}).optional().describe(
+  "Same as create_invoice.repeat; unit optional to keep the current one. Starting a repeat on an invoice that isn't repeating needs an explicit yes."
+);
 
 // src/mcp/writes/invoices.ts
 var DUPLICATE_WINDOW_MS = 10 * 60 * 1e3;
@@ -86069,6 +86760,7 @@ function registerInvoiceWrites(server) {
         note: external_exports.string().optional().describe("Note shown on the invoice."),
         deposit: external_exports.string().optional().describe('Deposit request \u2014 a percentage ("10%") or an amount ("50").'),
         deposit_due: external_exports.string().optional().describe("When the deposit is due, YYYY-MM-DD. Requires `deposit`."),
+        repeat: createRepeatArg,
         plan: planArg(
           "Preview only. Returns what would be created \u2014 assigned number, total, deposit \u2014 and writes nothing. Use it to confirm with the user before creating."
         ),
@@ -86099,6 +86791,16 @@ function registerInvoiceWrites(server) {
       }
     },
     async (args) => {
+      const schedule = args.repeat ? buildSchedule(
+        {
+          ...toScheduleChange({
+            every: args.repeat.every,
+            nextRun: args.repeat.first_run
+          }),
+          unit: args.repeat.unit
+        },
+        args.date
+      ) : void 0;
       const draft = await draftInvoice({
         companyId: args.company_id,
         customerId: args.customer_id,
@@ -86108,7 +86810,8 @@ function registerInvoiceWrites(server) {
         ...args.due_date ? { dueDate: args.due_date } : {},
         ...args.note ? { note: args.note } : {},
         ...args.deposit ? { deposit: args.deposit } : {},
-        ...args.deposit_due ? { depositDue: args.deposit_due } : {}
+        ...args.deposit_due ? { depositDue: args.deposit_due } : {},
+        ...schedule ? { schedule } : {}
       });
       const existing = args.number ? null : await recentDuplicate(
         args.company_id,
@@ -86163,7 +86866,7 @@ If this is genuinely a second invoice, pass an explicit \`number\` to say so \u2
     "update_invoice",
     {
       title: "Change an existing invoice",
-      description: 'Edit an invoice that already exists. Amounts are DERIVED, never passed: replacing `items` recomputes the total, and does so against the invoice\'s existing tax, discount, shipping and any payments already recorded \u2014 so what the customer owes stays correct.\nPREVIEW FIRST, more so than on a create. Call with `plan: true` to get back the exact before/after \u2014 "total 900 -> 1200" \u2014 and show it before calling again without `plan`. The user is approving a change to a document that already exists and may already have been sent.\nReplacing `items` replaces ALL of them; there is no per-line edit here. Read the invoice first if you only mean to change one line.\nDeliberately cannot change: the invoice number (a customer already has that reference), the customer, the company, or the status. Recording a payment is a different operation, not a status edit.',
+      description: 'Edit an invoice that already exists. Amounts are DERIVED, never passed: replacing `items` recomputes the total, and does so against the invoice\'s existing tax, discount, shipping and any payments already recorded \u2014 so what the customer owes stays correct.\nPREVIEW FIRST, more so than on a create. Call with `plan: true` to get back the exact before/after \u2014 "total 900 -> 1200" \u2014 and show it before calling again without `plan`. The user is approving a change to a document that already exists and may already have been sent.\nCan start or change a repeat (`repeat`) or end it (`stop_repeating`; invoices already generated are kept).\nReplacing `items` replaces ALL of them; there is no per-line edit here. Read the invoice first if you only mean to change one line.\nDeliberately cannot change: the invoice number (a customer already has that reference), the customer, the company, or the status. Recording a payment is a different operation, not a status edit.',
       inputSchema: {
         invoice_id: external_exports.string().describe("Invoice id, as returned by list_invoices or get_invoice."),
         ...companyScopeArg,
@@ -86177,6 +86880,10 @@ If this is genuinely a second invoice, pass an explicit \`number\` to say so \u2
         ),
         deposit_due: external_exports.string().optional().describe("When the deposit is due, YYYY-MM-DD. Requires `deposit`."),
         remove_deposit: external_exports.boolean().optional().describe("Clear an existing deposit request."),
+        repeat: updateRepeatArg,
+        stop_repeating: external_exports.boolean().optional().describe(
+          "Stop repeating. Not with `repeat`."
+        ),
         plan: planArg(
           "Preview only. Returns the before/after of every field this would change, and writes nothing."
         ),
@@ -86197,6 +86904,9 @@ If this is genuinely a second invoice, pass an explicit \`number\` to say so \u2
       }
     },
     async (args) => {
+      if (args.stop_repeating && args.repeat) {
+        return fail("Pass either `repeat` or `stop_repeating`, not both.");
+      }
       const draft = await draftInvoiceUpdate({
         invoiceId: args.invoice_id,
         ...args.company_id ? { companyId: args.company_id } : {},
@@ -86205,13 +86915,20 @@ If this is genuinely a second invoice, pass an explicit \`number\` to say so \u2
         ...args.note !== void 0 ? { note: args.note } : {},
         ...args.deposit ? { deposit: args.deposit } : {},
         ...args.deposit_due ? { depositDue: args.deposit_due } : {},
-        ...args.remove_deposit ? { removeDeposit: true } : {}
+        ...args.remove_deposit ? { removeDeposit: true } : {},
+        ...args.stop_repeating ? { schedule: "stop" } : args.repeat ? {
+          schedule: toScheduleChange({
+            unit: args.repeat.unit,
+            every: args.repeat.every,
+            nextRun: args.repeat.first_run
+          })
+        } : {}
       });
       if (draft.noop) {
         return ok({
           invoiceNumber: draft.invoiceNumber,
           changes: [],
-          note: "Nothing to change \u2014 the invoice already matches these values."
+          note: draft.noopReason ?? "Nothing to change \u2014 the invoice already matches these values."
         });
       }
       if (args.plan === true) {
@@ -86221,7 +86938,7 @@ If this is genuinely a second invoice, pass an explicit \`number\` to say so \u2
             changes: draft.changes,
             ...draft.warnings.length ? { warnings: draft.warnings } : {}
           },
-          note: "Nothing was changed. Call again without `plan` to apply this."
+          note: "Nothing was changed. Call again without `plan` to apply this." + (draft.starts ? " This starts a repeat: get the user's explicit yes first." : "")
         });
       }
       await updateInvoice(args.invoice_id, draft.record);
@@ -88177,6 +88894,7 @@ async function runMcpStdio(options = {}) {
 // src/mcp/httpServer.ts
 import http from "node:http";
 import { randomUUID as randomUUID2 } from "node:crypto";
+import { isIP } from "node:net";
 import { readFileSync as readFileSync2 } from "node:fs";
 import path11 from "node:path";
 
@@ -90364,6 +91082,10 @@ var SCOPES2 = "openid email profile";
 var ACCESS_TTL = 45 * 60;
 var CODE_TTL = 5 * 60;
 var REFRESH_TTL = 14 * 24 * 3600;
+var BOOKIPI_TOKEN_TTL = REFRESH_TTL;
+var RENEW_MARGIN = 7 * 24 * 3600;
+var MAX_EXCHANGE_BACKOFF = 6 * 3600;
+var DEFAULT_EXCHANGE_BACKOFF = 10 * 60;
 function b64uSha256(input2) {
   return crypto7.createHash("sha256").update(input2).digest("base64url");
 }
@@ -90461,7 +91183,7 @@ async function buildAuthorizeRedirect(query) {
   });
   return { location: `${oidc.authorization_endpoint}?${params}` };
 }
-async function handleCallback(query) {
+async function handleCallback(query, clientIp) {
   const code = query.get("code");
   const sealedState = query.get("state");
   if (!code || !sealedState) {
@@ -90472,6 +91194,11 @@ async function handleCallback(query) {
     state = open2(sealedState);
   } catch {
     return { error: "invalid_state", description: "state failed to decrypt" };
+  }
+  try {
+    assertExchangeAllowed();
+  } catch (err2) {
+    return { error: "exchange_failed", description: err2.message };
   }
   const oidc = await discoverEndpoints();
   const tokenRes = await fetch(oidc.token_endpoint, {
@@ -90492,9 +91219,9 @@ async function handleCallback(query) {
       description: tokenData.error_description ?? "upstream token exchange failed"
     };
   }
-  let bookipiToken;
+  let bookipi;
   try {
-    bookipiToken = await exchangeToken(tokenData.access_token);
+    bookipi = await exchange(tokenData.access_token, clientIp);
   } catch (err2) {
     return {
       error: "exchange_failed",
@@ -90502,11 +91229,12 @@ async function handleCallback(query) {
     };
   }
   const authCode = {
-    bookipiToken,
+    ...bookipi,
     codeChallenge: state.codeChallenge,
     exp: now() + CODE_TTL
   };
   if (tokenData.refresh_token) authCode.upstreamRefresh = tokenData.refresh_token;
+  if (clientIp) authCode.clientIp = clientIp;
   const params = new URLSearchParams({
     code: seal(authCode)
   });
@@ -90514,7 +91242,7 @@ async function handleCallback(query) {
   const clientHost = clientHostOf(state.redirectUri);
   return {
     location: `${state.redirectUri}?${params}`,
-    bookipiToken,
+    bookipiToken: bookipi.bookipiToken,
     ...clientHost ? { clientHost } : {}
   };
 }
@@ -90577,6 +91305,13 @@ async function handleToken(body) {
 }
 async function renewTokens(payload) {
   if (!payload.upstreamRefresh) return issueTokens(payload);
+  const bookipiExp = payload.bookipiExp ?? payload.exp - CODE_TTL;
+  const blocked = exchangeBlockedUntil > now();
+  const usable = bookipiExp > now() && !wasBookipiTokenRejected(payload.bookipiToken);
+  if (usable && (bookipiExp - now() > RENEW_MARGIN || blocked)) {
+    return issueTokens({ ...payload, bookipiExp });
+  }
+  assertExchangeAllowed();
   let refreshed;
   try {
     refreshed = await refreshOidcTokenWith(payload.upstreamRefresh);
@@ -90585,31 +91320,61 @@ async function renewTokens(payload) {
       err2 instanceof Error ? err2.message : "upstream refresh failed"
     );
   }
-  const bookipiToken = await exchangeToken(refreshed.accessToken);
+  const bookipi = await exchange(refreshed.accessToken, payload.clientIp);
   return issueTokens({
-    bookipiToken,
-    // The endpoint does not rotate, so this is normally the token we sent.
-    // `refreshOidcTokenWith` honours a rotated one if the server ever starts
-    // issuing them.
+    ...bookipi,
+    ...payload.clientIp ? { clientIp: payload.clientIp } : {},
+    // Refresh tokens rotate — always carry the returned one.
     upstreamRefresh: refreshed.refreshToken
   });
 }
 var UpstreamRefreshError = class extends Error {
 };
+var exchangeBlockedUntil = 0;
+function assertExchangeAllowed() {
+  const wait = exchangeBlockedUntil - now();
+  if (wait > 0) {
+    throw new Error(
+      `Too many Bookipi sign-ins right now. Please try again after ${Math.ceil(wait / 60)} minutes. (TOO_MANY_REQUESTS)`
+    );
+  }
+}
+async function exchange(accessToken, clientIp) {
+  assertExchangeAllowed();
+  try {
+    const { token, expiresAt } = await exchangeTokenWithExpiry(accessToken, {
+      clientIp
+    });
+    if (expiresAt === void 0) {
+      console.warn(
+        "[mcp] exchange returned no readable expiration; assuming 14 days"
+      );
+    }
+    return {
+      bookipiToken: token,
+      bookipiExp: expiresAt ?? now() + BOOKIPI_TOKEN_TTL
+    };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "";
+    if (message.includes("TOO_MANY_REQUESTS")) {
+      const m = message.match(/after (\d+) (minute|second)/);
+      const backoff = m ? Number(m[1]) * (m[2] === "minute" ? 60 : 1) : DEFAULT_EXCHANGE_BACKOFF;
+      exchangeBlockedUntil = now() + Math.min(backoff, MAX_EXCHANGE_BACKOFF);
+    }
+    throw e;
+  }
+}
 function issueTokens(src) {
   const access = {
     bookipiToken: src.bookipiToken,
     exp: now() + ACCESS_TTL,
     typ: "access"
   };
+  if (src.bookipiExp) access.bookipiExp = src.bookipiExp;
   if (src.upstreamRefresh) access.upstreamRefresh = src.upstreamRefresh;
+  if (src.clientIp) access.clientIp = src.clientIp;
   const accessToken = seal(access);
-  const refreshToken = seal({
-    bookipiToken: src.bookipiToken,
-    ...src.upstreamRefresh ? { upstreamRefresh: src.upstreamRefresh } : {},
-    exp: now() + REFRESH_TTL,
-    typ: "refresh"
-  });
+  const refreshToken = seal({ ...access, exp: now() + REFRESH_TTL, typ: "refresh" });
   return {
     access_token: accessToken,
     token_type: "Bearer",
@@ -90631,7 +91396,11 @@ function inspectAccessToken(token) {
   if (payload.exp < now()) return { status: "expired" };
   if (payload.typ === "refresh") return { status: "expired" };
   if (!payload.bookipiToken) return { status: "unreadable" };
-  return { status: "ok", bookipiToken: payload.bookipiToken };
+  return {
+    status: "ok",
+    bookipiToken: payload.bookipiToken,
+    ...payload.clientIp ? { clientIp: payload.clientIp } : {}
+  };
 }
 function wwwAuthenticate() {
   return `Bearer realm="OAuth", resource_metadata="${issuer()}/.well-known/oauth-protected-resource"`;
@@ -90721,10 +91490,10 @@ function sendJsonRpcError(res, status, code, message, extraHeaders = {}) {
   });
   res.end(JSON.stringify({ jsonrpc: "2.0", error: { code, message }, id: null }));
 }
-async function resolveIdentityForToken(token) {
+async function resolveIdentityForToken(token, clientIp) {
   const hit = cachedIdentity(token);
   if (hit) return hit;
-  const identity = await runWithRequestAuth({ token }, async () => {
+  const identity = await runWithRequestAuth({ token, ...clientIp ? { clientIp } : {} }, async () => {
     const data = await whoami();
     const me = data?.whoami ?? {};
     const email3 = typeof me.email === "string" ? me.email : null;
@@ -90772,7 +91541,7 @@ async function authContext(req) {
     }
     return {
       ok: true,
-      ctx: { ...await withIdentity(check2.bookipiToken), authMode: "oauth" }
+      ctx: { ...await withIdentity(check2.bookipiToken, check2.clientIp), authMode: "oauth" }
     };
   }
   return {
@@ -90796,10 +91565,11 @@ function authKindFor(header) {
   const status = inspectAccessToken(token).status;
   return status === "ok" ? "broker" : `broker/${status}`;
 }
-async function withIdentity(bookipiToken) {
+async function withIdentity(bookipiToken, clientIp) {
   const ctx = { token: bookipiToken };
+  if (clientIp) ctx.clientIp = clientIp;
   try {
-    const identity = await resolveIdentityForToken(bookipiToken);
+    const identity = await resolveIdentityForToken(bookipiToken, clientIp);
     ctx.companyId = identity.companyId;
     if (identity.analyticsUserId) ctx.analyticsUserId = identity.analyticsUserId;
     if (identity.internalTesterEmail) {
@@ -90813,10 +91583,10 @@ async function withIdentity(bookipiToken) {
   }
   return ctx;
 }
-async function reportConnectorLogin(bookipiToken, clientHost) {
+async function reportConnectorLogin(bookipiToken, clientHost, clientIp) {
   try {
     const ctx = {
-      ...await withIdentity(bookipiToken),
+      ...await withIdentity(bookipiToken, clientIp),
       authMode: "oauth"
     };
     await runWithRequestAuth(
@@ -90999,10 +91769,11 @@ async function handleHttp(req, res) {
   }
   if (method === "GET" && path12 === "/oauth/callback") {
     try {
-      const result = await handleCallback(search);
+      const clientIp = clientIpOf(req);
+      const result = await handleCallback(search, clientIp);
       if ("location" in result) {
         redirect2(res, result.location);
-        void reportConnectorLogin(result.bookipiToken, result.clientHost);
+        void reportConnectorLogin(result.bookipiToken, result.clientHost, clientIp);
       } else sendJson(res, 400, result);
     } catch (e) {
       sendJson(res, 500, {
@@ -91135,6 +91906,11 @@ function installShutdownHandler(server) {
   };
   process.on("SIGTERM", () => shutdown("SIGTERM"));
   process.on("SIGINT", () => shutdown("SIGINT"));
+}
+function clientIpOf(req) {
+  const raw = req.headers["x-real-ip"];
+  const ip = (Array.isArray(raw) ? raw[0] : raw)?.trim();
+  return ip && isIP(ip) ? ip : void 0;
 }
 
 // src/commands/mcp.ts
