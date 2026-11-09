@@ -22,6 +22,8 @@ crossed against the GitHub names, so confirm `git remote -v` before editing.)
 | `assets/` | same path |
 | `examples/` | same path |
 | `server.json` (MCP Registry listing) | same path |
+| `CHANGELOG.md` | same path |
+| `docs/connector.md` | same path |
 
 Version strings in all four manifests and `server.json` are **stamped at publish time** from the
 source repo's `package.json`. Never bump them here — the plugin cache is keyed
@@ -29,7 +31,7 @@ by version, so a mismatch ships a manifest claiming the wrong release.
 
 ### Maintained here (safe to edit)
 
-`README.md`, `SECURITY.md`, `LICENSE`, `CHANGELOG.md`,
+`README.md`, `SECURITY.md`, `LICENSE`,
 `.github/ISSUE_TEMPLATE/`, `.github/workflows/release.yml` (the `.skill`
 bundle smoke test — distinct from the source repo's release pipeline of the
 same name), and `.github/workflows/publish-mcp.yml` (sends `server.json` to
@@ -43,8 +45,9 @@ instead: `publish-plugin.mjs` refuses to stage on a bad `./skills/` path,
 missing branding asset or bad MCP endpoint (`scripts/verify-plugin.mjs`), and
 stamps every manifest's version itself; CI runs it with `--dry-run`. Don't add it back.
 
-`CHANGELOG.md` is written by hand here, one section per release. Nothing
-generates it — add the entry when the release ships.
+`CHANGELOG.md` and `docs/connector.md` are published from the source repo.
+They used to be written here, and the changelog stopped at 0.38.1 while
+releases went on to 0.47.0. Edit them in the source repo.
 
 ## To change a skill or a manifest
 

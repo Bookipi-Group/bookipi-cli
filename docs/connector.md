@@ -1,3 +1,5 @@
+<!-- Edit this in Bookipi-Group/bookipi-agent-cli; a release publishes it to Bookipi-Group/bookipi-cli, where its relative links resolve. -->
+
 # Bookipi connector
 
 The Bookipi connector is a hosted [MCP](https://modelcontextprotocol.io) server
@@ -100,9 +102,31 @@ data is untouched — it lives in your Bookipi account either way.
 
 This repo also ships the [Bookipi CLI skill](../README.md) — a different way to
 use Bookipi from chat, where Claude drives a locally installed CLI. The skill
-offers some flows the connector doesn't (and vice versa); the connector is the
-zero-setup option and the only one that works on claude.ai in the browser. You
-don't need both.
+offers some flows the connector doesn't; the connector is the zero-setup
+option and the only one that works on claude.ai in the browser. You don't need
+both. When the skill finds Bookipi connector tools in a session (including the
+Gemini CLI extension, which bundles the connector), it uses them and not the
+CLI, so the limits below apply there too.
+
+## What the connector doesn't do
+
+The items below are known differences, not bugs. Everything else the CLI does
+has a connector tool.
+
+| You ask for… | CLI | Connector |
+| --- | --- | --- |
+| A quote, estimate, credit note, delivery note or purchase order | `invoice create --type estimate` (and the other types) | **Not yet.** `create_invoice` only makes invoices. `copy_invoice` can convert an existing invoice into another type, but that needs an invoice to copy first. |
+| Listing estimates and other non-invoice documents, or filtering by customer or date | `invoice list --type`, `--customer`, `--from`, `--to`, `--sort` | `list_invoices` lists invoices only, filtered by status and a text search. `list_recurring_invoices` does take `document_type`. |
+| Changing an invoice's status or number, or editing one line item | `invoice update --status`, `--number`, `--add-item`, `--set-item`, `--remove-item`, `--reset-status` | `update_invoice` replaces the whole `items` list; it can't set the status or number. |
+| Scanning a receipt or attaching a photo from your computer | `expense scan`, `expense upload`, `item set-photo`, `invoice create --photo` | The hosted connector can't read your disk, and there is no way to send it the file yet. It works only when the MCP server runs locally (`bookipi mcp`). |
+| Uploading your own PDF as an eSign contract | `contract upload` | Not available. Draft one with `draft_contract` instead. |
+| The staged overdue-collections ladder (gentle, firm, final) | `invoice collections` | `remind_invoice` sends one reminder per invoice; it picks gentler wording for invoices not yet overdue. |
+| Switching the default company | `company set` | Pass `company_id` on each call; `whoami` lists the companies. |
+| Sign-in, workspace setup, calendar setup | `login`, `setup`, `init`, `calendar` | Not needed: sign-in happens when you connect. `calendar_status` reports the calendar connection. |
+
+Both ask before anything that emails someone, records a payment, publishes or
+deletes. On the CLI that is `--yes`; on the connector it is a preview (`plan`)
+followed by your OK.
 
 ## Support and policies
 
