@@ -29,8 +29,9 @@ expenses by category, pipeline deals, proposals and contracts and where each
 one stands, recorded meetings with transcripts and summaries, revenue and
 top-customer reports, and the state of the company website.
 
-**Writes:** create and send invoices; record payments and issue receipts; copy
-an invoice into an estimate, credit note, delivery note or purchase order; send
+**Writes:** create and send invoices; create estimates, credit notes, delivery
+notes and purchase orders; record payments and issue receipts; copy an invoice
+into another document type; send
 reminders on overdue invoices; add customers and catalogue items; log expenses
 from a photographed receipt; move deals through the pipeline; draft and send
 proposals; prepare eSign contracts; and edit and publish the website.
@@ -115,8 +116,7 @@ has a connector tool.
 
 | You ask for… | CLI | Connector |
 | --- | --- | --- |
-| A quote, estimate, credit note, delivery note or purchase order | `invoice create --type estimate` (and the other types) | **Not yet.** `create_invoice` only makes invoices. `copy_invoice` can convert an existing invoice into another type, but that needs an invoice to copy first. |
-| Listing estimates and other non-invoice documents, or filtering by customer or date | `invoice list --type`, `--customer`, `--from`, `--to`, `--sort` | `list_invoices` lists invoices only, filtered by status and a text search. `list_recurring_invoices` does take `document_type`. |
+| Filtering the list by customer or date, or sorting it | `invoice list --customer`, `--from`, `--to`, `--sort` | `list_invoices` filters by status, document type and a text search. |
 | Changing an invoice's status or number, or editing one line item | `invoice update --status`, `--number`, `--add-item`, `--set-item`, `--remove-item`, `--reset-status` | `update_invoice` replaces the whole `items` list; it can't set the status or number. |
 | Scanning a receipt or attaching a photo from your computer | `expense scan`, `expense upload`, `item set-photo`, `invoice create --photo` | The hosted connector can't read your disk, and there is no way to send it the file yet. It works only when the MCP server runs locally (`bookipi mcp`). |
 | Uploading your own PDF as an eSign contract | `contract upload` | Not available. Draft one with `draft_contract` instead. |
