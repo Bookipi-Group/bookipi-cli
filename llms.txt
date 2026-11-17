@@ -13,7 +13,7 @@ Key facts for agents:
 ## Connect over MCP (no install)
 
 - Server URL: `https://mcp.bookipi.com/mcp` (streamable HTTP, OAuth). Listed in the official MCP Registry as `io.github.Bookipi-Group/bookipi`.
-- claude.ai or Claude Desktop: Settings → Connectors → Add custom connector, paste the URL.
+- claude.ai or Claude Desktop: Customize → Connectors → Add custom connector, paste the URL.
 - ChatGPT: the Bookipi app is in the ChatGPT app directory. Open Apps, search "Bookipi", click Connect and sign in. Same connector, minus receipt and photo uploads (those need a local file).
 - Claude Code: `claude mcp add --transport http bookipi https://mcp.bookipi.com/mcp`.
 - Gemini CLI: the extension below bundles the connector; run `/mcp auth bookipi` once to sign in.
