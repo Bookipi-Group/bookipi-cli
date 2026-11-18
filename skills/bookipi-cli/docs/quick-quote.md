@@ -11,7 +11,7 @@ The proposal-and-close flow that **every** sale starts with — regardless of wh
 > **Always load this doc first** when the user wants to draft, edit, or send a proposal — even if their prompt mentions "contract", "agreement", "MSA", or "sign". Reasons:
 >
 > 1. The contract step requires an **accepted** proposal as input. Acceptance happens externally (the customer clicks a link in their email). You can't bridge it in one session.
-> 2. Drafting the contract preemptively (before acceptance) wastes ~25-30s of AI generation if the customer rejects.
+> 2. Writing the contract preemptively (before acceptance) is wasted work if the customer rejects.
 > 3. Half 1 is identical for both flows — duplicating it across docs creates routing confusion.
 >
 > **Examples that ALL route here**, not to `win-deal.md`:
@@ -23,7 +23,7 @@ The proposal-and-close flow that **every** sale starts with — regardless of wh
 >
 > **Only after the customer accepts** does the flow fork:
 >
-> - *"Bruce accepted, draft the contract"* → load `win-deal.md` (Phase 2 — contract draft + send + signing)
+> - *"Bruce accepted, draft the contract"* → load `win-deal.md` (Phase 2 — write the contract, prepare it in eSign, send on the user's OK)
 > - *"Bruce accepted, send the invoice"* → stay here, run Half 2 (invoice direct, no contract)
 >
 > If the user's post-acceptance prompt is ambiguous (just *"Bruce accepted"* or *"close it out"*), **ask one targeted question via `AskUserQuestion`** (see `common.md` § Confirmation Style): *"Want me to draft a contract for sign-off first, or invoice direct?"* with choices `["Invoice direct", "Draft contract first", "Not yet"]`.
@@ -317,6 +317,9 @@ User: "draft a proposal for Maria for ₱75k SEO retainer"
      -s "Proposal — SEO retainer" \
      -m "Hi Maria, here's the proposal we discussed..." \
      --advance-deal                                  [DESTRUCTIVE]
+   → `-s` and `-m` are optional: without them the email goes out as
+     "Proposal from <company>" with Bookipi's standard message, the same
+     defaults as the web app. Pass them only for wording the user asked for.
    → status=sent. The `--advance-deal` flag also bumps the linked deal to
      `proposal` stage automatically (only if it's not already there or past).
      See common.md § Deal Stage Auto-Progression for the precedence rules.

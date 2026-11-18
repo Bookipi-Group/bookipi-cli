@@ -312,7 +312,7 @@ Never silently pick the first match. That's how the agent ends up acting on the 
 
 ## Web URLs returned by the CLI are auto-authenticated
 
-Web URLs returned by `contract create-from-proposal`, `contract finalize`,
+Web URLs returned by `contract upload`,
 `calendar status` (when disconnected), and similar commands include
 `authToken`/`authRefreshToken`/`expireAt` query params by default. When the
 user clicks the link, the Bookipi web app reads those params and skips the

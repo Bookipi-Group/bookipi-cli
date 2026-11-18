@@ -73,7 +73,8 @@ bookipi invoice duplicate @i1
 bookipi invoice duplicate 696f8a656eca5c6c312c9cfb --timezone "Europe/Dublin"
 bookipi invoice duplicate @i1 --customer "Acme Corp"   # reissue the copy to a different customer
 # Duplicate AND convert to another document type — "duplicate this invoice into an
-# estimate" → --type (alias --as). The copy is renumbered with the new prefix (EST-…).
+# estimate" → --type (alias --as). The copy is renumbered with that type's prefix
+# from the company's numbering settings (by default `estimate-1`, `estimate-2`, …).
 bookipi invoice duplicate @i1 --type estimate          # invoice → estimate (aka a quote document)
 bookipi invoice duplicate @i1 --as credit-note         # invoice → credit note
 # Copy into a DIFFERENT company you own (customer re-created there, numbered in
@@ -123,6 +124,9 @@ bookipi invoice attach-photo @i1 -f ./final.jpg --replace     # replace ALL exis
 # Send an invoice by email
 bookipi invoice send @i1 -r customer@example.com --yes
 bookipi invoice send @i1 -r a@test.com,b@test.com -b bcc@test.com -s "Your invoice" -m "Please find attached" --yes
+# No -m: the email carries Bookipi's default message, the same one the web app
+# pre-fills ("Hi Jenny, Here's invoice INV-1 for $900.00, due Nov 20, 2026. … Thank you!").
+# Pass -m only when the user gave you wording of their own.
 
 # Email a PAYMENT RECEIPT for a paid invoice (amount defaults to the invoice total)
 bookipi invoice send-receipt @i1 --yes
@@ -138,7 +142,8 @@ This is a common mis-route. Bookipi has **two different things** people call a "
 
 - **Estimate** (aka a **quote / quotation document**) — a priced document built from
   line items, in the **same family as invoices** and handled by the **`invoice`
-  command** with `--type estimate`. It has its own numbering (`EST-…`), lists via
+  command** with `--type estimate`. It has its own numbering, with the prefix
+  the company set (by default `estimate-1`, `estimate-2`, …), lists via
   `invoice list --type estimate`, converts from an invoice via `invoice duplicate
   … --type estimate`, and is sent with `invoice send`. Credit notes, delivery
   notes, and purchase orders are the same family (`--type credit-note` / etc.).
@@ -181,7 +186,7 @@ bookipi invoice remind --send --subject "URGENT: {amount} due {days}d" \
   --message "Invoice {no} for {amount} was due {dueDate}. Please pay now."
 ```
 
-Template placeholders for `--subject`/`--message`: `{no}`, `{amount}`, `{days}`, `{dueDate}`
+Template placeholders for `--subject`/`--message`: `{no}` (the invoice's own number, e.g. `invoice-1` — don't add a prefix), `{amount}`, `{days}`, `{dueDate}` (in the company's own date format, e.g. `17/11/2026` or `17 Nov 2026`)
 
 **Language:** the built-in reminder templates are English. If the company's
 language isn't English (check the company record / how the user writes),

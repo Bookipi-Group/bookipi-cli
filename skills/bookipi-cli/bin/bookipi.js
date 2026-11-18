@@ -51,7 +51,7 @@ import {
   uploadItemImage,
   useConfigDir,
   wasBookipiTokenRejected
-} from "./chunks/chunk-4GIBX5LF.js";
+} from "./chunks/chunk-BPJB2YU3.js";
 import {
   __commonJS,
   __export,
@@ -1222,8 +1222,8 @@ var require_command = __commonJS({
   "node_modules/.pnpm/commander@14.0.3/node_modules/commander/lib/command.js"(exports) {
     var EventEmitter = __require("node:events").EventEmitter;
     var childProcess = __require("node:child_process");
-    var path12 = __require("node:path");
-    var fs10 = __require("node:fs");
+    var path11 = __require("node:path");
+    var fs9 = __require("node:fs");
     var process3 = __require("node:process");
     var { Argument: Argument2, humanReadableArgName } = require_argument();
     var { CommanderError: CommanderError2 } = require_error();
@@ -2217,7 +2217,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @param {string} subcommandName
        */
       _checkForMissingExecutable(executableFile, executableDir, subcommandName) {
-        if (fs10.existsSync(executableFile)) return;
+        if (fs9.existsSync(executableFile)) return;
         const executableDirMessage = executableDir ? `searched for local subcommand relative to directory '${executableDir}'` : "no directory for search for local subcommand, use .executableDir() to supply a custom directory";
         const executableMissing = `'${executableFile}' does not exist
  - if '${subcommandName}' is not meant to be an executable command, remove description parameter from '.command()' and use '.description()' instead
@@ -2235,11 +2235,11 @@ Expecting one of '${allowedValues.join("', '")}'`);
         let launchWithNode = false;
         const sourceExt = [".js", ".ts", ".tsx", ".mjs", ".cjs"];
         function findFile(baseDir, baseName) {
-          const localBin = path12.resolve(baseDir, baseName);
-          if (fs10.existsSync(localBin)) return localBin;
-          if (sourceExt.includes(path12.extname(baseName))) return void 0;
+          const localBin = path11.resolve(baseDir, baseName);
+          if (fs9.existsSync(localBin)) return localBin;
+          if (sourceExt.includes(path11.extname(baseName))) return void 0;
           const foundExt = sourceExt.find(
-            (ext) => fs10.existsSync(`${localBin}${ext}`)
+            (ext) => fs9.existsSync(`${localBin}${ext}`)
           );
           if (foundExt) return `${localBin}${foundExt}`;
           return void 0;
@@ -2251,21 +2251,21 @@ Expecting one of '${allowedValues.join("', '")}'`);
         if (this._scriptPath) {
           let resolvedScriptPath;
           try {
-            resolvedScriptPath = fs10.realpathSync(this._scriptPath);
+            resolvedScriptPath = fs9.realpathSync(this._scriptPath);
           } catch {
             resolvedScriptPath = this._scriptPath;
           }
-          executableDir = path12.resolve(
-            path12.dirname(resolvedScriptPath),
+          executableDir = path11.resolve(
+            path11.dirname(resolvedScriptPath),
             executableDir
           );
         }
         if (executableDir) {
           let localFile = findFile(executableDir, executableFile);
           if (!localFile && !subcommand._executableFile && this._scriptPath) {
-            const legacyName = path12.basename(
+            const legacyName = path11.basename(
               this._scriptPath,
-              path12.extname(this._scriptPath)
+              path11.extname(this._scriptPath)
             );
             if (legacyName !== this._name) {
               localFile = findFile(
@@ -2276,7 +2276,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
           }
           executableFile = localFile || executableFile;
         }
-        launchWithNode = sourceExt.includes(path12.extname(executableFile));
+        launchWithNode = sourceExt.includes(path11.extname(executableFile));
         let proc;
         if (process3.platform !== "win32") {
           if (launchWithNode) {
@@ -3191,7 +3191,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @return {Command}
        */
       nameFromFilename(filename) {
-        this._name = path12.basename(filename, path12.extname(filename));
+        this._name = path11.basename(filename, path11.extname(filename));
         return this;
       }
       /**
@@ -3205,9 +3205,9 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @param {string} [path]
        * @return {(string|null|Command)}
        */
-      executableDir(path13) {
-        if (path13 === void 0) return this._executableDir;
-        this._executableDir = path13;
+      executableDir(path12) {
+        if (path12 === void 0) return this._executableDir;
+        this._executableDir = path12;
         return this;
       }
       /**
@@ -4594,14 +4594,14 @@ var require_util = __commonJS({
         }
         const port = url2.port != null ? url2.port : url2.protocol === "https:" ? 443 : 80;
         let origin = url2.origin != null ? url2.origin : `${url2.protocol || ""}//${url2.hostname || ""}:${port}`;
-        let path12 = url2.path != null ? url2.path : `${url2.pathname || ""}${url2.search || ""}`;
+        let path11 = url2.path != null ? url2.path : `${url2.pathname || ""}${url2.search || ""}`;
         if (origin[origin.length - 1] === "/") {
           origin = origin.slice(0, origin.length - 1);
         }
-        if (path12 && path12[0] !== "/") {
-          path12 = `/${path12}`;
+        if (path11 && path11[0] !== "/") {
+          path11 = `/${path11}`;
         }
-        return new URL(`${origin}${path12}`);
+        return new URL(`${origin}${path11}`);
       }
       if (!isHttpOrHttpsPrefixed(url2.origin || url2.protocol)) {
         throw new InvalidArgumentError2("Invalid URL protocol: the URL must start with `http:` or `https:`.");
@@ -5422,9 +5422,9 @@ var require_diagnostics = __commonJS({
         "undici:client:sendHeaders",
         (evt) => {
           const {
-            request: { method, path: path12, origin }
+            request: { method, path: path11, origin }
           } = evt;
-          debugLog("sending request to %s %s%s", method, origin, path12);
+          debugLog("sending request to %s %s%s", method, origin, path11);
         }
       );
     }
@@ -5442,14 +5442,14 @@ var require_diagnostics = __commonJS({
         "undici:request:headers",
         (evt) => {
           const {
-            request: { method, path: path12, origin },
+            request: { method, path: path11, origin },
             response: { statusCode }
           } = evt;
           debugLog(
             "received response to %s %s%s - HTTP %d",
             method,
             origin,
-            path12,
+            path11,
             statusCode
           );
         }
@@ -5458,23 +5458,23 @@ var require_diagnostics = __commonJS({
         "undici:request:trailers",
         (evt) => {
           const {
-            request: { method, path: path12, origin }
+            request: { method, path: path11, origin }
           } = evt;
-          debugLog("trailers received from %s %s%s", method, origin, path12);
+          debugLog("trailers received from %s %s%s", method, origin, path11);
         }
       );
       diagnosticsChannel.subscribe(
         "undici:request:error",
         (evt) => {
           const {
-            request: { method, path: path12, origin },
+            request: { method, path: path11, origin },
             error: error62
           } = evt;
           debugLog(
             "request to %s %s%s errored - %s",
             method,
             origin,
-            path12,
+            path11,
             error62.message
           );
         }
@@ -5589,7 +5589,7 @@ var require_request = __commonJS({
     var kHandler = /* @__PURE__ */ Symbol("handler");
     var Request2 = class {
       constructor(origin, {
-        path: path12,
+        path: path11,
         method,
         body,
         headers,
@@ -5606,11 +5606,11 @@ var require_request = __commonJS({
         maxRedirections,
         typeOfService
       }, handler) {
-        if (typeof path12 !== "string") {
+        if (typeof path11 !== "string") {
           throw new InvalidArgumentError2("path must be a string");
-        } else if (path12[0] !== "/" && !(path12.startsWith("http://") || path12.startsWith("https://")) && method !== "CONNECT") {
+        } else if (path11[0] !== "/" && !(path11.startsWith("http://") || path11.startsWith("https://")) && method !== "CONNECT") {
           throw new InvalidArgumentError2("path must be an absolute URL or start with a slash");
-        } else if (invalidPathRegex.test(path12)) {
+        } else if (invalidPathRegex.test(path11)) {
           throw new InvalidArgumentError2("invalid request path");
         }
         if (typeof method !== "string") {
@@ -5685,7 +5685,7 @@ var require_request = __commonJS({
         this.completed = false;
         this.aborted = false;
         this.upgrade = upgrade || null;
-        this.path = query ? serializePathWithQuery(path12, query) : path12;
+        this.path = query ? serializePathWithQuery(path11, query) : path11;
         this.origin = origin;
         this.protocol = getProtocolFromUrlString(origin);
         this.idempotent = idempotent == null ? method === "HEAD" || method === "GET" : idempotent;
@@ -7923,8 +7923,8 @@ var require_webidl = __commonJS({
       return new TypeError(`${message.header}: ${message.message}`);
     };
     webidl.errors.conversionFailed = function(opts) {
-      const plural2 = opts.types.length === 1 ? "" : " one of";
-      const message = `${opts.argument} could not be converted to${plural2}: ${opts.types.join(", ")}.`;
+      const plural3 = opts.types.length === 1 ? "" : " one of";
+      const message = `${opts.argument} could not be converted to${plural3}: ${opts.types.join(", ")}.`;
       return webidl.errors.exception({
         header: opts.prefix,
         message
@@ -10910,7 +10910,7 @@ var require_client_h1 = __commonJS({
       return method !== "GET" && method !== "HEAD" && method !== "OPTIONS" && method !== "TRACE" && method !== "CONNECT";
     }
     function writeH1(client, request) {
-      const { method, path: path12, host, upgrade, blocking, reset } = request;
+      const { method, path: path11, host, upgrade, blocking, reset } = request;
       let { body, headers, contentLength } = request;
       const expectsPayload = method === "PUT" || method === "POST" || method === "PATCH" || method === "QUERY" || method === "PROPFIND" || method === "PROPPATCH";
       if (util2.isFormDataLike(body)) {
@@ -10988,7 +10988,7 @@ var require_client_h1 = __commonJS({
       if (socket.setTypeOfService) {
         socket.setTypeOfService(request.typeOfService);
       }
-      let header = `${method} ${path12} HTTP/1.1\r
+      let header = `${method} ${path11} HTTP/1.1\r
 `;
       if (typeof host === "string") {
         header += `host: ${host}\r
@@ -11665,7 +11665,7 @@ var require_client_h2 = __commonJS({
       const headersTimeout = request.headersTimeout ?? client[kHeadersTimeout];
       const bodyTimeout = request.bodyTimeout ?? client[kBodyTimeout];
       const session = client[kHTTP2Session];
-      const { method, path: path12, host, upgrade, expectContinue, signal, protocol, headers: reqHeaders } = request;
+      const { method, path: path11, host, upgrade, expectContinue, signal, protocol, headers: reqHeaders } = request;
       let { body } = request;
       if (upgrade != null && upgrade !== "websocket") {
         util2.errorRequest(client, request, new InvalidArgumentError2(`Custom upgrade "${upgrade}" not supported over HTTP/2`));
@@ -11734,7 +11734,7 @@ var require_client_h2 = __commonJS({
           }
           headers[HTTP2_HEADER_METHOD] = "CONNECT";
           headers[HTTP2_HEADER_PROTOCOL] = "websocket";
-          headers[HTTP2_HEADER_PATH] = path12;
+          headers[HTTP2_HEADER_PATH] = path11;
           if (protocol === "ws:" || protocol === "wss:") {
             headers[HTTP2_HEADER_SCHEME] = protocol === "ws:" ? "http" : "https";
           } else {
@@ -11786,7 +11786,7 @@ var require_client_h2 = __commonJS({
         stream.setTimeout(headersTimeout);
         return true;
       }
-      headers[HTTP2_HEADER_PATH] = path12;
+      headers[HTTP2_HEADER_PATH] = path11;
       headers[HTTP2_HEADER_SCHEME] = protocol === "http:" ? "http" : "https";
       const expectsPayload = method === "PUT" || method === "POST" || method === "PATCH";
       if (body && typeof body.read === "function") {
@@ -14142,10 +14142,10 @@ var require_proxy_agent = __commonJS({
         };
         const {
           origin,
-          path: path12 = "/",
+          path: path11 = "/",
           headers = {}
         } = opts;
-        opts.path = origin + path12;
+        opts.path = origin + path11;
         if (!("host" in headers) && !("Host" in headers)) {
           const { host } = new URL(origin);
           headers.host = host;
@@ -16305,20 +16305,20 @@ var require_mock_utils = __commonJS({
       }
       return normalizedQp;
     }
-    function safeUrl(path12) {
-      if (typeof path12 !== "string") {
-        return path12;
+    function safeUrl(path11) {
+      if (typeof path11 !== "string") {
+        return path11;
       }
-      const pathSegments = path12.split("?", 3);
+      const pathSegments = path11.split("?", 3);
       if (pathSegments.length !== 2) {
-        return path12;
+        return path11;
       }
       const qp = new URLSearchParams(pathSegments.pop());
       qp.sort();
       return [...pathSegments, qp.toString()].join("?");
     }
-    function matchKey(mockDispatch2, { path: path12, method, body, headers }) {
-      const pathMatch = matchValue(mockDispatch2.path, path12);
+    function matchKey(mockDispatch2, { path: path11, method, body, headers }) {
+      const pathMatch = matchValue(mockDispatch2.path, path11);
       const methodMatch = matchValue(mockDispatch2.method, method);
       const bodyMatch = typeof mockDispatch2.body !== "undefined" ? matchValue(mockDispatch2.body, body) : true;
       const headersMatch = matchHeaders(mockDispatch2, headers);
@@ -16343,8 +16343,8 @@ var require_mock_utils = __commonJS({
       const basePath = key2.query ? serializePathWithQuery(key2.path, key2.query) : key2.path;
       const resolvedPath = typeof basePath === "string" ? safeUrl(basePath) : basePath;
       const resolvedPathWithoutTrailingSlash = removeTrailingSlash(resolvedPath);
-      let matchedMockDispatches = mockDispatches.filter(({ consumed }) => !consumed).filter(({ path: path12, ignoreTrailingSlash }) => {
-        return ignoreTrailingSlash ? matchValue(removeTrailingSlash(safeUrl(path12)), resolvedPathWithoutTrailingSlash) : matchValue(safeUrl(path12), resolvedPath);
+      let matchedMockDispatches = mockDispatches.filter(({ consumed }) => !consumed).filter(({ path: path11, ignoreTrailingSlash }) => {
+        return ignoreTrailingSlash ? matchValue(removeTrailingSlash(safeUrl(path11)), resolvedPathWithoutTrailingSlash) : matchValue(safeUrl(path11), resolvedPath);
       });
       if (matchedMockDispatches.length === 0) {
         throw new MockNotMatchedError(`Mock dispatch not matched for path '${resolvedPath}'`);
@@ -16383,19 +16383,19 @@ var require_mock_utils = __commonJS({
         mockDispatches.splice(index, 1);
       }
     }
-    function removeTrailingSlash(path12) {
-      while (path12.endsWith("/")) {
-        path12 = path12.slice(0, -1);
+    function removeTrailingSlash(path11) {
+      while (path11.endsWith("/")) {
+        path11 = path11.slice(0, -1);
       }
-      if (path12.length === 0) {
-        path12 = "/";
+      if (path11.length === 0) {
+        path11 = "/";
       }
-      return path12;
+      return path11;
     }
     function buildKey(opts) {
-      const { path: path12, method, body, headers, query } = opts;
+      const { path: path11, method, body, headers, query } = opts;
       return {
-        path: path12,
+        path: path11,
         method,
         body,
         headers,
@@ -17085,10 +17085,10 @@ var require_pending_interceptors_formatter = __commonJS({
       }
       format(pendingInterceptors) {
         const withPrettyHeaders = pendingInterceptors.map(
-          ({ method, path: path12, data: { statusCode }, persist, times, timesInvoked, origin }) => ({
+          ({ method, path: path11, data: { statusCode }, persist, times, timesInvoked, origin }) => ({
             Method: method,
             Origin: origin,
-            Path: path12,
+            Path: path11,
             "Status code": statusCode,
             Persistent: persist ? PERSISTENT : NOT_PERSISTENT,
             Invocations: timesInvoked,
@@ -17170,9 +17170,9 @@ var require_mock_agent = __commonJS({
         const acceptNonStandardSearchParameters = this[kMockAgentAcceptsNonStandardSearchParameters];
         const dispatchOpts = { ...opts };
         if (acceptNonStandardSearchParameters && dispatchOpts.path) {
-          const [path12, searchParams] = dispatchOpts.path.split("?");
+          const [path11, searchParams] = dispatchOpts.path.split("?");
           const normalizedSearchParams = normalizeSearchParams(searchParams, acceptNonStandardSearchParameters);
-          dispatchOpts.path = `${path12}?${normalizedSearchParams}`;
+          dispatchOpts.path = `${path11}?${normalizedSearchParams}`;
         }
         return this[kAgent].dispatch(dispatchOpts, handler);
       }
@@ -17573,12 +17573,12 @@ var require_snapshot_recorder = __commonJS({
        * @return {Promise<void>} - Resolves when snapshots are loaded
        */
       async loadSnapshots(filePath) {
-        const path12 = filePath || this.#snapshotPath;
-        if (!path12) {
+        const path11 = filePath || this.#snapshotPath;
+        if (!path11) {
           throw new InvalidArgumentError2("Snapshot path is required");
         }
         try {
-          const data = await readFile(resolve3(path12), "utf8");
+          const data = await readFile(resolve3(path11), "utf8");
           const parsed = JSON.parse(data);
           if (Array.isArray(parsed)) {
             this.#snapshots.clear();
@@ -17592,7 +17592,7 @@ var require_snapshot_recorder = __commonJS({
           if (error62.code === "ENOENT") {
             this.#snapshots.clear();
           } else {
-            throw new UndiciError(`Failed to load snapshots from ${path12}`, { cause: error62 });
+            throw new UndiciError(`Failed to load snapshots from ${path11}`, { cause: error62 });
           }
         }
       }
@@ -17603,11 +17603,11 @@ var require_snapshot_recorder = __commonJS({
        * @returns {Promise<void>} - Resolves when snapshots are saved
        */
       async saveSnapshots(filePath) {
-        const path12 = filePath || this.#snapshotPath;
-        if (!path12) {
+        const path11 = filePath || this.#snapshotPath;
+        if (!path11) {
           throw new InvalidArgumentError2("Snapshot path is required");
         }
-        const resolvedPath = resolve3(path12);
+        const resolvedPath = resolve3(path11);
         await mkdir(dirname(resolvedPath), { recursive: true });
         const data = Array.from(this.#snapshots.entries()).map(([hash2, snapshot]) => ({
           hash: hash2,
@@ -18244,15 +18244,15 @@ var require_redirect_handler = __commonJS({
         }
         this.history[kRedirectCacheControl].push(headers["cache-control"]);
         const { origin, pathname, search } = util2.parseURL(new URL(this.location, this.opts.origin && new URL(this.opts.path, this.opts.origin)));
-        const path12 = search ? `${pathname}${search}` : pathname;
-        const redirectUrlString = `${origin}${path12}`;
+        const path11 = search ? `${pathname}${search}` : pathname;
+        const redirectUrlString = `${origin}${path11}`;
         for (const historyUrl of this.history) {
           if (historyUrl.toString() === redirectUrlString) {
             throw new InvalidArgumentError2(`Redirect loop detected. Cannot redirect to ${origin}. This typically happens when using a Client or Pool with cross-origin redirects. Use an Agent for cross-origin redirects.`);
           }
         }
         this.opts.headers = cleanRequestHeaders(this.opts.headers, statusCode === 303, this.opts.origin !== origin);
-        this.opts.path = path12;
+        this.opts.path = path11;
         this.opts.origin = origin;
         this.opts.query = null;
       }
@@ -20020,10 +20020,10 @@ var require_cache_handler = __commonJS({
       }
       return locationUrl.pathname + locationUrl.search;
     }
-    function deleteCachedUri(store2, cacheKey2, path12) {
+    function deleteCachedUri(store2, cacheKey2, path11) {
       deleteCachedValue(store2, {
         ...cacheKey2,
-        path: path12
+        path: path11
       });
       for (let i = 0; i < util2.safeHTTPMethods.length; i++) {
         const method = util2.safeHTTPMethods[i];
@@ -20031,7 +20031,7 @@ var require_cache_handler = __commonJS({
           deleteCachedValue(store2, {
             ...cacheKey2,
             method,
-            path: path12
+            path: path11
           });
         }
       }
@@ -20042,9 +20042,9 @@ var require_cache_handler = __commonJS({
       }
       const values = Array.isArray(headerValue) ? headerValue : [headerValue];
       for (let i = 0; i < values.length; i++) {
-        const path12 = getSameOriginPath(cacheKey2, values[i]);
-        if (path12 !== void 0) {
-          deleteCachedUri(store2, cacheKey2, path12);
+        const path11 = getSameOriginPath(cacheKey2, values[i]);
+        if (path11 !== void 0) {
+          deleteCachedUri(store2, cacheKey2, path11);
         }
       }
     }
@@ -25255,11 +25255,11 @@ var require_fetch = __commonJS({
       function dispatch({ body }) {
         const url2 = requestCurrentURL(request);
         const agent = fetchParams.controller.dispatcher;
-        const path12 = url2.pathname + url2.search;
+        const path11 = url2.pathname + url2.search;
         const hasTrailingQuestionMark = url2.search.length === 0 && url2.href[url2.href.length - url2.hash.length - 1] === "?";
         return new Promise((resolve3, reject) => agent.dispatch(
           {
-            path: hasTrailingQuestionMark ? `${path12}?` : path12,
+            path: hasTrailingQuestionMark ? `${path11}?` : path11,
             origin: url2.origin,
             method: request.method,
             body: agent.isMockActive ? request.body && (request.body.source || request.body.stream) : body,
@@ -26206,9 +26206,9 @@ var require_util4 = __commonJS({
         }
       }
     }
-    function validateCookiePath(path12) {
-      for (let i = 0; i < path12.length; ++i) {
-        const code = path12.charCodeAt(i);
+    function validateCookiePath(path11) {
+      for (let i = 0; i < path11.length; ++i) {
+        const code = path11.charCodeAt(i);
         if (code < 32 || // exclude CTLs (0-31)
         code > 126 || // exclude DEL and non-ascii
         code === 59) {
@@ -29644,11 +29644,11 @@ var require_undici = __commonJS({
           if (typeof opts.path !== "string") {
             throw new InvalidArgumentError2("invalid opts.path");
           }
-          let path12 = opts.path;
+          let path11 = opts.path;
           if (!opts.path.startsWith("/")) {
-            path12 = `/${path12}`;
+            path11 = `/${path11}`;
           }
-          url2 = new URL(util2.parseOrigin(url2).origin + path12);
+          url2 = new URL(util2.parseOrigin(url2).origin + path11);
         } else {
           if (!opts) {
             opts = typeof url2 === "object" ? url2 : {};
@@ -32986,8 +32986,8 @@ var require_utils2 = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path12) {
-      let input2 = path12;
+    function removeDotSegments(path11) {
+      let input2 = path11;
       const output2 = [];
       let nextSlash = -1;
       let len = 0;
@@ -33061,11 +33061,11 @@ var require_utils2 = __commonJS({
       }
       return output2.join("");
     }
-    function removeDotSegmentsRelative(path12) {
-      if (path12 === "" || path12[0] === "/") {
-        return removeDotSegments(path12);
+    function removeDotSegmentsRelative(path11) {
+      if (path11 === "" || path11[0] === "/") {
+        return removeDotSegments(path11);
       }
-      const segments = path12.split("/");
+      const segments = path11.split("/");
       const last = segments.length - 1;
       const output2 = [];
       let trailingDirectory = false;
@@ -33428,8 +33428,8 @@ var require_schemes = __commonJS({
       }
       if (wsComponent.resourceName) {
         const queryIndex = wsComponent.resourceName.indexOf("?");
-        const path12 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
-        wsComponent.path = path12 && path12 !== "/" ? path12 : void 0;
+        const path11 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
+        wsComponent.path = path11 && path11 !== "/" ? path11 : void 0;
         wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
@@ -36966,12 +36966,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list2, fs10, exportName) {
+    function addFormats(ajv, list2, fs9, exportName) {
       var _a3;
       var _b;
       (_a3 = (_b = ajv.opts.code).formats) !== null && _a3 !== void 0 ? _a3 : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list2)
-        ajv.addFormat(f, fs10[f]);
+        ajv.addFormat(f, fs9[f]);
     }
     module.exports = exports = formatsPlugin;
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -37939,9 +37939,9 @@ function requireConfirmation(opts, what) {
   }
 }
 function applyConfirmGates(program3) {
-  for (const [path12, what] of Object.entries(CONFIRM_REQUIRED)) {
-    const command = path12.split(" ").reduce((cmd, name) => cmd?.commands.find((c) => c.name() === name), program3);
-    if (!command) throw new Error(`applyConfirmGates: no command "${path12}"`);
+  for (const [path11, what] of Object.entries(CONFIRM_REQUIRED)) {
+    const command = path11.split(" ").reduce((cmd, name) => cmd?.commands.find((c) => c.name() === name), program3);
+    if (!command) throw new Error(`applyConfirmGates: no command "${path11}"`);
     command.addOption(yesOption(what)).hook("preAction", (cmd) => requireConfirmation(cmd.opts(), what));
   }
 }
@@ -39392,6 +39392,26 @@ function formatLocalDateTime(date5) {
 function formatCalendarDate(date5) {
   return calendarDate(date5) ?? "N/A";
 }
+var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function formatCustomerDate(date5, dateFormat) {
+  const day = calendarDate(date5);
+  if (!day) return null;
+  const [y, mm, dd] = day.split("-");
+  const d = String(Number(dd));
+  const mon = MONTHS[Number(mm) - 1];
+  switch (dateFormat) {
+    case 1:
+      return `${dd}/${mm}/${y}`;
+    case 2:
+      return `${mon} ${d}, ${y}`;
+    case 3:
+      return `${mm}/${dd}/${y}`;
+    case 4:
+      return `${y}/${mm}/${dd}`;
+    default:
+      return `${d} ${mon} ${y}`;
+  }
+}
 function monthKey(date5) {
   const d = date5 instanceof Date ? date5 : new Date(date5);
   if (isNaN(d.getTime())) return "";
@@ -39405,6 +39425,18 @@ function calendarDate(date5) {
   if (isNaN(d.getTime())) return null;
   const snapped = new Date(Math.round(d.getTime() / MS_PER_DAY) * MS_PER_DAY);
   return snapped.toISOString().slice(0, 10) || null;
+}
+function writtenDay(raw) {
+  const written = /^\d{4}-\d{2}-\d{2}/.exec(raw.trim())?.[0];
+  if (written) return Number.isNaN(Date.parse(written)) ? null : written;
+  return calendarDate(raw);
+}
+function calendarDayBounds(startDay, endDay) {
+  const half = MS_PER_DAY / 2;
+  return {
+    start: new Date(Date.parse(startDay) - half).toISOString(),
+    end: new Date(Date.parse(endDay) + half - 1).toISOString()
+  };
 }
 
 // src/core/formatters/BaseFormatter.ts
@@ -40441,11 +40473,11 @@ function sweepTempRenders(opts = {}) {
   }
   for (const name of names) {
     if (!RENDER_FILE.test(name)) continue;
-    const path12 = join(dir, name);
-    if (opts.keep && path12 === opts.keep) continue;
+    const path11 = join(dir, name);
+    if (opts.keep && path11 === opts.keep) continue;
     try {
-      if (statSync(path12).mtimeMs >= cutoff) continue;
-      unlinkSync(path12);
+      if (statSync(path11).mtimeMs >= cutoff) continue;
+      unlinkSync(path11);
       removed++;
     } catch {
     }
@@ -42379,7 +42411,7 @@ var duplicateCommand = new Command("duplicate").description(
   "Copy the invoice into a DIFFERENT company you own (ID or @co handle). The customer is re-resolved/created in that company and the copy is numbered in its sequence. The original is untouched."
 ).option(
   "--type <type>",
-  "Convert the copy into another document type \u2014 estimate (alias: quote), credit-note, delivery-note, or purchase-order (default: same type as the source). The copy is renumbered with that type's prefix (e.g. EST-\u2026)."
+  "Convert the copy into another document type \u2014 estimate (alias: quote), credit-note, delivery-note, or purchase-order (default: same type as the source). The copy is renumbered with that type's prefix from the company's numbering (by default estimate-1, estimate-2, \u2026)."
 ).option("--as <type>", "Alias for --type (e.g. `--as estimate`)").option(
   "--timezone <tz>",
   "IANA timezone for the new draft's date (defaults to your system zone)"
@@ -42822,6 +42854,101 @@ var deleteCommand = new Command("delete").description("Delete an invoice by ID o
   })
 );
 
+// src/core/format/customerName.ts
+function customerName(customer, opts = {}) {
+  const { preferCompany = false, fallback = "Unknown" } = opts;
+  if (!customer) return fallback;
+  const person = [customer.firstName, customer.lastName].filter(Boolean).join(" ");
+  const company = customer.companyName || customer.individualCompanyName || "";
+  return preferCompany ? company || person || fallback : person || company || fallback;
+}
+
+// src/usecases/invoice/defaultSendMessage.ts
+var SEND_MESSAGE_COMPANY_QUERY = `
+  query SendMessageCompany($id: MongoID!) {
+    companiesOne(filter: { _id: $id }) {
+      name
+      currency
+      dateFormat
+      shouldEnableBookipay
+      bookipayOnboardingStatus
+      enableHanging
+      documentDefinitions {
+        name
+        defaultMessage
+      }
+    }
+  }
+`;
+var INVOICE = 1;
+var E_INVOICE = 5;
+function cardPaymentsOn(company) {
+  return !!company.shouldEnableBookipay && company.bookipayOnboardingStatus === "success" && !!company.enableHanging;
+}
+function documentNoun(type, company) {
+  const builtIn = type === E_INVOICE ? "eInvoice" : documentTypeByCode(type)?.label.toLowerCase() ?? "document";
+  const custom2 = company.documentDefinitions?.[type]?.name?.trim();
+  return custom2 && custom2.toLowerCase() !== builtIn.toLowerCase() ? custom2 : builtIn;
+}
+function buildDefaultSendMessage(invoice, company) {
+  const type = typeof invoice["type"] === "number" ? invoice["type"] : INVOICE;
+  const isInvoice = type === INVOICE;
+  const owed = Number(invoice["amountDue"] ?? invoice["total"]) || 0;
+  const depositAmount = invoice["depositType"] === "percentage" ? round2(owed * (Number(invoice["depositPercentage"]) || 0) / 100) : Math.min(Number(invoice["depositAmount"]) || 0, owed);
+  const isDeposit = isInvoice && depositAmount > 0 && invoice["depositStatus"] !== "paid";
+  const saved = company.documentDefinitions?.[type]?.defaultMessage?.trim();
+  if (saved) return saved;
+  const name = customerName(invoice["customerReference"] || invoice["customer"], {
+    preferCompany: true,
+    fallback: ""
+  }).split(" ")[0] || "there";
+  const money = (n) => formatCurrency(Number(n) || 0, company.currency ?? void 0);
+  const sender = company.name?.trim() ?? "";
+  const signOff = `
+
+Thank you!${sender ? `
+${sender}` : ""}`;
+  const no = invoice["no"] ? String(invoice["no"]).trim() : "";
+  const payOnline = cardPaymentsOn(company) ? " You can pay securely online using the button below." : "";
+  if (!isInvoice) {
+    const amount = money(invoice["total"]);
+    return `Hi ${name},
+
+Here's ${documentNoun(type, company)} ${no} for ${amount}.${signOff}`;
+  }
+  const depositDue = invoice["depositDue"] ? calendarDate(
+    new Date(new Date(invoice["depositDue"]).getTime() - (MS_PER_DAY - 1))
+  ) : null;
+  const dueDay = isDeposit ? depositDue : invoice["removeDueDate"] ? null : calendarDate(invoice["dueDate"]);
+  const due = formatCustomerDate(dueDay, company.dateFormat) ?? "on receipt";
+  if (isDeposit) {
+    return `Hi ${name},
+
+Here's the deposit request for invoice ${no}: ${money(depositAmount)}, due ${due}.${payOnline}${signOff}`;
+  }
+  return `Hi ${name},
+
+Here's invoice ${no} for ${money(owed)}, due ${due}.${payOnline}${signOff}`;
+}
+async function defaultSendMessage(opts) {
+  const invoice = opts.invoice ?? await getInvoice(opts.id, opts.companyId);
+  return buildDefaultSendMessage(invoice, await readCompany(opts.companyId));
+}
+async function readCompany(scoped) {
+  const id = scoped ?? getDefaultCompany();
+  if (!id) return {};
+  try {
+    const data = await bookipiGraphql({
+      query: SEND_MESSAGE_COMPANY_QUERY,
+      variables: { id },
+      ...scoped ? { companyId: scoped } : {}
+    });
+    return data?.companiesOne ?? {};
+  } catch {
+    return {};
+  }
+}
+
 // src/usecases/invoice/sendInvoice.ts
 var INVOICES_SEND_MUTATION = `
   mutation invoicesSend($id: MongoID!, $recipients: [String!], $subject: String, $bcc: [String!], $message: String) {
@@ -42837,7 +42964,8 @@ var INVOICES_SEND_MUTATION = `
   }
 `;
 async function sendInvoice(options) {
-  const { id, recipients, subject, bcc, message, companyId } = options;
+  const { id, recipients, subject, bcc, companyId } = options;
+  const message = options.message?.trim() ? options.message : await defaultSendMessage({ id, ...companyId ? { companyId } : {} });
   return bookipiGraphql({
     query: INVOICES_SEND_MUTATION,
     variables: { id, recipients, subject, bcc, message },
@@ -42849,7 +42977,10 @@ async function sendInvoice(options) {
 var sendCommand = new Command("send").description("Send an invoice to one or more recipients").argument("<id>", "Invoice ID or handle (@i1) to send").requiredOption(
   "-r, --recipients <emails>",
   "Comma-separated list of recipient email addresses"
-).option("-s, --subject <subject>", "Email subject line").option("-b, --bcc <emails>", "Comma-separated list of BCC email addresses").option("-m, --message <message>", "Email message body").option("--json", "Output raw JSON instead of formatted").action(
+).option("-s, --subject <subject>", "Email subject line").option("-b, --bcc <emails>", "Comma-separated list of BCC email addresses").option(
+  "-m, --message <message>",
+  "Email message body (default: Bookipi's standard message for the document)"
+).option("--json", "Output raw JSON instead of formatted").action(
   withErrors(async (id, opts) => {
     const registry3 = HandleRegistry.getInstance();
     const resolvedId = registry3.resolve(id);
@@ -43090,15 +43221,6 @@ async function fetchOverdueInvoices() {
   return data?.searchInvoices?.items || [];
 }
 
-// src/core/format/customerName.ts
-function customerName(customer, opts = {}) {
-  const { preferCompany = false, fallback = "Unknown" } = opts;
-  if (!customer) return fallback;
-  const person = [customer.firstName, customer.lastName].filter(Boolean).join(" ");
-  const company = customer.companyName || customer.individualCompanyName || "";
-  return preferCompany ? company || person || fallback : person || company || fallback;
-}
-
 // src/usecases/invoice/invoiceCustomer.ts
 function customerEmailFromInvoice(invoice) {
   return invoice?.recipientEmail || invoice?.customer?.email || invoice?.customerReference?.email || null;
@@ -43113,11 +43235,35 @@ function renderTemplate(template, vars) {
   return out;
 }
 
+// src/usecases/company/getCompanyDateFormat.ts
+var COMPANY_DATE_FORMAT_QUERY = `
+  query CompanyDateFormat($id: MongoID!) {
+    companiesOne(filter: { _id: $id }) {
+      dateFormat
+    }
+  }
+`;
+async function getCompanyDateFormat(companyId) {
+  const id = companyId ?? getDefaultCompany();
+  if (!id) return null;
+  try {
+    const data = await bookipiGraphql({
+      query: COMPANY_DATE_FORMAT_QUERY,
+      variables: { id },
+      ...companyId ? { companyId } : {}
+    });
+    const format = data?.companiesOne?.dateFormat;
+    return typeof format === "number" ? format : null;
+  } catch {
+    return null;
+  }
+}
+
 // src/usecases/invoice/remindInvoices.ts
-var DEFAULT_SUBJECT = "Reminder: Invoice INV-{no} is overdue";
-var DEFAULT_MESSAGE = "Hi,\n\nThis is a friendly reminder that invoice INV-{no} for {amount} was due on {dueDate} and is now {days} day(s) overdue.\n\nIf you've already paid, please disregard this message. Otherwise, please arrange payment at your earliest convenience.\n\nThanks!";
-var DEFAULT_SUBJECT_OUTSTANDING = "Reminder: Invoice INV-{no} ({amount})";
-var DEFAULT_MESSAGE_OUTSTANDING = "Hi,\n\nJust a friendly reminder that invoice INV-{no} for {amount} is outstanding (due {dueDate}).\n\nIf you've already paid, please disregard this message. Otherwise, please arrange payment at your convenience.\n\nThanks!";
+var DEFAULT_SUBJECT = "Reminder: Invoice {no} is overdue";
+var DEFAULT_MESSAGE = "Hi,\n\nThis is a friendly reminder that invoice {no} for {amount} was due on {dueDate} and is now {days} day(s) overdue.\n\nIf you've already paid, please disregard this message. Otherwise, please arrange payment at your earliest convenience.\n\nThanks!";
+var DEFAULT_SUBJECT_OUTSTANDING = "Reminder: Invoice {no} ({amount})";
+var DEFAULT_MESSAGE_OUTSTANDING = "Hi,\n\nJust a friendly reminder that invoice {no} for {amount} is outstanding (due {dueDate}).\n\nIf you've already paid, please disregard this message. Otherwise, please arrange payment at your convenience.\n\nThanks!";
 async function remindInvoices(options = {}) {
   const {
     invoiceId,
@@ -43131,6 +43277,7 @@ async function remindInvoices(options = {}) {
   } = options;
   const rawInvoices = invoiceId ? [await getInvoice(invoiceId)] : await fetchOverdueInvoices();
   const now2 = /* @__PURE__ */ new Date();
+  const dateFormat = await getCompanyDateFormat();
   const invoices = [...rawInvoices].sort((a, b) => {
     const aTs = a?.dueDate ? new Date(a.dueDate).getTime() : Infinity;
     const bTs = b?.dueDate ? new Date(b.dueDate).getTime() : Infinity;
@@ -43193,7 +43340,8 @@ async function remindInvoices(options = {}) {
       no: entry.invoiceNo,
       amount: formatCurrency(amountDue),
       days: daysOverdue2,
-      dueDate: formatCalendarDate(dueDateIso)
+      // As the customer reads a date, matching the email's own "Due:" line.
+      dueDate: formatCustomerDate(dueDateIso, dateFormat) ?? "on receipt"
     };
     const overdue = daysOverdue2 > 0;
     entry.renderedSubject = renderTemplate(
@@ -43447,7 +43595,7 @@ function classify(daysOverdue2) {
   }
   return null;
 }
-function buildCollectionsPlan(entries, now2 = /* @__PURE__ */ new Date(), fmt = (n) => formatCurrency(n)) {
+function buildCollectionsPlan(entries, now2 = /* @__PURE__ */ new Date(), fmt = (n) => formatCurrency(n), dateFormat = null) {
   const drafts = [];
   const skipped = [];
   for (const e of entries) {
@@ -43474,7 +43622,7 @@ function buildCollectionsPlan(entries, now2 = /* @__PURE__ */ new Date(), fmt = 
       name: e.customerName || "there",
       amount: fmt(e.amountDue),
       days: daysOverdue2,
-      dueDate: formatCalendarDate(e.dueDateIso)
+      dueDate: formatCustomerDate(e.dueDateIso, dateFormat) ?? ""
     };
     drafts.push({
       ...e,
@@ -43524,7 +43672,12 @@ async function runCollections(options = {}, deps = {}) {
       lastSentIso: typeof inv.sent === "string" ? inv.sent : null
     };
   });
-  const plan = buildCollectionsPlan(entries, nowDate);
+  const plan = buildCollectionsPlan(
+    entries,
+    nowDate,
+    void 0,
+    await getCompanyDateFormat()
+  );
   const outcomes = [];
   let acted = 0;
   for (const draft of plan.drafts) {
@@ -44952,7 +45105,7 @@ var createCommand4 = new Command("create").description("Create a new item/produc
     if (opts.photo) {
       process.stderr.write(`  \u2022 Uploading ${opts.photo}...
 `);
-      const { uploadItemImage: uploadItemImage2 } = await import("./chunks/uploadItemImage-RWBL5GU3.js");
+      const { uploadItemImage: uploadItemImage2 } = await import("./chunks/uploadItemImage-3FXCDJ35.js");
       const { filename } = await uploadItemImage2(opts.photo);
       record2.photos = [{ filename }];
     }
@@ -45518,19 +45671,11 @@ var createCommand5 = new Command("create").description(
   })
 );
 
-// src/usecases/expense/searchTransactions.ts
+// src/usecases/expense/listExpenses.ts
 var LIST_EXPENSES_QUERY = `
-  query ListExpenses(
-    $page: Int
-    $perPage: Int
-    $sort: SortFindManyexpensesInput
-  ) {
-    bookipayExpensesPagination(
-      page: $page
-      perPage: $perPage
-      sort: $sort
-    ) {
-      items {
+  query ListExpenses($paginate: SearchPaginateInput!) {
+    searchExpenses(paginate: $paginate) {
+      expenses {
         _id
         amount
         merchantName
@@ -45552,29 +45697,69 @@ var LIST_EXPENSES_QUERY = `
     }
   }
 `;
-async function listExpenses(input2 = {}) {
-  const variables = {
-    page: input2.page ?? 1,
-    perPage: input2.perPage ?? 50,
-    sort: "_ID_DESC"
-  };
+var EARLIEST = "1970-01-01";
+var LATEST = "2999-12-31";
+var SCAN_PAGE_SIZE = 1e3;
+var SCAN_MAX_PAGES = 5;
+function toDay(raw, flag) {
+  const day = writtenDay(raw);
+  if (!day) {
+    throw new ValidationError(`Invalid ${flag} "${raw}" \u2014 use YYYY-MM-DD.`);
+  }
+  return day;
+}
+function expenseDateRange(startDate, endDate) {
+  const start = toDay(startDate ?? EARLIEST, "start date");
+  const end = toDay(endDate ?? LATEST, "end date");
+  if (start > end) {
+    throw new ValidationError(
+      `The start date (${start}) is after the end date (${end}).`
+    );
+  }
+  const bounds = calendarDayBounds(start, end);
+  return { startDate: bounds.start, endDate: bounds.end };
+}
+async function fetchPage(paginate, companyId) {
   const data = await bookipiGraphql({
     query: LIST_EXPENSES_QUERY,
-    variables,
-    ...input2.companyId ? { companyId: input2.companyId } : {}
+    variables: { paginate },
+    ...companyId ? { companyId } : {}
   });
-  return data.bookipayExpensesPagination;
+  const { expenses, pageInfo } = data.searchExpenses;
+  return { items: expenses ?? [], pageInfo };
+}
+async function listExpenses(input2 = {}) {
+  const page = input2.page ?? 1;
+  const perPage = input2.perPage ?? 50;
+  const dateRange = expenseDateRange(input2.startDate, input2.endDate);
+  const needle = input2.search?.trim().toLowerCase();
+  if (!needle) return fetchPage({ page, perPage, dateRange }, input2.companyId);
+  const matches = [];
+  for (let scan = 1; scan <= SCAN_MAX_PAGES; scan++) {
+    const got = await fetchPage(
+      { page: scan, perPage: SCAN_PAGE_SIZE, dateRange },
+      input2.companyId
+    );
+    for (const e of got.items) {
+      if (e.merchantName?.toLowerCase().includes(needle)) matches.push(e);
+    }
+    if (!got.pageInfo.hasNextPage) break;
+  }
+  const pageCount = Math.max(1, Math.ceil(matches.length / perPage));
+  return {
+    items: matches.slice((page - 1) * perPage, page * perPage),
+    pageInfo: {
+      currentPage: page,
+      perPage,
+      itemCount: matches.length,
+      pageCount,
+      hasPreviousPage: page > 1,
+      hasNextPage: page < pageCount
+    }
+  };
 }
 
 // src/commands/expense/list.ts
-function toIso(raw, fallback) {
-  if (!raw) return fallback;
-  if (/T\d{2}:\d{2}/.test(raw)) return raw;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return `${raw}T00:00:00.000Z`;
-  const d = new Date(raw);
-  if (Number.isNaN(d.getTime())) throw new Error(`Invalid date: "${raw}"`);
-  return d.toISOString();
-}
 function formatAmount(cents) {
   return formatCents(cents);
 }
@@ -45584,16 +45769,13 @@ function truncate(s, n) {
 }
 var listCommand4 = new Command("list").description(
   "List expenses (and optionally income) with filters. Read-only \u2014 safe to explore."
-).option("--start <date>", "Start date (YYYY-MM-DD). Defaults to 12 months ago.").option("--end <date>", "End date (YYYY-MM-DD). Defaults to today.").option("--search <text>", "Filter by merchantName (exact match on this server)").option("--page <n>", "Page number (1-based)", "1").option("--per-page <n>", "Records per page (default 50)", "50").option("--json", "Output raw JSON instead of a formatted table").action(
+).option("--start <date>", "Start date (YYYY-MM-DD). Defaults to 12 months ago.").option("--end <date>", "End date (YYYY-MM-DD), inclusive. Defaults to no upper limit.").option("--search <text>", "Only merchants whose name contains this text").option("--page <n>", "Page number (1-based)", "1").option("--per-page <n>", "Records per page (default 50)", "50").option("--json", "Output raw JSON instead of a formatted table").action(
   withErrors(async (opts) => {
-    const now2 = /* @__PURE__ */ new Date();
-    const oneYearAgo = new Date(now2);
-    oneYearAgo.setFullYear(now2.getFullYear() - 1);
-    const startDate = toIso(opts.start, oneYearAgo.toISOString());
-    const endDate = toIso(opts.end, now2.toISOString());
+    const oneYearAgo = /* @__PURE__ */ new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
     const result = await listExpenses({
-      startDate,
-      endDate,
+      startDate: opts.start ?? calendarDate(oneYearAgo) ?? void 0,
+      ...opts.end ? { endDate: opts.end } : {},
       search: opts.search ?? null,
       page: Number.parseInt(opts.page, 10) || 1,
       perPage: Number.parseInt(opts.perPage, 10) || 50
@@ -45612,7 +45794,7 @@ var listCommand4 = new Command("list").description(
     );
     console.log("");
     const rows = items.map((t) => ({
-      date: (t.purchaseDate ?? "").slice(0, 10),
+      date: calendarDate(t.purchaseDate) ?? "",
       amount: formatAmount(t.amount ?? 0),
       category: truncate(t.categoryName, 22),
       merchant: truncate(t.merchantName, 32),
@@ -45742,6 +45924,17 @@ function callerKey() {
 }
 
 // src/core/auth/bpayToken.ts
+function cardPaymentsSetupHelp() {
+  return `Card payments are set up once in the Bookipi web app: open Payment Links (${config.BOOKIPI_WEB_URL}/payment-links), choose to accept card payments, and finish Stripe's identity checks. It can't be done from here \u2014 try again once that's finished.`;
+}
+var PaymentsNotSetUpError = class extends Error {
+  constructor() {
+    super(
+      `Payment links aren't available for this company yet, because card payments haven't been set up. ${cardPaymentsSetupHelp()}`
+    );
+    this.name = "PaymentsNotSetUpError";
+  }
+};
 function parseBpayRedirect(location) {
   const u = new URL(location);
   const token = u.searchParams.get("token");
@@ -45749,9 +45942,7 @@ function parseBpayRedirect(location) {
     throw new Error("BPay auth redirect did not include a token.");
   }
   if (token === "undefined" || token === "null") {
-    throw new Error(
-      "This account isn't set up for payment links yet \u2014 open Payment Links in the Bookipi web app once to activate it, then try again."
-    );
+    throw new PaymentsNotSetUpError();
   }
   const companyId = u.searchParams.get("companyId");
   return {
@@ -45896,8 +46087,9 @@ async function getStripeReadiness() {
 async function assertPaymentReady() {
   const r = await getStripeReadiness();
   if (!isStripePaymentReady(r)) {
+    const where = r?.isStripeMerchant === true ? "Stripe is still reviewing this company's details, or needs more from you" : "card payments haven't been turned on for this company";
     throw new Error(
-      `This company can't collect payments yet \u2014 Stripe isn't fully set up (isStripeMerchant=${r?.isStripeMerchant ?? "?"}, stripeOnboardingStatus=${r?.stripeOnboardingStatus ?? "?"}). Finish Stripe payment setup in BookiPay before creating payment links.`
+      `A payment link can't be created yet: ${where}. ${cardPaymentsSetupHelp()}`
     );
   }
 }
@@ -46032,6 +46224,14 @@ var GET_PAYMENT_LINKS_QUERY = `
   }
 `;
 async function listPaymentLinks(opts = {}) {
+  try {
+    return await fetchPaymentLinks(opts);
+  } catch (err2) {
+    if (!(err2 instanceof PaymentsNotSetUpError)) throw err2;
+    return { items: [], count: 0, setupNeeded: cardPaymentsSetupHelp() };
+  }
+}
+async function fetchPaymentLinks(opts) {
   const data = await bpayGraphql({
     query: GET_PAYMENT_LINKS_QUERY,
     variables: {
@@ -46057,13 +46257,23 @@ var listCommand5 = new Command("list").description("List payment links (most rec
         `--per-page must be a positive integer, got "${opts.perPage}"`
       );
     }
-    const { items, count } = await listPaymentLinks({ page, perPage });
+    const { items, count, setupNeeded } = await listPaymentLinks({ page, perPage });
     if (opts.json) {
-      console.log(JSON.stringify({ items, count }, null, 2));
+      console.log(
+        JSON.stringify(
+          { items, count, ...setupNeeded ? { setupNeeded } : {} },
+          null,
+          2
+        )
+      );
       return;
     }
     if (items.length === 0) {
       console.log("No payment links found.");
+      if (setupNeeded) {
+        console.log(`
+Payment links aren't set up for this company yet. ${setupNeeded}`);
+      }
       return;
     }
     console.log(`# Payment Links (${count} total)
@@ -46267,7 +46477,99 @@ var sendCommand2 = new Command("send").description(
 // src/commands/paylink/index.ts
 var paylinkCommand = new Command("paylink").description("Create and manage BPay payment links").addCommand(createCommand6).addCommand(listCommand5).addCommand(getCommand3).addCommand(statusCommand).addCommand(sendCommand2);
 
+// src/usecases/report/outstandingInvoices.ts
+var REPORT_INVOICES_QUERY = `
+  query ReportInvoices($filter: SearchFilterInput!, $paginate: SearchPaginateInput) {
+    searchInvoices(docType: 1, filter: $filter, paginate: $paginate, sort: "createdAt_desc") {
+      items {
+        _id
+        no
+        date
+        total
+        amountDue
+        dueDate
+        payments { amount date }
+        customer { _id firstName lastName companyName individualCompanyName }
+        customerReference { _id firstName lastName companyName individualCompanyName }
+      }
+      pageInfo { hasNextPage }
+    }
+  }
+`;
+var DATED_INVOICES_QUERY = `
+  query DatedInvoices($filter: SearchFilterInput!, $paginate: SearchPaginateInput) {
+    searchInvoices(docType: 1, filter: $filter, paginate: $paginate, sort: "createdAt_desc") {
+      items { _id date total }
+      pageInfo { hasNextPage }
+    }
+  }
+`;
+var UNPAID_STATUSES = [
+  "saved",
+  "sent",
+  "read",
+  "partialPaid",
+  "overdue",
+  "undelivered"
+];
+var OUTSTANDING_PAGE_SIZE = 1e3;
+var OUTSTANDING_MAX_PAGES = 3;
+async function scanInvoices(status, perPage, maxPages, companyId, query = REPORT_INVOICES_QUERY, entered) {
+  const byId = /* @__PURE__ */ new Map();
+  const items = () => [...byId.values()];
+  for (let page = 1; page <= maxPages; page++) {
+    const data = await bookipiGraphql({
+      query,
+      variables: {
+        filter: { search: null, status, ...entered ? { start: entered } : {} },
+        paginate: { fetchAll: false, page, perPage }
+      },
+      ...companyId ? { companyId } : {}
+    });
+    for (const inv of data?.searchInvoices?.items ?? []) byId.set(inv._id, inv);
+    if (!data?.searchInvoices?.pageInfo?.hasNextPage) {
+      return { items: items(), truncated: false };
+    }
+  }
+  return { items: items(), truncated: true };
+}
+async function readOutstandingInvoices(companyId) {
+  const { items, truncated } = await scanInvoices(
+    UNPAID_STATUSES,
+    OUTSTANDING_PAGE_SIZE,
+    OUTSTANDING_MAX_PAGES,
+    companyId
+  );
+  const owed = items.filter((inv) => (inv.amountDue ?? 0) > 0);
+  const overdue = owed.filter((inv) => daysOverdue(inv.dueDate) >= 1);
+  return { all: items, owed, overdue, truncated };
+}
+var ALL_STATUSES = [...UNPAID_STATUSES, "paid"];
+var DATED_MAX_PAGES = 10;
+var FORWARD_DATING_MARGIN_DAYS = 92;
+function enteredSince(startDay) {
+  return new Date(
+    Date.parse(startDay) - FORWARD_DATING_MARGIN_DAYS * 864e5
+  ).toISOString();
+}
+async function readInvoicesDatedBetween(startDay, endDay, companyId) {
+  const { items, truncated } = await scanInvoices(
+    ALL_STATUSES,
+    OUTSTANDING_PAGE_SIZE,
+    DATED_MAX_PAGES,
+    companyId,
+    DATED_INVOICES_QUERY,
+    enteredSince(startDay)
+  );
+  const inRange = items.filter((inv) => {
+    const day = calendarDate(inv.date);
+    return day !== null && day >= startDay && day <= endDay;
+  });
+  return { items: inRange, truncated };
+}
+
 // src/usecases/report/getReportSummary.ts
+var REPORT_CYCLES = ["week", "month", "quarter", "year"];
 var GET_INVOICE_REPORTS_QUERY = `
   query GetInvoiceReports($start: Date!, $end: Date!, $cycle: String!) {
     overviewCreated: GetInvoicesCreatedStats(
@@ -46338,6 +46640,7 @@ var GET_INVOICE_REPORTS_QUERY = `
       cycle: $cycle
       type: 1
     ) {
+      week
       month
       year
       total {
@@ -46351,6 +46654,7 @@ var GET_INVOICE_REPORTS_QUERY = `
       end: $end
       cycle: $cycle
     ) {
+      week
       month
       year
       total {
@@ -46363,16 +46667,114 @@ var GET_INVOICE_REPORTS_QUERY = `
 `;
 async function getReportSummary(options) {
   const { start, end, cycle = "month" } = options;
-  const variables = {
-    start,
-    end,
-    cycle
-  };
-  return bookipiGraphql({
+  if (!REPORT_CYCLES.includes(cycle)) {
+    throw new ValidationError(
+      `Unknown cycle "${cycle}" \u2014 use one of: ${REPORT_CYCLES.join(", ")}.`
+    );
+  }
+  const data = await bookipiGraphql({
     query: GET_INVOICE_REPORTS_QUERY,
-    variables,
+    variables: { start, end, cycle: cycle === "quarter" ? "month" : cycle },
     ...options.companyId ? { companyId: options.companyId } : {}
   });
+  if (cycle !== "quarter" || !data) return data;
+  return {
+    ...data,
+    totalCreatedMetrics: monthsToQuarters(data.totalCreatedMetrics),
+    totalPaidMetrics: monthsToQuarters(data.totalPaidMetrics)
+  };
+}
+function monthsToQuarters(rows) {
+  const quarters = /* @__PURE__ */ new Map();
+  for (const row of rows ?? []) {
+    const [year, month] = String(row.month ?? "").split("-");
+    const m = Number(month);
+    if (!year || !(m >= 1 && m <= 12)) continue;
+    const key2 = `${year}-Q${Math.ceil(m / 3)}`;
+    const sum = quarters.get(key2) ?? { tax: 0, shipping: 0, amount: 0 };
+    sum.tax += row.total?.tax ?? 0;
+    sum.shipping += row.total?.shipping ?? 0;
+    sum.amount += row.total?.amount ?? 0;
+    quarters.set(key2, sum);
+  }
+  return [...quarters.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([quarter, t]) => ({
+    month: null,
+    year: null,
+    quarter,
+    total: { tax: round2(t.tax), shipping: round2(t.shipping), amount: round2(t.amount) }
+  }));
+}
+function bucketOf(day, cycle) {
+  const [y, mm, dd] = day.split("-");
+  switch (cycle) {
+    case "year":
+      return y;
+    case "quarter":
+      return `${y}-Q${Math.ceil(Number(mm) / 3)}`;
+    case "week": {
+      const date5 = Date.UTC(Number(y), Number(mm) - 1, Number(dd));
+      const dayOfYear = Math.round((date5 - Date.UTC(Number(y), 0, 1)) / 864e5);
+      const weekday = new Date(date5).getUTCDay();
+      const week = Math.floor((dayOfYear + 7 - weekday) / 7);
+      return `${y}-${mm}-${String(week).padStart(2, "0")}`;
+    }
+    default:
+      return `${y}-${mm}`;
+  }
+}
+async function getRevenueSummary(options) {
+  const cycle = options.cycle ?? "month";
+  const startDay = writtenDay(options.start);
+  const endDay = writtenDay(options.end);
+  if (!startDay || !endDay) {
+    throw new ValidationError("Use YYYY-MM-DD for the start and end dates.");
+  }
+  if (startDay > endDay) {
+    throw new ValidationError(
+      `The start date (${startDay}) is after the end date (${endDay}).`
+    );
+  }
+  const [data, outstanding, dated] = await Promise.all([
+    getReportSummary({ ...options, cycle }),
+    readOutstandingInvoices(options.companyId),
+    readInvoicesDatedBetween(startDay, endDay, options.companyId)
+  ]);
+  const sum = (rows) => round2(
+    (Array.isArray(rows) ? rows : []).reduce(
+      (s, r) => s + (r?.total?.amount || 0),
+      0
+    )
+  );
+  const key2 = (r) => r.quarter ?? r.week ?? r.month ?? r.year ?? "unknown";
+  const buckets = /* @__PURE__ */ new Map();
+  const bucket = (period) => {
+    let b = buckets.get(period);
+    if (!b) buckets.set(period, b = { period, invoiced: 0, paid: 0 });
+    return b;
+  };
+  let invoicedAmount = 0;
+  for (const inv of dated.items) {
+    const amount = Number(inv.total) || 0;
+    invoicedAmount += amount;
+    bucket(bucketOf(calendarDate(inv.date), cycle)).invoiced += amount;
+  }
+  for (const r of data?.totalPaidMetrics ?? []) bucket(key2(r)).paid = r?.total?.amount || 0;
+  const balance = (rows) => round2(rows.reduce((s, inv) => s + inv.amountDue, 0));
+  return {
+    period: { start: options.start, end: options.end, cycle },
+    invoiced: {
+      count: dated.items.length,
+      amount: round2(invoicedAmount),
+      ...dated.truncated ? { partial: true } : {}
+    },
+    paid: { amount: sum(data?.overviewPaid) },
+    buckets: [...buckets.values()].map((b) => ({ ...b, invoiced: round2(b.invoiced) })).sort((a, b) => a.period.localeCompare(b.period)),
+    owedNow: {
+      unpaid: { count: outstanding.owed.length, amount: balance(outstanding.owed) },
+      overdue: { count: outstanding.overdue.length, amount: balance(outstanding.overdue) },
+      ...outstanding.truncated ? { partial: true } : {}
+    }
+  };
 }
 
 // src/core/formatters/ReportFormatter.ts
@@ -46413,102 +46815,63 @@ var ReportFormatter = class extends BaseFormatter {
         return JSON.stringify(data, null, 2);
     }
   }
+  /** `data` is a RevenueSummary (usecases/report/getReportSummary.ts). */
   formatSummary(data, options) {
+    const invoices = (n) => `${n} invoice${n === 1 ? "" : "s"}`;
     let output2 = `# Invoice Report
 `;
     output2 += this.listItem("Period", `${options?.start || "N/A"} to ${options?.end || "N/A"}`);
-    output2 += this.section("Overview");
-    const created = data.overviewCreated || [];
-    const totalCreated = created.reduce(
-      (sum, y) => sum + (y.total?.amount || 0),
-      0
-    );
-    output2 += this.listItem("Total Invoiced", this.formatCurrency(totalCreated));
-    const paid = data.overviewPaid || [];
-    const totalPaid = paid.reduce(
-      (sum, y) => sum + (y.total?.amount || 0),
-      0
-    );
-    output2 += this.listItem("Total Paid", this.formatCurrency(totalPaid));
-    const overdue = data.overviewOverdue || [];
-    const totalOverdueAmount = overdue.reduce(
-      (sum, y) => sum + (y.total?.amount || 0),
-      0
-    );
-    const totalOverdueCount = overdue.reduce(
-      (sum, y) => sum + (y.total?.count || 0),
-      0
+    output2 += this.section("In this period");
+    output2 += this.listItem(
+      "Total Invoiced",
+      `${data.invoiced?.partial ? "at least " : ""}${this.formatCurrency(data.invoiced?.amount || 0)} (${invoices(data.invoiced?.count || 0)}, by invoice date)`
     );
     output2 += this.listItem(
-      "Overdue",
-      `${this.formatCurrency(totalOverdueAmount)} (${totalOverdueCount} invoice${totalOverdueCount !== 1 ? "s" : ""})`
+      "Total Paid",
+      `${this.formatCurrency(data.paid?.amount || 0)} (by payment date)`
     );
-    const unpaid = data.overviewUnpaid || [];
-    const totalUnpaidAmount = unpaid.reduce(
-      (sum, y) => sum + (y.total?.amount || 0),
-      0
-    );
-    const totalUnpaidCount = unpaid.reduce(
-      (sum, y) => sum + (y.total?.count || 0),
-      0
-    );
-    output2 += this.listItem(
-      "Unpaid",
-      `${this.formatCurrency(totalUnpaidAmount)} (${totalUnpaidCount} invoice${totalUnpaidCount !== 1 ? "s" : ""})`
-    );
-    if (unpaid.length > 0) {
-      const unpaidYear = unpaid[0];
-      if (unpaidYear.unpaidSent?.count > 0) {
-        output2 += this.listItem(
-          "  Sent (unread)",
-          `${this.formatCurrency(unpaidYear.unpaidSent.amount)} (${unpaidYear.unpaidSent.count})`
-        );
-      }
-      if (unpaidYear.unpaidRead?.count > 0) {
-        output2 += this.listItem(
-          "  Read (unpaid)",
-          `${this.formatCurrency(unpaidYear.unpaidRead.amount)} (${unpaidYear.unpaidRead.count})`
-        );
-      }
-      if (unpaidYear.partialPaid?.count > 0) {
-        output2 += this.listItem(
-          "  Partial Paid",
-          `${this.formatCurrency(unpaidYear.partialPaid.remainingAmount || unpaidYear.partialPaid.amount)} remaining (${unpaidYear.partialPaid.count})`
-        );
-      }
+    const owed = data.owedNow;
+    if (owed) {
+      const atLeast = owed.partial ? "at least " : "";
+      output2 += this.section("Owed as of today (all invoices)");
+      output2 += this.listItem(
+        "Unpaid",
+        `${atLeast}${this.formatCurrency(owed.unpaid.amount)} (${invoices(owed.unpaid.count)})`
+      );
+      output2 += this.listItem(
+        "Overdue",
+        `${atLeast}${this.formatCurrency(owed.overdue.amount)} (${invoices(owed.overdue.count)})`
+      );
     }
-    const createdMetrics = data.totalCreatedMetrics || [];
-    const paidMetrics = data.totalPaidMetrics || [];
-    if (createdMetrics.length > 0) {
-      output2 += this.section("Monthly Breakdown");
-      const headers = ["Month", "Invoiced", "Paid"];
-      const rows = [];
-      const paidMap = /* @__PURE__ */ new Map();
-      for (const m of paidMetrics) {
-        const key2 = m.month || m.year || "unknown";
-        paidMap.set(key2, m.total?.amount || 0);
-      }
-      for (const m of createdMetrics) {
-        const key2 = m.month || m.year || "unknown";
-        let monthLabel2;
-        if (m.month && m.month.includes("-")) {
-          const [yr, mo] = m.month.split("-");
-          const moNum = parseInt(mo, 10);
-          monthLabel2 = `${MONTH_NAMES[moNum] || mo} ${yr}`;
-        } else if (m.month) {
-          const moNum = parseInt(m.month, 10);
-          monthLabel2 = moNum ? `${MONTH_NAMES[moNum] || m.month} ${m.year || ""}` : `${m.month} ${m.year || ""}`;
-        } else {
-          monthLabel2 = `${m.year}`;
+    const buckets = data.buckets || [];
+    if (buckets.length > 0) {
+      const cycle = data.period?.cycle || "month";
+      const title = {
+        week: "Weekly Breakdown",
+        month: "Monthly Breakdown",
+        quarter: "Quarterly Breakdown",
+        year: "Yearly Breakdown"
+      };
+      output2 += this.section(title[cycle] || "Breakdown");
+      const label = (period) => {
+        const quarter = /^(\d{4})-(Q[1-4])$/.exec(period);
+        if (quarter) return `${quarter[2]} ${quarter[1]}`;
+        const month = /^(\d{4})-(\d{2})$/.exec(period);
+        if (month && cycle === "month") {
+          return `${MONTH_NAMES[parseInt(month[2], 10)] || month[2]} ${month[1]}`;
         }
-        const paidAmount = paidMap.get(key2) || 0;
-        rows.push([
-          monthLabel2,
-          this.formatCurrency(m.total?.amount || 0),
-          this.formatCurrency(paidAmount)
-        ]);
-      }
-      output2 += this.createTable(headers, rows, [1, 2]);
+        return period;
+      };
+      const head = cycle.charAt(0).toUpperCase() + cycle.slice(1);
+      output2 += this.createTable(
+        [head, "Invoiced", "Paid"],
+        buckets.map((b) => [
+          label(b.period),
+          this.formatCurrency(b.invoiced || 0),
+          this.formatCurrency(b.paid || 0)
+        ]),
+        [1, 2]
+      );
     }
     output2 += this.separator();
     output2 += this.nextActions("Next actions", [
@@ -46641,15 +47004,15 @@ function getDefaultDateRange(startInput, endInput) {
 
 // src/commands/report/summary.ts
 var summaryCommand = new Command("summary").description(
-  "Invoice report summary \u2014 totals for created, paid, overdue, and unpaid invoices"
+  "Revenue summary \u2014 what was invoiced and paid in a period, broken down by cycle, and what is owed today"
 ).option("--start <date>", "Start date (YYYY-MM-DD). Defaults to 12 months ago").option("--end <date>", "End date (YYYY-MM-DD). Defaults to today").option(
   "--cycle <cycle>",
-  "Breakdown cycle: month or year",
+  `Breakdown cycle: ${REPORT_CYCLES.join(", ")}`,
   "month"
 ).option("--json", "Output raw JSON instead of formatted").action(
   withErrors(async (opts) => {
     const { start, end } = getDefaultDateRange(opts.start, opts.end);
-    const data = await getReportSummary({
+    const data = await getRevenueSummary({
       start,
       end,
       cycle: opts.cycle
@@ -48841,71 +49204,83 @@ function computePipeline(dealsResponse, period) {
     stalled: stalled.slice(0, 3)
   };
 }
-function getPeriodDates(period) {
-  const now2 = /* @__PURE__ */ new Date();
-  const today = new Date(now2.getFullYear(), now2.getMonth(), now2.getDate());
-  if (period === "today") {
-    const start2 = new Date(today);
-    start2.setHours(0, 0, 0, 0);
-    const end2 = new Date(today);
-    end2.setHours(23, 59, 59, 999);
-    return {
-      label: "Today",
-      start: start2.toISOString(),
-      end: end2.toISOString()
-    };
-  }
-  if (period === "yesterday") {
-    const start2 = new Date(today);
-    start2.setDate(start2.getDate() - 1);
-    start2.setHours(0, 0, 0, 0);
-    const end2 = new Date(start2);
-    end2.setHours(23, 59, 59, 999);
-    return {
-      label: "Yesterday",
-      start: start2.toISOString(),
-      end: end2.toISOString()
-    };
-  }
-  if (period === "month") {
-    const start2 = new Date(today.getFullYear(), today.getMonth(), 1);
-    const end2 = new Date(today);
-    end2.setHours(23, 59, 59, 999);
-    const monthName = start2.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-    return {
-      label: `This month (${monthName})`,
-      start: start2.toISOString(),
-      end: end2.toISOString()
-    };
-  }
-  const start = new Date(today);
-  start.setDate(start.getDate() - 6);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(today);
-  end.setHours(23, 59, 59, 999);
-  const startLabel = start.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  const endLabel = end.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  return {
-    label: `This week (${startLabel} \u2013 ${endLabel})`,
+var DIGEST_PERIODS = [
+  "today",
+  "yesterday",
+  "week",
+  "last-week",
+  "month",
+  "last-month"
+];
+function getPeriodDates(period, now2 = /* @__PURE__ */ new Date()) {
+  const day = (offset) => new Date(now2.getFullYear(), now2.getMonth(), now2.getDate() + offset);
+  const endOf = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+  const span = (label, start, lastDay) => ({
+    label,
     start: start.toISOString(),
-    end: end.toISOString()
-  };
+    end: endOf(lastDay).toISOString()
+  });
+  const short = (d) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const monthName = (d) => d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  const days = (name, first, last) => span(`${name} (${short(first)} \u2013 ${short(last)})`, first, last);
+  switch (period) {
+    case "today":
+      return span("Today", day(0), day(0));
+    case "yesterday":
+      return span("Yesterday", day(-1), day(-1));
+    case "week":
+      return days("This week", day(-6), day(0));
+    case "last-week":
+      return days("Last week", day(-13), day(-7));
+    case "month": {
+      const first = new Date(now2.getFullYear(), now2.getMonth(), 1);
+      return span(`This month (${monthName(first)})`, first, day(0));
+    }
+    case "last-month": {
+      const first = new Date(now2.getFullYear(), now2.getMonth() - 1, 1);
+      const last = new Date(now2.getFullYear(), now2.getMonth(), 0);
+      return span(`Last month (${monthName(first)})`, first, last);
+    }
+    default:
+      throw new ValidationError(
+        `Unknown period "${period}" \u2014 use one of: ${DIGEST_PERIODS.join(", ")}.`
+      );
+  }
+}
+var DIGEST_PERIOD_STATS_QUERY = `
+  query DigestPeriodStats($start: Date!, $end: Date!) {
+    created: GetInvoicesCreatedStats(start: $start, end: $end, cycle: "year", type: 1) {
+      total {
+        amount
+        count
+      }
+    }
+    paid: GetInvoicesPaidStats(start: $start, end: $end, cycle: "year") {
+      total {
+        amount
+        count
+      }
+    }
+  }
+`;
+var RECENT_PAID_SCAN = 200;
+function sumTotals(rows) {
+  let count = 0;
+  let amount = 0;
+  for (const row of Array.isArray(rows) ? rows : []) {
+    count += row?.total?.count || 0;
+    amount += row?.total?.amount || 0;
+  }
+  return { count, amount: round2(amount) };
 }
 async function getDigest(opts) {
   const { period } = opts;
-  const wideStart = /* @__PURE__ */ new Date();
-  wideStart.setFullYear(wideStart.getFullYear() - 1);
-  const [
-    summaryData,
-    customersData,
-    overdueInvoices,
-    recentPaidInvoices,
-    dealsData
-  ] = await Promise.all([
-    getReportSummary({
-      start: wideStart.toISOString(),
-      end: period.end,
-      cycle: "month"
+  const periodStart = new Date(period.start).getTime();
+  const periodEnd = new Date(period.end).getTime();
+  const [stats, customersData, outstanding, recentlyPaid, dealsData] = await Promise.all([
+    bookipiGraphql({
+      query: DIGEST_PERIOD_STATS_QUERY,
+      variables: { start: period.start, end: period.end }
     }),
     getCustomersRank({
       start: period.start,
@@ -48913,17 +49288,8 @@ async function getDigest(opts) {
       page: 1,
       perPage: 5
     }),
-    listInvoices({
-      status: ["overdue"],
-      page: 1,
-      perPage: 50
-    }),
-    listInvoices({
-      status: ["paid"],
-      page: 1,
-      perPage: 10,
-      sort: "createdAt_desc"
-    }),
+    readOutstandingInvoices(),
+    scanInvoices(["paid"], RECENT_PAID_SCAN, 1),
     // Pull all deals (no status filter → fans out to all 7 statuses internally).
     // 25/status is enough for a weekly digest; larger pipelines can lean on
     // `bookipi deal list` for the full picture.
@@ -48934,42 +49300,16 @@ async function getDigest(opts) {
     // and quietly change every count below.
     listDeals({ perStatus: 25 })
   ]);
-  const overviewCreated = summaryData?.overviewCreated || [];
-  const overviewPaid = summaryData?.overviewPaid || [];
-  const overviewOverdue = summaryData?.overviewOverdue || [];
-  const overviewUnpaid = summaryData?.overviewUnpaid || [];
-  const totalCreated = overviewCreated.reduce(
-    (s, y) => s + (y.total?.amount || 0),
-    0
-  );
-  const totalPaid = overviewPaid.reduce(
-    (s, y) => s + (y.total?.amount || 0),
-    0
-  );
-  const overdueAmount = overviewOverdue.reduce(
-    (s, y) => s + (y.total?.amount || 0),
-    0
-  );
-  const overdueCount = overviewOverdue.reduce(
-    (s, y) => s + (y.total?.count || 0),
-    0
-  );
-  const unpaidAmount = overviewUnpaid.reduce(
-    (s, y) => s + (y.total?.amount || 0),
-    0
-  );
-  const unpaidCount = overviewUnpaid.reduce(
-    (s, y) => s + (y.total?.count || 0),
-    0
-  );
-  const overdueItems = (overdueInvoices?.searchInvoices?.items || []).map((inv) => ({
+  const { owed, overdue: overdueInvoices } = outstanding;
+  const balance = (rows) => round2(rows.reduce((sum, inv) => sum + inv.amountDue, 0));
+  const overdueItems = overdueInvoices.map((inv) => ({
     // The invoice number verbatim — no invented "INV-" prefix. Real data
     // stores these inconsistently ("invoice-687", "INV-686", bare digits),
     // so prepending guesses at a convention the user's own invoice may not
     // use. Whatever their invoice says is what we show.
     invoiceNo: inv.no ? String(inv.no).trim() : "an invoice",
     customerName: getCustomerName2(inv),
-    amount: inv.amountDue || inv.total || 0,
+    amount: inv.amountDue,
     daysOverdue: daysOverdue(inv.dueDate)
   })).sort((a, b) => b.amount - a.amount);
   const customerItems = customersData?.GetInvoiceCustomersRank?.items || [];
@@ -48978,24 +49318,39 @@ async function getDigest(opts) {
     amount: c.total?.amount || 0,
     count: c.total?.count || 0
   }));
-  const recentActivity = [];
-  const paidItems = recentPaidInvoices?.searchInvoices?.items || [];
-  for (const inv of paidItems.slice(0, 5)) {
-    const name = getCustomerName2(inv);
-    const amount = inv.total || 0;
-    const no = inv.no ? String(inv.no).trim() : "an invoice";
-    recentActivity.push(`${no} from ${name} \u2014 ${formatCurrency(amount)} paid`);
+  const payments = [];
+  const withPayments = /* @__PURE__ */ new Map();
+  for (const inv of [...outstanding.all, ...recentlyPaid.items]) {
+    withPayments.set(inv._id, inv);
   }
-  const pipeline = computePipeline(dealsData, period);
+  for (const inv of withPayments.values()) {
+    for (const p of Array.isArray(inv.payments) ? inv.payments : []) {
+      const at = p?.date ? new Date(p.date).getTime() : NaN;
+      if (typeof p?.amount !== "number" || !(at >= periodStart && at <= periodEnd)) {
+        continue;
+      }
+      const no = inv.no ? String(inv.no).trim() : "an invoice";
+      payments.push({
+        at,
+        line: `${no} from ${getCustomerName2(inv)} \u2014 ${formatCurrency(p.amount)} paid`
+      });
+    }
+  }
+  const recentActivity = payments.sort((a, b) => b.at - a.at).slice(0, 5).map((p) => p.line);
   return {
     period,
-    created: { count: 0, amount: totalCreated },
-    paid: { count: 0, amount: totalPaid },
-    overdue: { count: overdueCount, amount: overdueAmount, items: overdueItems },
-    unpaid: { count: unpaidCount, amount: unpaidAmount },
+    created: sumTotals(stats?.created),
+    paid: sumTotals(stats?.paid),
+    overdue: {
+      count: overdueInvoices.length,
+      amount: balance(overdueInvoices),
+      items: overdueItems
+    },
+    unpaid: { count: owed.length, amount: balance(owed) },
+    outstandingArePartial: outstanding.truncated,
     topCustomers,
     recentActivity,
-    pipeline
+    pipeline: computePipeline(dealsData, period)
   };
 }
 
@@ -49008,15 +49363,21 @@ function formatTextDigest(data) {
   lines.push("");
   lines.push("  \u{1F4B0} THE BIG PICTURE");
   lines.push("");
-  lines.push(`  Invoiced:   ${formatCurrency(data.created.amount)}`);
-  lines.push(`  Collected:  ${formatCurrency(data.paid.amount)}`);
-  lines.push(`  Unpaid:     ${formatCurrency(data.unpaid.amount)}${data.unpaid.count > 0 ? ` (${data.unpaid.count} invoices)` : ""}`);
-  lines.push(`  Overdue:    ${formatCurrency(data.overdue.amount)}${data.overdue.count > 0 ? ` (${data.overdue.count} invoices)` : ""}`);
+  const invoices = (n) => n > 0 ? ` (${n} invoice${n === 1 ? "" : "s"})` : "";
+  const atLeast = data.outstandingArePartial ? "at least " : "";
+  lines.push("  In this period");
+  lines.push(`  Invoiced:   ${formatCurrency(data.created.amount)}${invoices(data.created.count)}`);
+  lines.push(`  Collected:  ${formatCurrency(data.paid.amount)}${invoices(data.paid.count)}`);
+  lines.push("");
+  lines.push("  Owed as of today (all invoices)");
+  lines.push(`  Unpaid:     ${atLeast}${formatCurrency(data.unpaid.amount)}${invoices(data.unpaid.count)}`);
+  lines.push(`  Overdue:    ${atLeast}${formatCurrency(data.overdue.amount)}${invoices(data.overdue.count)}`);
   if (data.created.amount > 0) {
     const collectionRate = data.paid.amount / data.created.amount;
-    const bar = "\u2588".repeat(Math.round(collectionRate * 20)) + "\u2591".repeat(20 - Math.round(collectionRate * 20));
+    const filled = Math.min(20, Math.max(0, Math.round(collectionRate * 20)));
+    const bar = "\u2588".repeat(filled) + "\u2591".repeat(20 - filled);
     lines.push("");
-    lines.push(`  Collection rate: [${bar}] ${(collectionRate * 100).toFixed(0)}%`);
+    lines.push(`  Collected vs invoiced: [${bar}] ${(collectionRate * 100).toFixed(0)}%`);
   }
   if (data.overdue.items.length > 0) {
     lines.push("");
@@ -49090,9 +49451,9 @@ function formatTextDigest(data) {
       );
     }
     if (p.closedWonThisPeriod.count > 0 || p.closedLostThisPeriod.count > 0) {
-      const atLeast = p.valuesArePartial ? "\u2265" : "";
-      const wonPart = p.closedWonThisPeriod.count > 0 ? `\u{1F3C6} ${atLeast}${p.closedWonThisPeriod.count} won (${atLeast}${formatCurrency(p.closedWonThisPeriod.amount)})` : null;
-      const lostPart = p.closedLostThisPeriod.count > 0 ? `\u{1F494} ${atLeast}${p.closedLostThisPeriod.count} lost (${atLeast}${formatCurrency(p.closedLostThisPeriod.amount)})` : null;
+      const atLeast2 = p.valuesArePartial ? "\u2265" : "";
+      const wonPart = p.closedWonThisPeriod.count > 0 ? `\u{1F3C6} ${atLeast2}${p.closedWonThisPeriod.count} won (${atLeast2}${formatCurrency(p.closedWonThisPeriod.amount)})` : null;
+      const lostPart = p.closedLostThisPeriod.count > 0 ? `\u{1F494} ${atLeast2}${p.closedLostThisPeriod.count} lost (${atLeast2}${formatCurrency(p.closedLostThisPeriod.amount)})` : null;
       const tail = p.closedWonThisPeriod.names.length > 0 ? ` \u2014 ${p.closedWonThisPeriod.names.join(", ")}` : "";
       lines.push(
         `  Closed this period: ${[wonPart, lostPart].filter(Boolean).join("  ")}${tail}`
@@ -49139,10 +49500,15 @@ function formatJsonDigest(data) {
   return JSON.stringify({
     period: data.period,
     summary: {
+      // For the period.
       invoiced: data.created.amount,
+      invoicedCount: data.created.count,
       collected: data.paid.amount,
+      collectedCount: data.paid.count,
+      // As of now, every invoice, by balance.
       unpaid: { amount: data.unpaid.amount, count: data.unpaid.count },
       overdue: { amount: data.overdue.amount, count: data.overdue.count },
+      ...data.outstandingArePartial ? { outstandingArePartial: true } : {},
       collectionRate: data.created.amount > 0 ? Math.round(data.paid.amount / data.created.amount * 1e3) / 10 : 0
     },
     overdueBreakdown: {
@@ -49159,7 +49525,7 @@ var digestCommand = new Command("digest").description(
   "Generate a concise business digest \u2014 what came in, what's overdue, and what needs attention"
 ).option(
   "-p, --period <period>",
-  'Time period: "week" (default), "today", "yesterday", or "month"',
+  `Time period: ${DIGEST_PERIODS.join(", ")} (default: week = the last 7 days)`,
   "week"
 ).option("--start <date>", "Custom start date (YYYY-MM-DD), overrides --period").option("--end <date>", "Custom end date (YYYY-MM-DD), overrides --period").option("--json", "Output digest as structured JSON").action(
   withErrors(async (opts) => {
@@ -49168,6 +49534,19 @@ var digestCommand = new Command("digest").description(
       const startDate = /* @__PURE__ */ new Date(opts.start + "T00:00:00.000");
       const endDate = opts.end ? /* @__PURE__ */ new Date(opts.end + "T23:59:59.999") : /* @__PURE__ */ new Date();
       endDate.setHours(23, 59, 59, 999);
+      if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+        throw new ValidationError("Use YYYY-MM-DD for --start and --end.");
+      }
+      if (startDate > endDate) {
+        throw new ValidationError("--start is after --end.");
+      }
+      const latestEnd = new Date(startDate);
+      latestEnd.setMonth(latestEnd.getMonth() + 24);
+      if (endDate > latestEnd) {
+        throw new ValidationError(
+          "A digest covers at most 24 months \u2014 narrow --start and --end."
+        );
+      }
       const startLabel = startDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
       const endLabel = endDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
       period = {
@@ -49191,6 +49570,7 @@ var digestCommand = new Command("digest").description(
 );
 
 // src/usecases/report/getSuggestions.ts
+var plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 function suggestOverdueActions(overdueInvoices) {
   const actions = [];
   if (!overdueInvoices || overdueInvoices.length === 0) return actions;
@@ -49202,7 +49582,7 @@ function suggestOverdueActions(overdueInvoices) {
     actions.push({
       priority: 1,
       emoji: "\u{1F6A8}",
-      title: `Escalate ${severe.length} severely overdue invoices`,
+      title: `Escalate ${plural(severe.length, "severely overdue invoice")}`,
       why: `${formatCurrency(severeTotal)} has been outstanding for 90+ days \u2014 these are at risk of becoming uncollectable.`,
       impact: `Recovering even half would add ${formatCurrency(severeTotal * 0.5)} to your cash flow.`,
       command: `bookipi invoice list --status overdue`,
@@ -49215,11 +49595,16 @@ function suggestOverdueActions(overdueInvoices) {
   });
   if (moderate.length >= 2) {
     const modTotal = moderate.reduce((s, inv) => s + (inv.amountDue || inv.total || 0), 0);
+    const customerCount = Object.keys(groupOverdueByCustomer(moderate)).length;
+    const days = moderate.map((inv) => daysOverdue(inv.dueDate));
+    const oldest = Math.max(...days);
+    const newest = Math.min(...days);
+    const span = newest === oldest ? `${oldest}` : `${newest} to ${oldest}`;
     actions.push({
       priority: 2,
       emoji: "\u{1F4E7}",
-      title: `Send reminders to ${moderate.length} overdue customers`,
-      why: `${formatCurrency(modTotal)} is 7-89 days past due \u2014 a friendly nudge can recover a lot of this.`,
+      title: `Send reminders for ${plural(moderate.length, "overdue invoice")} from ${plural(customerCount, "customer")}`,
+      why: `${formatCurrency(modTotal)} is ${span} days past due \u2014 a friendly nudge can recover a lot of this.`,
       impact: `Reminder emails typically recover 30-50% of overdue amounts.`,
       command: `bookipi invoice remind --min-days 7 --max-days 89`,
       userPrompt: "Send reminders to everyone who's 7+ days overdue"
@@ -49250,7 +49635,7 @@ function suggestCollectionActions(totalCreated, totalPaid, unpaidAmount) {
         priority: 2,
         emoji: "\u{1F4B8}",
         title: "Improve your collection rate",
-        why: `Only ${(collectionRate * 100).toFixed(0)}% of invoiced amounts have been collected. ${formatCurrency(unpaidAmount)} is still outstanding.`,
+        why: `Only ${(collectionRate * 100).toFixed(0)}% of what you invoiced in this period has been collected. ${formatCurrency(unpaidAmount)} is still outstanding across all your invoices.`,
         impact: "Consider shorter payment terms, upfront deposits, or automated reminders.",
         command: `bookipi report insights`,
         userPrompt: "Analyze my collection rate and suggest improvements"
@@ -49335,7 +49720,7 @@ function suggestQuickWins(overdueInvoices) {
       actions.push({
         priority: 4,
         emoji: "\u23F0",
-        title: `Quick win: ${justOverdue.length} invoices just became overdue`,
+        title: `Quick win: ${plural(justOverdue.length, "invoice")} just became overdue`,
         why: `${formatCurrency(justOverdueTotal)} became overdue in the last 7 days \u2014 these are the easiest to recover.`,
         impact: "A quick reminder while it's fresh has the highest success rate.",
         command: `bookipi invoice remind --min-days 1 --max-days 7`,
@@ -49355,20 +49740,25 @@ function suggestQuickWins(overdueInvoices) {
   return actions;
 }
 async function getSuggestions(opts) {
-  const [summaryData, customersData, itemsData, overdueData] = await Promise.all([
+  const [summaryData, customersData, itemsData, outstanding] = await Promise.all([
     getReportSummary({ start: opts.start, end: opts.end, cycle: "month" }),
     getCustomersRank({ start: opts.start, end: opts.end, page: 1, perPage: 20 }),
     getItemsRank({ start: opts.start, end: opts.end, page: 1, perPage: 20 }),
-    listInvoices({ status: ["overdue"], page: 1, perPage: 100 })
+    // What is owed, as of now, by balance — the same reading the digest uses,
+    // so the two cannot disagree. This used to be the 100 newest invoices in
+    // the "overdue" status, which undercounted any larger ledger.
+    readOutstandingInvoices()
   ]);
   const totalCreated = (summaryData?.overviewCreated || []).reduce((s, y) => s + (y.total?.amount || 0), 0);
   const totalPaid = (summaryData?.overviewPaid || []).reduce((s, y) => s + (y.total?.amount || 0), 0);
-  const unpaidAmount = (summaryData?.overviewUnpaid || []).reduce((s, y) => s + (y.total?.amount || 0), 0);
+  const unpaidAmount = round2(
+    outstanding.owed.reduce((s, inv) => s + inv.amountDue, 0)
+  );
   const customerItems = customersData?.GetInvoiceCustomersRank?.items || [];
   const totalCustomerRevenue = customersData?.GetInvoiceCustomersRank?.totalDocs?.amount || 0;
   const itemItems = itemsData?.GetInvoiceItemsRank?.items || [];
   const totalItemRevenue = itemsData?.GetInvoiceItemsRank?.totalDocs?.amount || 0;
-  const overdueInvoices = overdueData?.searchInvoices?.items || [];
+  const overdueInvoices = outstanding.overdue;
   const allActions = [
     ...suggestOverdueActions(overdueInvoices),
     ...suggestCollectionActions(totalCreated, totalPaid, unpaidAmount),
@@ -51796,12 +52186,12 @@ function parseDays(text, json3) {
     return [day];
   });
 }
-function readSections(path12, json3) {
+function readSections(path11, json3) {
   let parsed;
   try {
-    parsed = JSON.parse(readFileSync(path12, "utf8"));
+    parsed = JSON.parse(readFileSync(path11, "utf8"));
   } catch (error62) {
-    failWith(`Could not read --from-file ${path12}: ${error62 instanceof Error ? error62.message : String(error62)}`, { json: json3 });
+    failWith(`Could not read --from-file ${path11}: ${error62 instanceof Error ? error62.message : String(error62)}`, { json: json3 });
   }
   if (!isPlainObject(parsed)) failWith("--from-file must hold a JSON object", { json: json3 });
   const sections = parsed;
@@ -52690,16 +53080,45 @@ var PROPOSAL_SEND_MUTATION = `
     }
   }
 `;
+var PROPOSAL_SENDER_QUERY = `
+  query ProposalSender($id: MongoID!) {
+    companiesOne(filter: { _id: $id }) {
+      name
+    }
+  }
+`;
+var DEFAULT_MESSAGE2 = "Looking forward to doing business with you";
+function safeSubject(subject) {
+  return subject.replace(/'/g, "\u2019");
+}
+async function resolveProposalEmail(opts) {
+  const subject = opts.subject?.trim() ? opts.subject : await defaultSubject();
+  return {
+    subject: safeSubject(subject),
+    message: opts.message?.trim() ? opts.message : DEFAULT_MESSAGE2
+  };
+}
+async function defaultSubject() {
+  try {
+    const id = getDefaultCompany();
+    const data = id ? await bookipiGraphql({ query: PROPOSAL_SENDER_QUERY, variables: { id } }) : null;
+    const name = data?.companiesOne?.name?.trim();
+    return name ? `Proposal from ${name}` : "Your proposal";
+  } catch {
+    return "Your proposal";
+  }
+}
 async function sendProposal(opts) {
   if (!opts.recipients || opts.recipients.length === 0) {
     throw new Error("At least one recipient is required to send a proposal.");
   }
+  const { subject, message } = await resolveProposalEmail(opts);
   const variables = {
     _id: opts.id,
     recipients: opts.recipients,
     bcc: opts.bcc ?? [],
-    subject: opts.subject ?? "You've received a proposal",
-    message: opts.message ?? "Please find your proposal attached."
+    subject,
+    message
   };
   return bookipiGraphql({
     query: PROPOSAL_SEND_MUTATION,
@@ -52854,7 +53273,13 @@ var sendCommand3 = new Command("send").description(
 ).argument("<id>", "Proposal ID or handle (@p1)").requiredOption(
   "-r, --recipients <emails>",
   "Comma-separated list of recipient email addresses"
-).option("-b, --bcc <emails>", "Comma-separated list of BCC email addresses").option("-s, --subject <text>", "Email subject line").option("-m, --message <text>", "Email message body").option(
+).option("-b, --bcc <emails>", "Comma-separated list of BCC email addresses").option(
+  "-s, --subject <text>",
+  'Email subject line (default: "Proposal from <your company>")'
+).option(
+  "-m, --message <text>",
+  "Email message body (default: Bookipi's standard message)"
+).option(
   "--advance-deal",
   "After successful send, also bump the linked deal's stage to 'proposal' (only when the deal isn't already at or past it). See common.md \xA7 Deal Stage Auto-Progression."
 ).option("--json", "Output raw JSON instead of formatted").action(
@@ -52936,7 +53361,7 @@ Server: ${result.message} (status ${result.statusCode ?? "?"})`);
       `
 \u{1F4A1} When ${who} accepts, you can either:
    \u2022 Invoice direct:    \`bookipi invoice create-from-proposal ${handle}\`
-   \u2022 Or sign-then-bill: \`bookipi contract create-from-proposal ${handle}\` (then \`contract send\`)`
+   \u2022 Or sign-then-bill: write the contract, \`bookipi contract upload <file>\`, then \`contract send\``
     );
   })
 );
@@ -53251,81 +53676,20 @@ var listCommand13 = new Command("list").description("List eSign contracts (docum
   })
 );
 
-// src/usecases/contract/resolveJurisdiction.ts
-var FALLBACK_JURISDICTION = "usa";
-function countryToJurisdiction(country) {
-  const trimmed = (country ?? "").trim();
-  if (!trimmed) return null;
-  if (/^[a-zA-Z]{2}$/.test(trimmed)) {
-    const code = trimmed.toUpperCase();
-    if (code === "US") return "usa";
-    try {
-      const name = new Intl.DisplayNames(["en"], {
-        type: "region",
-        fallback: "none"
-      }).of(code);
-      if (name && name !== code && !/unknown/i.test(name)) {
-        return name.toLowerCase();
-      }
-    } catch {
-    }
-    return null;
-  }
-  const lower = trimmed.toLowerCase();
-  if (lower === "usa" || lower === "united states" || lower === "united states of america") {
-    return "usa";
-  }
-  return lower;
+// src/usecases/contract/urls.ts
+function contractHomeUrl() {
+  return `${config.BOOKIPI_WEB_URL}/contract`;
 }
-async function resolveJurisdiction() {
-  try {
-    const companyId = getDefaultCompany();
-    if (companyId) {
-      const company = await getCompanyRenderContext(companyId);
-      const country = (company?.country ?? "").trim();
-      const slug = countryToJurisdiction(country);
-      if (slug) {
-        return {
-          slug,
-          note: `Using jurisdiction "${slug}" from your company country (${country}) \u2014 pass --jurisdiction to override.`
-        };
-      }
-      if (country) {
-        return {
-          slug: FALLBACK_JURISDICTION,
-          note: `\u26A0 Couldn't resolve your company country "${country}" to a jurisdiction \u2014 defaulting to "${FALLBACK_JURISDICTION}". Pass --jurisdiction (any country, e.g. australia, germany) if that's wrong.`
-        };
-      }
-    }
-  } catch {
-  }
-  return {
-    slug: FALLBACK_JURISDICTION,
-    note: `\u26A0 No company country on file \u2014 defaulting jurisdiction to "${FALLBACK_JURISDICTION}". Pass --jurisdiction (any country) if that's wrong.`
-  };
+function contractUploadUrl() {
+  return `${config.BOOKIPI_WEB_URL}/contract/upload`;
+}
+function contractEditUrl(contractId) {
+  return `${config.BOOKIPI_WEB_URL}/contract/edit/${contractId}`;
 }
 
-// src/usecases/contract/createDocumentAI.ts
-var CREATE_AI_DOC_MUTATION = `
-  mutation DocumentsCreateOneAI($record: createDocumentAIRecordITCWrapped!) {
-    documentsCreateOneAI(record: $record) {
-      recordId
-      record {
-        title
-        status
-        createdAt
-        updatedAt
-        category
-      }
-    }
-  }
-`;
-async function createDocumentAI(record2) {
-  return signitRequest({
-    query: CREATE_AI_DOC_MUTATION,
-    variables: { record: record2 }
-  });
-}
+// src/usecases/contract/uploadContractDocument.ts
+import fs8 from "node:fs";
+import path9 from "node:path";
 
 // src/usecases/contract/generateDocumentId.ts
 var GENERATE_DOCUMENT_ID_QUERY = `
@@ -53343,246 +53707,6 @@ async function generateDocumentId() {
   }
   return id;
 }
-
-// src/usecases/contract/getDocumentWithClauses.ts
-var GET_DOCUMENT_WITH_CLAUSES_QUERY = `
-  query GetDocumentWithClausesV2(
-    $whatToCreate: String!
-    $jurisdiction: String!
-    $industry: String!
-    $extraInfo: [String]
-    $outputType: String
-  ) {
-    getDocumentWithClausesV2(
-      whatToCreate: $whatToCreate
-      jurisdiction: $jurisdiction
-      industry: $industry
-      extraInfo: $extraInfo
-      outputType: $outputType
-    ) {
-      response
-    }
-  }
-`;
-async function getDocumentWithClauses(opts) {
-  const data = await signitRequest({
-    query: GET_DOCUMENT_WITH_CLAUSES_QUERY,
-    variables: {
-      whatToCreate: opts.whatToCreate,
-      jurisdiction: opts.jurisdiction,
-      industry: opts.industry,
-      outputType: opts.outputType ?? "standard",
-      extraInfo: (opts.extraInfo ?? []).map((q) => JSON.stringify(q))
-    }
-  });
-  const raw = data?.getDocumentWithClausesV2?.response;
-  if (typeof raw !== "string" || !raw) {
-    throw new Error(
-      "getDocumentWithClausesV2 returned no response \u2014 check API or input parameters"
-    );
-  }
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch (e) {
-    throw new Error(
-      `getDocumentWithClausesV2 returned non-JSON response: ${e.message}`
-    );
-  }
-  if (!parsed.documentTitle || !Array.isArray(parsed.clauses)) {
-    throw new Error(
-      "getDocumentWithClausesV2 response missing documentTitle or clauses"
-    );
-  }
-  return { documentTitle: parsed.documentTitle, clauses: parsed.clauses };
-}
-
-// src/core/cache/contractAiCache.ts
-import fs8 from "node:fs";
-import path9 from "node:path";
-var CACHE_SUBDIR = "contract-cache";
-function getCachePath(aiDocId) {
-  const configDir = getBookipiConfigDir();
-  if (!configDir) return null;
-  return path9.join(configDir, CACHE_SUBDIR, `${aiDocId}.json`);
-}
-function saveContractAiCache(aiDocId, entry) {
-  const file2 = getCachePath(aiDocId);
-  if (!file2) return;
-  try {
-    fs8.mkdirSync(path9.dirname(file2), { recursive: true });
-    const payload = {
-      aiDocId,
-      title: entry.title,
-      clauses: entry.clauses,
-      ...entry.signer ? { signer: entry.signer } : {},
-      createdAt: Date.now()
-    };
-    fs8.writeFileSync(file2, JSON.stringify(payload, null, 2), "utf-8");
-  } catch {
-  }
-}
-function getContractAiCache(aiDocId) {
-  const file2 = getCachePath(aiDocId);
-  if (!file2 || !fs8.existsSync(file2)) return null;
-  try {
-    const raw = fs8.readFileSync(file2, "utf-8");
-    const parsed = JSON.parse(raw);
-    if (parsed.aiDocId === aiDocId && typeof parsed.title === "string" && Array.isArray(parsed.clauses)) {
-      return parsed;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-// src/usecases/contract/draftContract.ts
-var DEFAULT_INDUSTRY = "Web, Tech & Media";
-async function draftContract(input2) {
-  const whatToCreate = (input2.whatToCreate ?? "").trim();
-  if (!whatToCreate) {
-    throw new Error("Provide a description of the contract to draft.");
-  }
-  if (input2.signer && (!input2.signer.fullName || !input2.signer.email)) {
-    throw new Error(
-      "A suggested signer needs both a full name and an email, or neither."
-    );
-  }
-  let jurisdiction = input2.jurisdiction;
-  let jurisdictionNote;
-  if (!jurisdiction) {
-    const resolved = await resolveJurisdiction();
-    jurisdiction = resolved.slug;
-    jurisdictionNote = resolved.note;
-  }
-  const industry = input2.industry ?? DEFAULT_INDUSTRY;
-  const extraInfo = input2.extraInfo ?? [];
-  const aiDocId = await generateDocumentId();
-  const ai = await getDocumentWithClauses({
-    whatToCreate,
-    jurisdiction,
-    industry,
-    extraInfo
-  });
-  await createDocumentAI({
-    _id: aiDocId,
-    title: ai.documentTitle,
-    aiFields: {
-      header: ai.documentTitle,
-      clauses: ai.clauses,
-      whatToCreate,
-      industry,
-      jurisdiction,
-      extraInfo,
-      outputType: "standard"
-    }
-  });
-  saveContractAiCache(aiDocId, {
-    title: ai.documentTitle,
-    clauses: ai.clauses,
-    ...input2.signer ? { signer: input2.signer } : {}
-  });
-  return {
-    aiDocId,
-    title: ai.documentTitle,
-    clauseCount: Array.isArray(ai.clauses) ? ai.clauses.length : 0,
-    jurisdiction,
-    industry,
-    editUrlPlain: `${config.BOOKIPI_WEB_URL}/contract/ai-contract/edit/${aiDocId}`,
-    ...jurisdictionNote ? { jurisdictionNote } : {},
-    ...input2.signer ? { signer: input2.signer } : {}
-  };
-}
-
-// src/commands/contract/draft.ts
-function parseDetail(value, previous) {
-  const idx = value.indexOf("::");
-  const [question, answer] = idx === -1 ? [value.trim(), ""] : [value.slice(0, idx).trim(), value.slice(idx + 2).trim()];
-  if (!question) return previous;
-  return [...previous, { question, answer, placeholder: "" }];
-}
-var draftCommand2 = new Command("draft").description(
-  "AI-draft a contract from a freeform description (no proposal needed). Generates the clauses and creates the draft in Bookipi, then returns an editor URL to tweak clauses, attach a signer, place the signature, and send. To draft from an accepted proposal instead, use `contract create-from-proposal`."
-).argument(
-  "<description>",
-  'What to create, e.g. "mutual NDA between my company and Acme Corp" or "service agreement for a 6-month SEO retainer"'
-).option(
-  "--jurisdiction <slug>",
-  "Country (any \u2014 e.g. usa, australia, germany). Defaults to your company's country."
-).option(
-  "--industry <name>",
-  "Industry \u2014 e.g. 'Web, Tech & Media'. Defaults to 'Web, Tech & Media'.",
-  "Web, Tech & Media"
-).option(
-  "--detail <q::a>",
-  'Extra detail as "question::answer" to tailor the clauses (repeatable) \u2014 e.g. --detail "Term?::12 months" --detail "Payment?::50% upfront"',
-  parseDetail,
-  []
-).option("--signer-name <name>", "Suggested signer's full name (pre-filled in the editor)").option("--signer-email <email>", "Suggested signer's email (pre-filled in the editor)").option("--json", "Output raw JSON instead of formatted").action(
-  withErrors(async (description, opts) => {
-    if (opts.signerEmail && !opts.signerName || opts.signerName && !opts.signerEmail) {
-      failWith("Provide both --signer-name and --signer-email, or neither", {
-        json: opts?.json
-      });
-    }
-    if (opts.industry === DEFAULT_INDUSTRY) {
-      process.stderr.write(
-        `  \u2022 Using default industry "${DEFAULT_INDUSTRY}" \u2014 pass --industry to match the actual business (the clauses adapt to it).
-`
-      );
-    }
-    process.stderr.write(`  \u2022 Generating AI clauses (~15-30s)...
-`);
-    const drafted = await draftContract({
-      whatToCreate: description ?? "",
-      ...opts.jurisdiction ? { jurisdiction: opts.jurisdiction } : {},
-      industry: opts.industry,
-      extraInfo: opts.detail ?? [],
-      ...opts.signerName && opts.signerEmail ? { signer: { fullName: opts.signerName, email: opts.signerEmail } } : {}
-    });
-    if (drafted.jurisdictionNote) {
-      process.stderr.write(`  \u2022 ${drafted.jurisdictionNote}
-`);
-    }
-    const editUrl = await buildAuthenticatedUrl(drafted.editUrlPlain);
-    const handle = HandleRegistry.getInstance().register("k", drafted.aiDocId);
-    if (opts.json) {
-      console.log(
-        JSON.stringify(
-          {
-            aiDocId: drafted.aiDocId,
-            editUrl,
-            title: drafted.title,
-            ...drafted.signer ? { suggestedSigner: drafted.signer } : {}
-          },
-          null,
-          2
-        )
-      );
-      return;
-    }
-    console.log(`\u2705 **Contract Draft Ready**
-`);
-    console.log(`# ${drafted.title} [${handle}]`);
-    console.log(``);
-    console.log(`- Drafted from: "${(description ?? "").trim()}"`);
-    if (drafted.signer) console.log(`- Suggested signer: ${drafted.signer.email}`);
-    console.log(`- Status: AI draft (not yet finalized)`);
-    console.log(``);
-    console.log(
-      `\u{1F517} **Edit clauses, attach signer, position signature, and send:** ${editUrl}`
-    );
-    console.log(``);
-    console.log(
-      `\u{1F4A1} The contract is still in AI-edit mode \u2014 tweak wording in the editor, then attach the signer and send from there. (Once finalized in the web, the document becomes read-only and only accepts signer changes.)`
-    );
-  })
-);
-
-// src/usecases/contract/uploadContractDocument.ts
-import fs9 from "node:fs";
-import path10 from "node:path";
 
 // src/usecases/contract/uploadDocumentPDF.ts
 var GET_UPLOAD_URL_QUERY = `
@@ -53649,13 +53773,6 @@ async function uploadDocumentFile(opts) {
   }
   return { uploaded: true, url: url2, statusCode: res.status };
 }
-async function uploadDocumentPDF(opts) {
-  return uploadDocumentFile({
-    documentId: opts.documentId,
-    base64: opts.pdfBase64,
-    contentType: "pdf"
-  });
-}
 
 // src/usecases/contract/uploadContractDocument.ts
 var CREATE_DOC = `
@@ -53675,7 +53792,7 @@ var UPDATE_DOC = `
   }
 `;
 function contentTypeFor(filePath) {
-  const ext = path10.extname(filePath).replace(/^\./, "").toLowerCase();
+  const ext = path9.extname(filePath).replace(/^\./, "").toLowerCase();
   if (!ext) {
     throw new Error(`Can't determine file type from "${filePath}" \u2014 add an extension (e.g. .pdf)`);
   }
@@ -53683,11 +53800,11 @@ function contentTypeFor(filePath) {
 }
 async function uploadContractDocument(opts) {
   const { filePath } = opts;
-  if (!fs9.existsSync(filePath)) throw new Error(`File not found: ${filePath}`);
-  const bytes = fs9.readFileSync(filePath);
+  if (!fs8.existsSync(filePath)) throw new Error(`File not found: ${filePath}`);
+  const bytes = fs8.readFileSync(filePath);
   if (!bytes.length) throw new Error(`File is empty: ${filePath}`);
   const contentType3 = contentTypeFor(filePath);
-  const fileName = path10.basename(filePath);
+  const fileName = path9.basename(filePath);
   const nameNoExt = fileName.replace(/\.[^.]+$/, "");
   const title = opts.title?.trim() || nameNoExt;
   const documentId = await generateDocumentId();
@@ -53713,7 +53830,7 @@ async function uploadContractDocument(opts) {
 
 // src/commands/contract/upload.ts
 var uploadCommand2 = new Command("upload").description(
-  "Upload an existing file (PDF, image) as an eSign contract \u2014 bring-your-own document. Creates the contract in Bookipi and returns an editor URL to add signers and place the signature. Also the target for an AI-written contract: render it to a PDF, then upload it here."
+  "Upload an existing file (PDF, image) as an eSign contract \u2014 bring-your-own document. Creates the contract in Bookipi and returns an editor URL to add signers and place the signature. Also the way in for a contract you wrote: render it to a PDF, then upload it here."
 ).argument("<file>", "Path to the contract file (.pdf, .png, .jpg)").option("--title <title>", "Document title (defaults to the file name)").option("--json", "Output raw JSON instead of formatted").action(
   withErrors(async (file2, opts) => {
     process.stderr.write(`  \u2022 Uploading ${file2}...
@@ -53722,7 +53839,7 @@ var uploadCommand2 = new Command("upload").description(
       filePath: file2,
       ...opts.title ? { title: opts.title } : {}
     });
-    const editUrlPlain = `${config.BOOKIPI_WEB_URL}/contract/edit/${documentId}`;
+    const editUrlPlain = contractEditUrl(documentId);
     const editUrl = await buildAuthenticatedUrl(editUrlPlain);
     const registry3 = HandleRegistry.getInstance();
     const handle = registry3.register("k", documentId);
@@ -53737,166 +53854,10 @@ var uploadCommand2 = new Command("upload").description(
     console.log(`- Uploaded file: ${file2}`);
     console.log(`- Status: draft (not yet sent)`);
     console.log(``);
-    console.log(`\u{1F517} **Add signers, place the signature, and send:** ${editUrl}`);
+    console.log(`\u{1F517} **Add signers and place the signature and date:** ${editUrl}`);
     console.log(``);
     console.log(
-      `\u{1F4A1} Open the editor to drop the signature field on the page, add one or more signers, and send for signing. It stays a draft in your eSign documents until you send it.`
-    );
-  })
-);
-
-// src/usecases/contract/contractFromProposal.ts
-function sumProposalValue(items) {
-  return (items ?? []).reduce((sum, raw) => {
-    const item = raw;
-    return sum + (typeof item["totalAmount"] === "number" ? item["totalAmount"] : 0);
-  }, 0);
-}
-function fmtDate(iso2, fallback) {
-  if (!iso2 || typeof iso2 !== "string") return fallback;
-  try {
-    return new Date(iso2).toISOString().slice(0, 10);
-  } catch {
-    return fallback;
-  }
-}
-function buildWhatToCreate(title) {
-  const t = String(title ?? "").trim();
-  if (!t || /^proposal\s*-?\s*\d+$/i.test(t)) return "service agreement contract";
-  return `contract for ${t.toLowerCase()}`;
-}
-async function contractFromProposal(input2) {
-  const proposal = await getProposalById(input2.proposalId);
-  if (!proposal) throw new Error(`Proposal ${input2.proposalId} not found`);
-  const customer = proposal["customerReference"] ?? proposal["customer"] ?? null;
-  const customerName2 = customer?.["companyName"] || customer?.["individualCompanyName"] || [customer?.["firstName"], customer?.["lastName"]].filter(Boolean).join(" ").trim() || "Customer";
-  const customerEmail = customer?.["email"] ?? null;
-  const title = proposal["title"] ?? null;
-  const value = sumProposalValue(
-    proposal["serviceItems"] ?? []
-  );
-  const valueLabel = value > 0 ? value.toLocaleString() : "TBD";
-  const startDate = fmtDate(proposal["startDate"], "TBD");
-  const endDate = fmtDate(
-    proposal["endDate"] ?? proposal["expirationDate"],
-    "TBD"
-  );
-  const extraInfo = [
-    {
-      question: "What is the duration and key milestones?",
-      answer: `Engagement runs from ${startDate} to ${endDate} per the accepted proposal "${title ?? ""}".`,
-      placeholder: ""
-    },
-    {
-      question: "What are the payment terms and compensation structure?",
-      answer: `Total ${valueLabel} as scoped in the accepted proposal. Standard milestone-based payment terms apply.`,
-      placeholder: ""
-    },
-    {
-      question: "What intellectual property rights and ownership will be assigned upon project completion?",
-      answer: "Upon full payment, all deliverables and IP are assigned to the Client. Service Provider retains rights to pre-existing work and reusable components.",
-      placeholder: ""
-    },
-    {
-      question: "Are there any confidentiality or data protection requirements?",
-      answer: "Both parties shall maintain mutual confidentiality and comply with applicable data protection laws in the relevant jurisdiction.",
-      placeholder: ""
-    },
-    {
-      question: "Do you have any additional information to include?",
-      answer: `Engagement scoped via ${proposal["no"] ? "Proposal-" + String(proposal["no"]) : "the linked proposal"} for ${customerName2}.`,
-      placeholder: ""
-    }
-  ];
-  const signer = customerEmail && customerName2 ? { fullName: customerName2, email: customerEmail } : void 0;
-  const drafted = await draftContract({
-    whatToCreate: input2.whatToCreate ?? buildWhatToCreate(title),
-    ...input2.jurisdiction ? { jurisdiction: input2.jurisdiction } : {},
-    ...input2.industry ? { industry: input2.industry } : {},
-    extraInfo,
-    ...signer ? { signer } : {}
-  });
-  return {
-    ...drafted,
-    source: {
-      proposalId: input2.proposalId,
-      proposalTitle: title,
-      customerName: customerName2,
-      value
-    }
-  };
-}
-
-// src/commands/contract/create-from-proposal.ts
-var createFromProposalCommand2 = new Command("create-from-proposal").description(
-  "Create an AI-generated contract draft from an accepted proposal. Returns an editor URL for clause editing. After the user edits clauses, run `bookipi contract finalize <id>` to render the PDF and create the contract record."
-).argument("<proposal>", "Proposal ID or handle (@p1)").option(
-  "--jurisdiction <slug>",
-  "Country (any \u2014 e.g. usa, australia, germany). Defaults to your company's country."
-).option(
-  "--industry <name>",
-  "Industry \u2014 e.g. 'Web, Tech & Media'. Defaults to 'Web, Tech & Media'.",
-  "Web, Tech & Media"
-).option(
-  "--what-to-create <text>",
-  "Override the auto-derived 'what to create' string (e.g. 'service agreement for SEO retainer')."
-).option("--json", "Output raw JSON instead of formatted").action(
-  withErrors(async (proposalRef, opts) => {
-    if (opts.industry === DEFAULT_INDUSTRY) {
-      process.stderr.write(
-        `  \u2022 Using default industry "${DEFAULT_INDUSTRY}" \u2014 pass --industry to match the actual business (the clauses adapt to it).
-`
-      );
-    }
-    const registry3 = HandleRegistry.getInstance();
-    const proposalId = registry3.resolve(proposalRef);
-    process.stderr.write(`  \u2022 Generating AI clauses (~15-30s)...
-`);
-    const drafted = await contractFromProposal({
-      proposalId,
-      ...opts.jurisdiction ? { jurisdiction: opts.jurisdiction } : {},
-      industry: opts.industry,
-      ...opts.whatToCreate ? { whatToCreate: opts.whatToCreate } : {}
-    });
-    if (drafted.jurisdictionNote) {
-      process.stderr.write(`  \u2022 ${drafted.jurisdictionNote}
-`);
-    }
-    const editUrl = await buildAuthenticatedUrl(drafted.editUrlPlain);
-    const handle = registry3.register("k", drafted.aiDocId);
-    if (opts.json) {
-      console.log(
-        JSON.stringify(
-          {
-            aiDocId: drafted.aiDocId,
-            editUrl,
-            customerName: drafted.source.customerName,
-            customerEmail: drafted.signer?.email ?? null,
-            title: drafted.title
-          },
-          null,
-          2
-        )
-      );
-      return;
-    }
-    console.log(`\u2705 **Contract Draft Ready**
-`);
-    console.log(`# ${drafted.title} [${handle}]`);
-    console.log(``);
-    console.log(`- Customer: ${drafted.source.customerName}`);
-    if (drafted.signer) console.log(`- Suggested signer: ${drafted.signer.email}`);
-    console.log(`- Status: AI draft (not yet finalized)`);
-    console.log(
-      `- Source proposal: ${drafted.source.proposalTitle || proposalId}`
-    );
-    console.log(``);
-    console.log(
-      `\u{1F517} **Edit clauses, attach signer, position signature, and send:** ${editUrl}`
-    );
-    console.log(``);
-    console.log(
-      `\u{1F4A1} The contract is still in AI-edit mode \u2014 tweak wording in the editor, then attach the signer and send from there. (Once finalized in the web, the document becomes read-only and only accepts signer changes.)`
+      `\u{1F4A1} Nothing was sent. In the editor, add each signer (search your customers, or create one in the dialog), put the signature tag just above its line and the date tag on or beside its line, then press Send to open the "Finish & send" dialog and stop there: confirm with the user before pressing its Send. It stays a draft until then.`
     );
   })
 );
@@ -53928,275 +53889,20 @@ async function getDocument(documentId) {
     query: DOCUMENTS_ONE_QUERY,
     variables: { filter: { _id: documentId } }
   });
-  const doc = res?.documentsOne;
+  const doc = res?.documentsOne ?? null;
   if (!doc) {
     throw new Error(`Contract not found: ${documentId}`);
   }
   return doc;
 }
 
-// src/usecases/contract/getDocumentPDF.ts
-var GET_PDF_QUERY = `
-  query GetPDF(
-    $documentId: String!
-    $documentTitle: String!
-    $clauses: [JSON]!
-    $includeTitle: Boolean
-  ) {
-    getPDF(
-      documentId: $documentId
-      documentTitle: $documentTitle
-      clauses: $clauses
-      includeTitle: $includeTitle
-    ) {
-      documentTitle
-      file
-    }
-  }
-`;
-async function getDocumentPDF(opts) {
-  const data = await signitRequest({
-    query: GET_PDF_QUERY,
-    variables: {
-      documentId: opts.documentId,
-      documentTitle: opts.documentTitle,
-      clauses: opts.clauses,
-      includeTitle: opts.includeTitle ?? true
-    }
-  });
-  const result = data?.getPDF;
-  if (!result?.file) {
-    throw new Error("getPDF returned no file");
-  }
-  return { documentTitle: result.documentTitle, file: result.file };
-}
-
-// src/usecases/contract/createRecipient.ts
-var CREATE_RECIPIENT_MUTATION = `
-  mutation RecipientsCreateOne($record: AutoFilledCreateOnerecipientsInput!) {
-    recipientsCreateOne(record: $record) {
-      recordId
-      record {
-        fullName
-        email
-        externalId
-      }
-    }
-  }
-`;
-async function createRecipient(record2) {
-  const data = await signitRequest({
-    query: CREATE_RECIPIENT_MUTATION,
-    variables: { record: record2 }
-  });
-  const id = data?.recipientsCreateOne?.recordId;
-  if (typeof id !== "string" || !id) {
-    throw new Error("recipientsCreateOne returned no recordId");
-  }
-  return id;
-}
-
-// src/usecases/contract/createDocumentFromAi.ts
-var CREATE_FROM_AI_MUTATION = `
-  mutation CreateDocumentFromAiSession($record: createDocumentFromAiRecordITCWrapped!) {
-    createDocumentFromAiSession(record: $record) {
-      recordId
-      record {
-        title
-        status
-        createdAt
-        updatedAt
-        category
-        recipients {
-          _id
-          role
-          fullName
-          email
-        }
-        tags {
-          _id
-          x
-          y
-          page
-          recipientIds
-          title
-          category
-        }
-      }
-    }
-  }
-`;
-async function createDocumentFromAi(opts) {
-  return signitRequest({
-    query: CREATE_FROM_AI_MUTATION,
-    variables: { record: opts }
-  });
-}
-
-// src/usecases/contract/finalizeContract.ts
-var FINALIZABLE = /* @__PURE__ */ new Set(["created_by_ai", "draft"]);
-async function finalizeContract(input2) {
-  const { aiDocId, skipPdf = false } = input2;
-  const say = input2.onProgress ?? (() => {
-  });
-  const warnings = [];
-  say("Fetching contract state...");
-  const doc = await getDocument(aiDocId);
-  const cached2 = getContractAiCache(aiDocId);
-  const title = cached2?.title ?? doc?.["title"] ?? "Untitled Contract";
-  const clauses = cached2?.clauses ?? [];
-  const status = String(doc?.["status"] ?? "");
-  if (!FINALIZABLE.has(status)) {
-    throw new Error(
-      `Contract is already finalized (status: ${status}). Open the web editor to attach a signer, place the signature, and send.`
-    );
-  }
-  if (!skipPdf && clauses.length === 0) {
-    throw new Error(
-      `No cached clauses for this AI draft \u2014 the PDF is rendered from them, and they are written on the machine that drafted it. Re-draft here, or finalize from the web editor: ${config.BOOKIPI_WEB_URL}/contract/ai-contract/edit/${aiDocId}`
-    );
-  }
-  let pdfBase64 = null;
-  if (!skipPdf) {
-    say("Rendering PDF (server-side, ~10-20s)...");
-    try {
-      const rendered = await getDocumentPDF({
-        documentId: aiDocId,
-        documentTitle: title,
-        clauses
-      });
-      pdfBase64 = rendered.file;
-    } catch (err2) {
-      throw new Error(
-        `PDF render failed: ${err2 instanceof Error ? err2.message : String(err2)}`
-      );
-    }
-  }
-  say("Generating contract document ID...");
-  const contractDocId = await generateDocumentId();
-  let signerRecipientId = null;
-  if (cached2?.signer) {
-    try {
-      say(`Creating recipient record for ${cached2.signer.email}...`);
-      signerRecipientId = await createRecipient({
-        fullName: cached2.signer.fullName,
-        email: cached2.signer.email
-      });
-    } catch (err2) {
-      warnings.push(
-        `Signer pre-attach failed (${err2 instanceof Error ? err2.message : String(err2)}) \u2014 attach them in the editor instead.`
-      );
-    }
-  }
-  say("Finalizing contract record...");
-  let result;
-  try {
-    result = await createDocumentFromAi({
-      _id: contractDocId,
-      title,
-      sourceCreatedByAiId: aiDocId,
-      ...signerRecipientId ? { recipients: [{ _id: signerRecipientId, role: "signer" }] } : {}
-    });
-  } catch (err2) {
-    throw new Error(
-      `Contract finalization failed \u2014 the AI draft is intact, but no contract record was created. Run finalize again, or complete it in the web editor: ${config.BOOKIPI_WEB_URL}/contract/ai-contract/edit/${aiDocId}
-(Original error: ${err2 instanceof Error ? err2.message : String(err2)})`
-    );
-  }
-  let pdfUploaded = false;
-  if (!skipPdf && pdfBase64) {
-    say("Uploading PDF...");
-    try {
-      await uploadDocumentPDF({ documentId: contractDocId, pdfBase64 });
-      pdfUploaded = true;
-    } catch (err2) {
-      warnings.push(
-        `PDF upload failed (${err2 instanceof Error ? err2.message : String(err2)}) \u2014 the contract record exists; re-upload from the web editor.`
-      );
-    }
-  }
-  const session = result["createDocumentFromAiSession"];
-  const contractId = session?.recordId ?? contractDocId;
-  return {
-    contractId,
-    contractDocId,
-    title,
-    status: String(session?.record?.["status"] ?? "draft"),
-    pdfUploaded,
-    signerAttached: signerRecipientId !== null,
-    editorUrlPlain: `${config.BOOKIPI_WEB_URL}/contract/edit/${contractDocId}`,
-    warnings
-  };
-}
-
-// src/commands/contract/finalize.ts
-function progress(msg, json3) {
-  if (!json3) process.stderr.write(`${msg}
-`);
-}
-var finalizeCommand = new Command("finalize").description(
-  "Finalize an AI-generated contract draft: render the PDF server-side, upload to S3, and create the contract record. Returns an editor URL where the user attaches signer, places signature, and sends. Run after `contract create-from-proposal` and after the user has tweaked clauses in the web editor."
-).argument("<id-or-handle>", "AI source doc ID or handle (@k1)").option(
-  "--no-pdf",
-  "Skip PDF render and upload (useful for debugging the contract record step in isolation)"
-).option("--json", "Output raw JSON instead of formatted").action(
-  withErrors(async (idOrHandle, opts) => {
-    const registry3 = HandleRegistry.getInstance();
-    const aiDocId = registry3.resolve(idOrHandle);
-    progress(
-      `
-[contract finalize] Starting finalization for ${idOrHandle}`,
-      opts.json
-    );
-    const result = await finalizeContract({
-      aiDocId,
-      // commander flips this: opts.pdf === false means --no-pdf was passed.
-      skipPdf: opts.pdf === false,
-      onProgress: (m) => progress(`  ${m}`, opts.json)
-    });
-    for (const w of result.warnings) progress(`  \u26A0 ${w}`, opts.json);
-    const contractHandle = registry3.register("k", result.contractId);
-    const editorUrl = await buildAuthenticatedUrl(result.editorUrlPlain);
-    if (opts.json) {
-      console.log(
-        JSON.stringify(
-          {
-            contractId: result.contractId,
-            contractDocId: result.contractDocId,
-            title: result.title,
-            status: result.status,
-            pdfUploaded: result.pdfUploaded,
-            handle: contractHandle,
-            editorUrl,
-            ...result.warnings.length ? { warnings: result.warnings } : {}
-          },
-          null,
-          2
-        )
-      );
-      return;
-    }
-    console.log(`
-\u2705 **Contract finalized: ${result.title}**
-`);
-    console.log(`   Contract ID: ${result.contractId} [${contractHandle}]`);
-    console.log(`   PDF: ${result.pdfUploaded ? "uploaded" : "skipped"}`);
-    console.log(`   Status: ${result.status}
-`);
-    console.log(`\u{1F4C2} Next step \u2014 attach signer, place signature, send:`);
-    console.log(`\u{1F517} ${editorUrl}
-`);
-  })
-);
-
 // src/usecases/contract/updateDocument.ts
 var UPDATE_DOCUMENT_MUTATION = `
   mutation DocumentsUpdateOne(
     $record: UpdateOnedocumentsInputWrapped!
     $filter: updateDocumentFilterITC
-    $deleteRecipients: [MongoID]
   ) {
-    documentsUpdateOne(record: $record, filter: $filter, deleteRecipients: $deleteRecipients) {
+    documentsUpdateOne(record: $record, filter: $filter) {
       recordId
       record {
         _id
@@ -54237,10 +53943,50 @@ async function updateDocument(opts) {
     query: UPDATE_DOCUMENT_MUTATION,
     variables: {
       filter: { _id: opts.documentId },
-      record: opts.record,
-      deleteRecipients: opts.deleteRecipients
+      record: opts.record
     }
   });
+}
+
+// src/usecases/contract/sendContract.ts
+async function preflightSend(id) {
+  const contract = await getDocument(id);
+  const name = contract.title ?? "That contract";
+  const signers = contract.recipients ?? [];
+  const alreadySent = contract.status === "pending_signature";
+  if (alreadySent) return { contract, signers, alreadySent };
+  if (contract.status === "signed" || contract.status === "declined") {
+    throw new Error(
+      `${name} is already ${contract.status}, so it cannot be sent again.`
+    );
+  }
+  if (signers.length === 0) {
+    throw new Error(
+      `${name} has no signer to send to. Add one in the editor first: ` + contractEditUrl(contract._id)
+    );
+  }
+  if ((contract.tags ?? []).length === 0) {
+    throw new Error(
+      `${name} has no signature field, so nobody could actually sign it. Place one in the editor first: ${contractEditUrl(contract._id)}`
+    );
+  }
+  return { contract, signers, alreadySent };
+}
+async function sendContract(contract) {
+  const res = await updateDocument({
+    documentId: contract._id,
+    record: {
+      title: contract.title ?? "Untitled Contract",
+      category: contract.category ?? "Finance",
+      recipients: (contract.recipients ?? []).map((r) => ({
+        _id: r._id,
+        role: r.role ?? "signer",
+        mySelf: r.mySelf ?? false
+      })),
+      status: "pending_signature"
+    }
+  });
+  return res?.documentsUpdateOne?.record;
 }
 
 // src/commands/contract/send.ts
@@ -54255,9 +54001,11 @@ var sendCommand4 = new Command("send").description(
 ).option("--json", "Output raw JSON instead of formatted").action(
   withErrors(async (id, opts) => {
     const registry3 = HandleRegistry.getInstance();
-    const contractId = registry3.resolve(id);
-    const contract = await getDocument(contractId);
-    if (contract.status === "pending_signature") {
+    const { contract, alreadySent } = await preflightSend(
+      registry3.resolve(id)
+    );
+    const contractId = contract._id;
+    if (alreadySent) {
       console.log(
         `Contract is already at \`pending_signature\` \u2014 already sent. No action taken.`
       );
@@ -54266,30 +54014,7 @@ var sendCommand4 = new Command("send").description(
       }
       return;
     }
-    if (!Array.isArray(contract.recipients) || contract.recipients.length === 0) {
-      throw new Error(
-        "Contract has no recipients \u2014 add at least one signer before sending. Use the editor link from `contract create-from-proposal` output."
-      );
-    }
-    if (!Array.isArray(contract.tags) || contract.tags.length === 0) {
-      throw new Error(
-        "Contract has no signature tags \u2014 drop at least one in the editor before sending."
-      );
-    }
-    const sendRes = await updateDocument({
-      documentId: contractId,
-      record: {
-        title: contract.title ?? "Untitled Contract",
-        category: contract.category ?? "Finance",
-        recipients: contract.recipients.map((r) => ({
-          _id: r._id,
-          role: r.role ?? "signer",
-          mySelf: r.mySelf ?? false
-        })),
-        status: "pending_signature"
-      }
-    });
-    const updated = sendRes?.documentsUpdateOne?.record;
+    const updated = await sendContract(contract);
     let advanceNote = null;
     if (opts.advanceDeal) {
       if (!opts.deal) {
@@ -54346,7 +54071,7 @@ Status: ${updated?.status ?? "?"}`);
 );
 
 // src/commands/contract/index.ts
-var contractCommand = new Command("contract").description("Manage eSign contracts (documents)").addCommand(listCommand13).addCommand(draftCommand2).addCommand(uploadCommand2).addCommand(createFromProposalCommand2).addCommand(finalizeCommand).addCommand(sendCommand4);
+var contractCommand = new Command("contract").description("Manage eSign contracts (documents)").addCommand(listCommand13).addCommand(uploadCommand2).addCommand(sendCommand4);
 
 // src/usecases/meeting/getCustomerWhoami.ts
 var CUSTOMER_WHOAMI_QUERY = `
@@ -54655,16 +54380,21 @@ async function classifyBuilderDenial(res) {
     summary: `${res.status}${message || text ? ` \u2014 ${(message || text).slice(0, 200)}` : ""}`
   };
 }
+var NO_WEBSITE_YET = "This company doesn't have a website yet, so there is nothing to build or edit. Create it first \u2014 create_website on the connector, `bookipi website create` in the CLI \u2014 then try again.";
 async function mintBuilderSession() {
-  const data = await bookipiGraphql({
-    query: "mutation { manageWebsite { websiteLink } }"
-  });
-  const raw = data?.manageWebsite?.websiteLink;
-  if (!raw) {
-    throw new Error(
-      "No website link returned \u2014 does this company have a website yet? Try 'bookipi website create'."
-    );
+  let data;
+  try {
+    data = await bookipiGraphql({
+      query: "mutation { manageWebsite { websiteLink } }"
+    });
+  } catch (err2) {
+    if (err2 instanceof Error && /no existing website/i.test(err2.message)) {
+      throw new Error(NO_WEBSITE_YET);
+    }
+    throw err2;
   }
+  const raw = data?.manageWebsite?.websiteLink;
+  if (!raw) throw new Error(NO_WEBSITE_YET);
   const link = new URL(raw);
   const token = link.searchParams.get("token");
   if (!token) throw new Error("Builder link carried no token \u2014 cannot authenticate to the builder service.");
@@ -54725,37 +54455,37 @@ function parseJson(text) {
     return void 0;
   }
 }
-async function builderRest(path12) {
-  const res = await builderFetch((s) => ({ url: `${s.origin}${path12}` }));
+async function builderRest(path11) {
+  const res = await builderFetch((s) => ({ url: `${s.origin}${path11}` }));
   if (res.status === 404) return null;
   const body = res.ok ? parseJson(res.text) : void 0;
-  if (body === void 0) throw builderError(res, path12);
+  if (body === void 0) throw builderError(res, path11);
   return body;
 }
-async function builderRestWrite(method, path12, body, parse3 = "json") {
+async function builderRestWrite(method, path11, body, parse3 = "json") {
   const res = await builderFetch(
     (s) => ({
-      url: `${s.origin}${path12}`,
+      url: `${s.origin}${path11}`,
       method,
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body)
     }),
     parse3 === "text" ? BUILDER_CHAT_TIMEOUT_MS : BUILDER_TIMEOUT_MS
   );
-  if (!res.ok) throw builderError(res, path12);
+  if (!res.ok) throw builderError(res, path11);
   if (parse3 === "text") return res.text;
   const json3 = parseJson(res.text);
-  if (json3 === void 0) throw builderError(res, path12);
+  if (json3 === void 0) throw builderError(res, path11);
   return json3;
 }
-function builderRestPost(path12, body) {
-  return builderRestWrite("POST", path12, body);
+function builderRestPost(path11, body) {
+  return builderRestWrite("POST", path11, body);
 }
-function builderRestPatch(path12, body) {
-  return builderRestWrite("PATCH", path12, body);
+function builderRestPatch(path11, body) {
+  return builderRestWrite("PATCH", path11, body);
 }
-function builderRestPostText(path12, body) {
-  return builderRestWrite("POST", path12, body, "text");
+function builderRestPostText(path11, body) {
+  return builderRestWrite("POST", path11, body, "text");
 }
 async function getBuilderWebsiteId() {
   return websiteIdFromToken((await builderSession()).token);
@@ -56230,8 +55960,8 @@ function pageAnchor(page, index) {
 }
 function rewriteInterPageLinks(html, slugToAnchor) {
   return html.replace(/href="([^"#][^"]*)"/g, (m, href) => {
-    const [path12, hash2] = String(href).split("#", 2);
-    const norm = path12.replace(/^\.\//, "").replace(/\/+$/, "") || "/";
+    const [path11, hash2] = String(href).split("#", 2);
+    const norm = path11.replace(/^\.\//, "").replace(/\/+$/, "") || "/";
     const anchor2 = slugToAnchor.get(norm) ?? // Templates link both with and without the leading slash.
     slugToAnchor.get(norm.startsWith("/") ? norm.slice(1) : `/${norm}`);
     if (!anchor2) return m;
@@ -57579,8 +57309,8 @@ function getErrorMap() {
 
 // node_modules/.pnpm/zod@4.6.7/node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path12, errorMaps, issueData } = params;
-  const fullPath = [...path12, ...issueData.path || []];
+  const { data, path: path11, errorMaps, issueData } = params;
+  const fullPath = [...path11, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -57695,11 +57425,11 @@ var errorUtil;
 
 // node_modules/.pnpm/zod@4.6.7/node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path12, key2) {
+  constructor(parent, value, path11, key2) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path12;
+    this._path = path11;
     this._key = key2;
   }
   get path() {
@@ -61654,10 +61384,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path12) {
-  if (!path12)
+function getElementAtPath(obj, path11) {
+  if (!path11)
     return obj;
-  return path12.reduce((acc, key2) => acc?.[key2], obj);
+  return path11.reduce((acc, key2) => acc?.[key2], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -61997,11 +61727,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path12, issues) {
+function prefixIssues(path11, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path12);
+    iss.path.unshift(path11);
     return iss;
   });
 }
@@ -62463,16 +62193,16 @@ function flattenError(error62, mapper = (issue2) => issue2.message) {
 }
 function formatError2(error62, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error63, path12 = []) => {
+  const processError = (error63, path11 = []) => {
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path12, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path11, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path12, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path11, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path12, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path11, ...issue2.path]);
       } else {
-        const fullpath = [...path12, ...issue2.path];
+        const fullpath = [...path11, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -62511,17 +62241,17 @@ function formatError2(error62, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
   const result = { errors: [] };
-  const processError = (error63, path12 = []) => {
+  const processError = (error63, path11 = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path12, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path11, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path12, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path11, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path12, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path11, ...issue2.path]);
       } else {
-        const fullpath = [...path12, ...issue2.path];
+        const fullpath = [...path11, ...issue2.path];
         if (fullpath.length === 0) {
           result.errors.push(mapper(issue2));
           continue;
@@ -62560,8 +62290,8 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path12 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path12) {
+  const path11 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path11) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -71548,8 +71278,8 @@ var error43 = () => {
       case "not_multiple_of":
         return `N\xFAmero inv\xE1lido: deve ser m\xFAltiplo de ${issue2.divisor}`;
       case "unrecognized_keys": {
-        const plural2 = issue2.keys.length > 1 ? "s" : "";
-        return `Chave${plural2} inv\xE1lida${plural2}: ${joinValues(issue2.keys, ", ")}`;
+        const plural3 = issue2.keys.length > 1 ? "s" : "";
+        return `Chave${plural3} inv\xE1lida${plural3}: ${joinValues(issue2.keys, ", ")}`;
       }
       case "invalid_key":
         return `Entrada inv\xE1lida n${translateOriginWithArticle(issue2.origin, "definite")}`;
@@ -71693,8 +71423,8 @@ var error44 = () => {
       case "not_multiple_of":
         return `N\xFAmero inv\xE1lido: deve ser m\xFAltiplo de ${issue2.divisor}`;
       case "unrecognized_keys": {
-        const plural2 = issue2.keys.length > 1 ? "s" : "";
-        return `Chave${plural2} inv\xE1lida${plural2}: ${joinValues(issue2.keys, ", ")}`;
+        const plural3 = issue2.keys.length > 1 ? "s" : "";
+        return `Chave${plural3} inv\xE1lida${plural3}: ${joinValues(issue2.keys, ", ")}`;
       }
       case "invalid_key":
         return `Entrada inv\xE1lida n${translateOriginWithArticle(issue2.origin, "definite")}`;
@@ -78112,11 +77842,11 @@ function normalizeObjectSchema(schema) {
   }
   return void 0;
 }
-function getDotPath(path12) {
-  if (path12.length === 0) {
+function getDotPath(path11) {
+  if (path11.length === 0) {
     return "object root";
   }
-  return path12.reduce((acc, seg, index) => {
+  return path11.reduce((acc, seg, index) => {
     if (index === 0) {
       return String(seg);
     }
@@ -80343,13 +80073,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path12 = ref.slice(1).split("/").filter(Boolean);
-  if (path12.length === 0) {
+  const path11 = ref.slice(1).split("/").filter(Boolean);
+  if (path11.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path12[0] === defsKey) {
-    const key2 = path12[1] === void 0 ? void 0 : decodeJSONPointerSegment(path12[1]);
+  if (path11[0] === defsKey) {
+    const key2 = path11[1] === void 0 ? void 0 : decodeJSONPointerSegment(path11[1]);
     if (!key2 || !ctx.defs[key2]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -80483,7 +80213,7 @@ function containsRef(value) {
     return Object.values(sub).some(containsRef);
   });
 }
-function plural(n) {
+function plural2(n) {
   return n === 1 ? "element" : "elements";
 }
 function checkArrayGuards(arraySchema, guards) {
@@ -80522,7 +80252,7 @@ function checkArrayGuards(arraySchema, guards) {
       if (matches < minContains) {
         payload.issues.push({
           code: "custom",
-          message: `Array must contain at least ${minContains} matching ${plural(minContains)}; found ${matches}`,
+          message: `Array must contain at least ${minContains} matching ${plural2(minContains)}; found ${matches}`,
           input: items,
           continue: true
         });
@@ -80530,7 +80260,7 @@ function checkArrayGuards(arraySchema, guards) {
       if (guards.maxContains !== void 0 && matches > guards.maxContains) {
         payload.issues.push({
           code: "custom",
-          message: `Array must contain at most ${guards.maxContains} matching ${plural(guards.maxContains)}`,
+          message: `Array must contain at most ${guards.maxContains} matching ${plural2(guards.maxContains)}`,
           input: items,
           continue: true
         });
@@ -86636,7 +86366,7 @@ var accountReads = [
     name: "document_numbering",
     group: "account",
     title: "What the next invoice or estimate will be numbered",
-    description: "Return the company's own numbering for every document type: the configured prefix, the next number it will assign, and whether the type is enabled.\nUSE THIS BEFORE STATING A NUMBER. Numbering is per-company configuration, not a convention \u2014 an account whose prefix is 'invoice-' numbers documents `invoice-698`, and one configured differently will not. There is no rule to derive it from, so a number you did not read here is a guess, and a wrong one names a document the user cannot find.\nNOT whoami: that answers who is signed in and which companies exist. This answers what a document created right now would be called.\n`next` is what the company assigns next; `prefix` already carries its own separator, so the number is prefix + next with nothing between. Either may be null when the setting cannot be read \u2014 say so rather than substituting a guess.",
+    description: "Return the company's own numbering for every document type: the configured prefix and the next number it will assign.\nUSE THIS BEFORE STATING A NUMBER. Numbering is per-company configuration, not a convention \u2014 an account whose prefix is 'invoice-' numbers documents `invoice-698`, and one configured differently will not. There is no rule to derive it from, so a number you did not read here is a guess, and a wrong one names a document the user cannot find.\nNOT whoami: that answers who is signed in and which companies exist. This answers what a document created right now would be called.\n`next` is what the company assigns next; `prefix` already carries its own separator, so the number is prefix + next with nothing between. Either may be null when the setting cannot be read \u2014 say so rather than substituting a guess.",
     readOnly: true,
     inputSchema: external_exports.object({ ...companyScope }),
     run: async (args) => {
@@ -86650,8 +86380,13 @@ var accountReads = [
           // Precomputed so an agent never has to decide whether a separator
           // belongs between them — the single most likely way to get this
           // wrong after not asking at all.
-          nextNumber: t.prefix && t.next != null ? `${t.prefix}${t.next}` : null,
-          enabled: t.enabled
+          nextNumber: t.prefix && t.next != null ? `${t.prefix}${t.next}` : null
+          // The API's `enabled` flag is deliberately NOT passed on. It is
+          // false by default for credit notes, delivery notes and purchase
+          // orders on every company, and neither the web app nor the API acts
+          // on it — both create those documents regardless. Reporting it made
+          // a company look as if it had switched purchase orders off, and
+          // invited an agent to refuse something Bookipi allows.
         }))
       };
     }
@@ -87118,7 +86853,13 @@ function projectCustomer(raw) {
 }
 function projectPaymentLinkList(raw) {
   const result = raw;
+  const setupNeeded = result?.["setupNeeded"];
   return {
+    // No payments account yet: the honest answer is "no payment links", with
+    // what it takes to have some — not an error.
+    ...typeof setupNeeded === "string" ? {
+      note: `This company has NO payment links: card payments aren't set up yet. ${setupNeeded}`
+    } : {},
     paymentLinks: asRows(result?.items).map((p) => ({
       id: p._id ?? null,
       title: p.title ?? p.name ?? null,
@@ -87330,6 +87071,7 @@ function projectDigest(raw, overdueLimit = 10) {
     created: d["created"] ?? null,
     paid: d["paid"] ?? null,
     unpaid: d["unpaid"] ?? null,
+    ...d["outstandingArePartial"] === true ? { outstandingArePartial: true } : {},
     overdue: {
       count: overdue["count"] ?? null,
       amount: overdue["amount"] ?? null,
@@ -87623,7 +87365,7 @@ var salesReads = [
     name: "list_contracts",
     group: "contracts",
     title: "List eSign contracts and signing status",
-    description: "List the active company's eSign documents, newest first, filterable by status. `recipients` carries each signer and their state, so 'has Bruce signed the MSA?' is answerable from this one call.\nReturns one row per contract with exactly these fields: id, title, status, category, recipients, latestAction, sentDate, createdAt \u2014 plus count and pageInfo. The document FILES are deliberately not returned: the API supplies them as presigned S3 URLs which were 55% of the raw payload, expire, and cannot be rendered by an agent.",
+    description: "List the active company's eSign documents, newest first, filterable by status. `recipients` carries each signer and their state, so 'has Bruce signed the MSA?' is answerable from this one call.\nReturns one row per contract with exactly these fields: id, title, status, category, recipients, latestAction, sentDate, createdAt \u2014 plus count and pageInfo. The document FILES are deliberately not returned: the API supplies them as presigned S3 URLs which were 55% of the raw payload, expire, and cannot be rendered by an agent.\nTo get something SIGNED, use eSign as the server instructions say: you write the document, it is prepared in the eSign web app, and nothing is sent without the user's fresh OK.",
     readOnly: true,
     inputSchema: external_exports.object({
       statuses: external_exports.array(external_exports.enum(CONTRACT_STATUSES)).optional().describe("Filter by one or more statuses (default: all)."),
@@ -87691,10 +87433,10 @@ Returns per meeting: id, title, start, end, status, location, customerId and cus
 
 // src/mcp/uploadPath.ts
 import { existsSync } from "node:fs";
-function assertServerCanRead(path12) {
-  if (existsSync(path12)) return;
+function assertServerCanRead(path11) {
+  if (existsSync(path11)) return;
   throw new Error(
-    `This server cannot see ${path12}. \`file_path\` is read by the SERVER, not by you, so it only works when both are on the same machine \u2014 a stdio server, or one you started locally. If you are on a hosted connector the path is probably correct and simply not reachable from there; sending the file's bytes is not supported yet, so upload it from the web app or run a local server instead. Do not retry with a different path \u2014 the path is not the problem.`
+    `This server cannot see ${path11}. \`file_path\` is read by the SERVER, not by you, so it only works when both are on the same machine \u2014 a stdio server, or one you started locally. If you are on a hosted connector the path is probably correct and simply not reachable from there; sending the file's bytes is not supported yet, so upload it from the web app or run a local server instead. Do not retry with a different path \u2014 the path is not the problem.`
   );
 }
 
@@ -87733,9 +87475,9 @@ var catalogReads = [
     readOnly: true,
     inputSchema: external_exports.object({
       ...companyScope,
-      start_date: external_exports.string().optional().describe("ISO date, inclusive lower bound on the purchase date."),
-      end_date: external_exports.string().optional().describe("ISO date, inclusive upper bound on the purchase date."),
-      search: external_exports.string().optional().describe("Match on merchant name."),
+      start_date: external_exports.string().optional().describe("YYYY-MM-DD. First purchase date to include."),
+      end_date: external_exports.string().optional().describe("YYYY-MM-DD. Last purchase date to include."),
+      search: external_exports.string().optional().describe("Text anywhere in the merchant name, ignoring case."),
       ...paging
     }),
     run: async (args) => {
@@ -87868,19 +87610,17 @@ var reportReads = [
     name: "report_summary",
     group: "reports",
     title: "Revenue totals over a date range",
-    description: "Invoice totals for a date range, bucketed by cycle: created, paid, overdue and unpaid, plus aggregate metrics. This is the operation for 'show me revenue' and 'how did last quarter go'.\nReturns the aggregates as the API computes them (overviewCreated, overviewPaid, overviewOverdue, overviewUnpaid, totalCreatedMetrics, totalPaidMetrics). Amounts are in the company's currency \u2014 see whoami. For a written interpretation rather than numbers, use report_insights.",
+    description: "What was invoiced and paid in a date range, broken down by week, month, quarter or year. This is the operation for 'show me revenue' and 'how did last quarter go'.\nReturns `invoiced` and `paid` for the range, `buckets` (one per cycle, e.g. 2026-08 or 2026-Q3), and `owedNow`. WHAT EACH MEANS: `invoiced` is invoices DATED in the range, by the date on the invoice; `paid` is payments RECEIVED in the range, by payment date, so it can include payments on older invoices; `owedNow` (unpaid, overdue) is everything owed AS OF NOW by balance, not for the range \u2014 the same figures report_digest gives. `partial: true` on a figure means it is a floor. Amounts are in the company's currency \u2014 see whoami. For a written interpretation, use report_insights.",
     readOnly: true,
     inputSchema: external_exports.object({
       ...companyScope,
       start: external_exports.string().describe("ISO start date, inclusive."),
       end: external_exports.string().describe("ISO end date, inclusive."),
-      cycle: external_exports.enum(["month", "quarter", "year"]).optional().describe("Bucket size. Default month.")
+      cycle: external_exports.enum(REPORT_CYCLES).optional().describe("Bucket size. Default month.")
     }),
-    // Not projected: already an aggregate (1,532 B measured), and narrowing it
-    // would mean choosing which of the four overviews an agent may not have.
     run: async (args) => {
       const a = args;
-      return getReportSummary({
+      return getRevenueSummary({
         start: a.start,
         end: a.end,
         cycle: a.cycle ?? "month",
@@ -87959,10 +87699,12 @@ var reportReads = [
     name: "report_digest",
     group: "reports",
     title: "The period digest \u2014 money in, money owed, what moved",
-    description: "One roll-up for a period: invoiced, paid, unpaid, overdue, top customers, recent activity and the deal pipeline. This is the operation for 'how did this week go', 'give me a summary', 'morning brief', 'weekly digest'.\nReturns exact counts and amounts. The overdue list is capped at the worst 10 by amount with `overdue.truncated` set when there are more \u2014 `overdue.count` is the real number, so report that rather than counting the rows you were given.\nPipeline stage counts come from the API's per-stage totals and are exact; the pipeline VALUE is summed over fetched deals, so it is a floor when `pipeline.valuesArePartial` is true.",
+    description: "One roll-up for a period: invoiced, paid, unpaid, overdue, top customers, recent activity and the deal pipeline. This is the operation for 'how did this week go', 'give me a summary', 'morning brief', 'weekly digest'.\nTWO KINDS OF FIGURE \u2014 say which is which. `created`, `paid`, `topCustomers` and `recentActivity` are FOR THE PERIOD in `period.label`: invoices created and payments received in it. `unpaid` and `overdue` are AS OF NOW: everything still owed, whenever it was invoiced, by balance (what is left to pay). Never present unpaid or overdue as this period's.\nCounts and amounts are exact, unless `outstandingArePartial` is set, when unpaid and overdue are floors. The overdue list is capped at the worst 10 by amount with `overdue.truncated` set when there are more \u2014 `overdue.count` is the real number, so report that rather than counting the rows you were given.\nPipeline stage counts come from the API's per-stage totals and are exact; the pipeline VALUE is summed over fetched deals, so it is a floor when `pipeline.valuesArePartial` is true.",
     readOnly: true,
     inputSchema: external_exports.object({
-      period: external_exports.enum(["today", "yesterday", "week", "last-week", "month", "last-month"]).optional().describe("Which window. Defaults to `week`.")
+      period: external_exports.enum(DIGEST_PERIODS).optional().describe(
+        "Which window. `week` (default) is the last 7 days and `last-week` the 7 before; `month` is the month to date and `last-month` the previous calendar month."
+      )
     }),
     run: async (args) => {
       const a = args;
@@ -88927,7 +88669,9 @@ If this is genuinely a second invoice, pass an explicit \`number\` to say so \u2
           "OVERRIDE the customer's own email. Only pass this when the user named the address themselves. Omit it to use the address on the invoice, which is the safe default."
         ),
         subject: external_exports.string().optional().describe("Override the email subject."),
-        message: external_exports.string().optional().describe("Message shown in the email body."),
+        message: external_exports.string().optional().describe(
+          "Message shown in the email body. Omit it to send Bookipi's default, which the preview shows in full."
+        ),
         plan: planArg(
           "Preview only. Returns who would receive it, which invoice, and when it was last sent. Sends nothing."
         )
@@ -88958,6 +88702,12 @@ If this is genuinely a second invoice, pass an explicit \`number\` to say so \u2
           `${invoice["no"] ?? "This invoice"} has no email address on its customer record, so there is nobody to send it to. Add one to the customer, or pass \`recipients\` with an address the user gave you \u2014 do not guess.`
         );
       }
+      const typed = args.message?.trim() ? args.message : null;
+      const message = typed ?? await defaultSendMessage({
+        id: args.invoice_id,
+        invoice,
+        ...args.company_id ? { companyId: args.company_id } : {}
+      });
       const target = {
         invoiceNumber: invoice["no"] ?? null,
         customerName: customer?.["companyName"] ?? null,
@@ -88967,6 +88717,8 @@ If this is genuinely a second invoice, pass an explicit \`number\` to say so \u2
         // overridden address is the risky case and the user should see that
         // it was overridden, not just what it is.
         recipientSource: args.recipients ? "provided by caller" : "customer record",
+        message,
+        messageSource: typed ? "provided by caller" : "Bookipi default",
         lastSent: invoice["sent"] ?? null
       };
       if (args.plan === true) {
@@ -88980,7 +88732,7 @@ If this is genuinely a second invoice, pass an explicit \`number\` to say so \u2
         recipients,
         ...args.company_id ? { companyId: args.company_id } : {},
         ...args.subject ? { subject: args.subject } : {},
-        ...args.message ? { message: args.message } : {}
+        message
       });
       return ok({ sent: target });
     }
@@ -88989,7 +88741,7 @@ If this is genuinely a second invoice, pass an explicit \`number\` to say so \u2
     "copy_invoice",
     {
       title: "Duplicate an invoice, optionally as another document type",
-      description: "Copy an invoice into a NEW editable draft with its own number, carrying customer, items and totals. The original is untouched and the copy is sent to nobody.\nOptionally reassign the customer, convert the document type (the copy is renumbered with that type's prefix \u2014 an estimate reads EST-\u2026), or copy into another company you own.\nConsumes subscription quota. `plan: true` shows what would be made.",
+      description: "Copy an invoice into a NEW editable draft with its own number, carrying customer, items and totals. The original is untouched and the copy is sent to nobody.\nOptionally reassign the customer, convert the document type (the copy is renumbered with that type's prefix from the company's numbering \u2014 by default estimate-1, estimate-2; document_numbering has the real one), or copy into another company you own.\nConsumes subscription quota. `plan: true` shows what would be made.",
       inputSchema: {
         invoice_id: external_exports.string().describe("Invoice to copy, as returned by list_invoices."),
         customer_id: external_exports.string().optional().describe(
@@ -89198,7 +88950,7 @@ function registerCustomerWrites(server) {
     "email_customer",
     {
       title: "Email a customer",
-      description: "Send a plain email to a customer. THIS LEAVES THE BUILDING and cannot be recalled \u2014 preview with `plan: true` and confirm the recipients and subject with the user first.\n\u26A0 It may fail with a recaptcha error: the mutation requires a token and the server-side bypass for authenticated agent requests has not shipped. If it does, say so and point the user at the web app rather than retrying.",
+      description: "Send a plain email to a customer. THIS LEAVES THE BUILDING and cannot be recalled \u2014 preview with `plan: true` and confirm the recipients and subject with the user first. NEVER use it to send a document for signature: that goes through eSign (see the server instructions).\n\u26A0 It may fail with a recaptcha error: the mutation requires a token and the server-side bypass for authenticated agent requests has not shipped. If it does, say so and point the user at the web app rather than retrying.",
       inputSchema: {
         customer_id: external_exports.string().describe("Customer id, as returned by list_customers."),
         subject: external_exports.string().describe("Subject line."),
@@ -89556,9 +89308,11 @@ function registerSalesWrites(server) {
       inputSchema: {
         proposal_id: proposalId,
         recipients: external_exports.array(external_exports.string()).min(1).describe("Email addresses to send it to."),
-        subject: external_exports.string().optional(),
-        message: external_exports.string().optional(),
-        plan: planArg("Preview only. Returns the recipients; sends nothing.")
+        subject: external_exports.string().optional().describe('Email subject. Defaults to "Proposal from <company>".'),
+        message: external_exports.string().optional().describe("Message in the email. Omit for Bookipi's default."),
+        plan: planArg(
+          "Preview only. Returns the recipients, subject and message; sends nothing."
+        )
       },
       // An email to the client: irreversible and open-world.
       annotations: {
@@ -89569,19 +89323,21 @@ function registerSalesWrites(server) {
       }
     },
     async (args) => {
+      const email3 = await resolveProposalEmail(args);
       if (args.plan === true) {
         return ok({
-          plan: { proposal_id: args.proposal_id, to: args.recipients },
+          plan: { proposal_id: args.proposal_id, to: args.recipients, ...email3 },
           note: "Nothing was sent. Call again without `plan` to send it."
         });
       }
       await sendProposal({
         id: args.proposal_id,
         recipients: args.recipients,
-        ...args.subject ? { subject: args.subject } : {},
-        ...args.message ? { message: args.message } : {}
+        ...email3
       });
-      return ok({ sent: { proposalId: args.proposal_id, to: args.recipients } });
+      return ok({
+        sent: { proposalId: args.proposal_id, to: args.recipients, ...email3 }
+      });
     }
   );
   server.registerTool(
@@ -89625,119 +89381,15 @@ function registerSalesWrites(server) {
       return ok({ deleted: { ...target, record: gone } });
     }
   );
-  const contractBuild = {
-    readOnlyHint: false,
-    destructiveHint: false,
-    idempotentHint: false,
-    openWorldHint: false
-  };
-  const draftOptions = {
-    jurisdiction: external_exports.string().optional().describe("Country slug. Inferred from the company if omitted."),
-    industry: external_exports.string().optional().describe("The clauses adapt to it. Pass the real industry.")
-  };
-  server.registerTool(
-    "draft_contract",
-    {
-      title: "AI-draft a contract",
-      description: 'AI-write an eSign contract from a description, e.g. "mutual NDA with Acme". TAKES 15-30 SECONDS; tell the user before waiting. Returns an editor link where clauses are tweaked, a signer attached and the signature placed. It sends nothing \u2014 finalize_contract, then send_contract, come after the user has reviewed it.',
-      inputSchema: {
-        describe: external_exports.string().describe(
-          'What to create, e.g. "service agreement for a 6-month SEO retainer". Say what it covers and with whom.'
-        ),
-        ...draftOptions,
-        signer_name: external_exports.string().optional().describe("Pre-fills the editor."),
-        signer_email: external_exports.string().optional().describe("With signer_name.")
-      },
-      annotations: contractBuild
-    },
-    async (args) => {
-      const drafted = await draftContract({
-        whatToCreate: args.describe,
-        ...args.jurisdiction ? { jurisdiction: args.jurisdiction } : {},
-        ...args.industry ? { industry: args.industry } : {},
-        ...args.signer_name && args.signer_email ? { signer: { fullName: args.signer_name, email: args.signer_email } } : {}
-      });
-      return ok({
-        draft: {
-          id: drafted.aiDocId,
-          title: drafted.title,
-          clauses: drafted.clauseCount,
-          jurisdiction: drafted.jurisdiction,
-          industry: drafted.industry,
-          editUrl: drafted.editUrlPlain
-        },
-        ...drafted.jurisdictionNote ? { note: drafted.jurisdictionNote } : {},
-        action: "NOTHING WAS SENT \u2014 this is an AI draft. Give the user the editUrl: clauses are edited, a signer attached and the signature placed there. They will be asked to sign in, because this link deliberately carries no credentials. Then finalize_contract, then send_contract."
-      });
-    }
-  );
-  server.registerTool(
-    "draft_contract_from_proposal",
-    {
-      title: "AI-draft a contract from a proposal",
-      description: "Like draft_contract, but built from an ACCEPTED proposal: its dates, value and customer become the terms, and the customer becomes the suggested signer. Slow, like draft_contract. Sends nothing.",
-      inputSchema: {
-        proposal_id: external_exports.string().describe("An accepted proposal, from list_proposals."),
-        ...draftOptions
-      },
-      annotations: contractBuild
-    },
-    async (args) => {
-      const built = await contractFromProposal({
-        proposalId: args.proposal_id,
-        ...args.jurisdiction ? { jurisdiction: args.jurisdiction } : {},
-        ...args.industry ? { industry: args.industry } : {}
-      });
-      return ok({
-        draft: {
-          id: built.aiDocId,
-          title: built.title,
-          clauses: built.clauseCount,
-          editUrl: built.editUrlPlain,
-          suggestedSigner: built.signer?.email ?? null
-        },
-        source: built.source,
-        action: "NOTHING WAS SENT. Give the user the editUrl to review the clauses; they will be asked to sign in, as the link carries no credentials. Then finalize_contract, then send_contract."
-      });
-    }
-  );
-  server.registerTool(
-    "finalize_contract",
-    {
-      title: "Finalize an AI-drafted contract",
-      description: "Turn an AI draft into a real contract record and render its PDF. Slow. Sends nothing \u2014 send_contract does that once a signer is attached.",
-      inputSchema: {
-        contract_id: external_exports.string().describe(
-          "The AI DRAFT's id, from draft_contract or draft_contract_from_proposal."
-        )
-      },
-      annotations: contractBuild
-    },
-    async (args) => {
-      const done = await finalizeContract({ aiDocId: args.contract_id });
-      return ok({
-        contract: {
-          id: done.contractId,
-          title: done.title,
-          status: done.status,
-          pdfUploaded: done.pdfUploaded,
-          signerAttached: done.signerAttached,
-          editorUrl: done.editorUrlPlain
-        },
-        // Non-fatal: the contract exists. Reporting these as failure would
-        // send the user hunting for a record that is already there.
-        ...done.warnings.length ? { warnings: done.warnings } : {},
-        action: "The contract record exists and NOTHING WAS SENT. If signerAttached is false, the user must attach a signer in the editor before send_contract will work."
-      });
-    }
-  );
   server.registerTool(
     "send_contract",
     {
       title: "Send a contract for signature",
-      description: "Move an EXISTING contract to pending_signature. THIS EMAILS THE SIGNERS and cannot be unsent \u2014 preview with `plan: true`, confirm with the user, and report who it went to. The contract must already have recipients; this does not add them.",
+      description: 'Move an EXISTING contract to pending_signature. THIS EMAILS THE SIGNERS and cannot be unsent \u2014 preview with `plan: true`, confirm with the user, and report who it went to. The contract must already have a signer and a signature field, both set in the eSign web app (see the eSign steps in the server instructions); this adds neither, and refuses without them. If you prepared the contract in a browser, press Send in its "Finish & send" dialog instead: this skips that dialog\'s message, CC and reminders. When it refuses, give the user the editor link from the error and ask them to tell you when it is fixed.',
       inputSchema: {
-        contract_id: external_exports.string().describe("Contract id, as returned by list_contracts."),
+        contract_id: external_exports.string().describe(
+          "Contract id, as returned by list_contracts."
+        ),
         plan: planArg("Preview only. Reports who it would go to; sends nothing.")
       },
       // An email to outside signers: irreversible and open-world.
@@ -89749,36 +89401,25 @@ function registerSalesWrites(server) {
       }
     },
     async (args) => {
-      const doc = await getDocument(args.contract_id);
-      if (!doc) return fail(`No contract found with id ${args.contract_id}.`);
-      const recipients = Array.isArray(doc["recipients"]) ? doc["recipients"] : [];
-      const signers = recipients.filter((r) => r["mySelf"] !== true);
-      if (signers.length === 0) {
-        return fail(
-          `${String(doc["title"] ?? "That contract")} has no signer to send to. Add a recipient in the app first \u2014 moving it to pending_signature with nobody to sign leaves it stuck.`
-        );
+      const { contract, signers, alreadySent } = await preflightSend(
+        args.contract_id
+      );
+      const contractId = contract._id;
+      const to = signers.map((r) => r.email ?? r._id);
+      if (alreadySent) {
+        return ok({
+          alreadySent: { contractId, to },
+          note: "It was already sent, so NOTHING WAS SENT now."
+        });
       }
-      const to = signers.map((r) => String(r["email"] ?? r["_id"] ?? "?"));
       if (args.plan === true) {
         return ok({
-          plan: { title: doc["title"] ?? null, wouldSendTo: to },
+          plan: { contractId, title: contract.title, wouldSendTo: to },
           note: "Nothing was sent. Call again without `plan` to send it."
         });
       }
-      await updateDocument({
-        documentId: args.contract_id,
-        record: {
-          title: String(doc["title"] ?? "Untitled Contract"),
-          category: String(doc["category"] ?? "Finance"),
-          recipients: recipients.map((r) => ({
-            _id: String(r["_id"] ?? ""),
-            role: String(r["role"] ?? "signer"),
-            mySelf: r["mySelf"] === true
-          })),
-          status: "pending_signature"
-        }
-      });
-      return ok({ sent: { contractId: args.contract_id, to } });
+      await sendContract(contract);
+      return ok({ sent: { contractId, to } });
     }
   );
 }
@@ -89872,7 +89513,7 @@ function registerCatalogWrites(server) {
     "create_paylink",
     {
       title: "Create a payment link",
-      description: "A shareable link that takes a card payment \u2014 for money owed without an invoice, or a deposit before work starts. " + NO_MONEY_MOVES + "\n`amount` is in the company's CURRENCY, not cents; this converts. Omit it and pass `let_customer_choose` to let the payer decide the amount, which is the shape for tips or open donations.\nIt does NOT send the link \u2014 the result carries the URL to give the user, and send_paylink emails it.\nRequires the account's card payments to be set up; if it fails on that, say so rather than retrying.",
+      description: "A shareable link that takes a card payment \u2014 for money owed without an invoice, or a deposit before work starts. " + NO_MONEY_MOVES + "\n`amount` is in the company's CURRENCY, not cents; this converts. Omit it and pass `let_customer_choose` to let the payer decide the amount, which is the shape for tips or open donations.\nIt does NOT send the link \u2014 the result carries the URL to give the user, and send_paylink emails it.\nRequires card payments to be set up, which is a one-time step in the Bookipi web app and cannot be done from here. The preview checks it too: if it fails on that, give the user the link in the error and stop \u2014 do not retry.",
       inputSchema: {
         title: external_exports.string().describe("What the payer sees they are paying for."),
         amount: external_exports.number().optional().describe("In the company's currency. Omit with let_customer_choose."),
@@ -89897,6 +89538,7 @@ function registerCatalogWrites(server) {
           "Pass an amount, or let_customer_choose to let the payer decide."
         );
       }
+      await assertPaymentReady();
       if (args.plan === true) {
         return ok({
           plan: {
@@ -90476,6 +90118,16 @@ function fallbackSessionId() {
   return processSessionId;
 }
 
+// src/mcp/esignGuide.ts
+function esignGuide() {
+  return `eSign \u2014 anything to be signed (contract, agreement, NDA, offer letter, SOW): ALWAYS use Bookipi eSign. No tool writes the document; write it yourself in the conversation and let the user review it. It starts from one of three things: that document as a PDF, a template in the user's account or the Bookipi library, or a PDF the user already has. Preparing it happens in the eSign web app (${contractHomeUrl()}; ${contractUploadUrl()} for a PDF). If you can drive a browser, do it there; if you can't, give the user the link and these steps:
+1. Add each signer by searching the user's customers; if there is no match, create the customer in that dialog.
+2. Place the signature tag directly above the signature line, its bottom edge touching the line. Place the date tag on or beside the date line. Left-align the tags with each other.
+3. Zoom in and check every tag sits on its line before going on.
+4. STOP AT THE SEND SCREEN: the editor's Send button opens a "Finish & send" dialog (name, CC, email message, reminders); its own Send button is the one that sends. Stop there, tell the user who it will go to and what that dialog is set to, and ask. Press its Send only on a fresh confirmation given for this send \u2014 "looks good" about the document is not one. If you prepared it in the browser, send it with that dialog's Send, NOT send_contract: the tool skips the dialog's message, CC and reminders, and leaves the open editor showing an unsent draft. send_contract is for a contract the user prepared themselves, and needs the same confirmation.
+Never deliver a document for signature by email_customer or any other email: that is a plain email, not an eSign.`;
+}
+
 // src/mcp/server.ts
 var LOCAL_FILE_TOOLS = ["scan_receipt", "attach_photo"];
 function logToolFailure(tool, reason, detail) {
@@ -90496,7 +90148,9 @@ function buildMcpServer(options = {}) {
   const server = new McpServer(
     { name: "bookipi", version: CLI_VERSION },
     {
-      instructions: "Bookipi runs a small business: invoices, customers, items, expenses and receipts, deals, proposals, eSign contracts, payment links, reports, meetings and the company website. Everything reflects the signed-in account and its active company.\n\n" + (allowWrites ? "Every tool whose annotations mark it read-only only reads. The rest MODIFY real business records \u2014 read the description before calling one, and prefer confirming with the user first.\n\n" : "All operations are read-only.\n\n") + "Every operation is listed as its own tool, so the tool list is the whole surface. Arguments are validated strictly against each tool's schema: pass exactly the parameter names it declares, because a near-miss is rejected rather than silently ignored.\n\nWork from results you already have: ids and fields from earlier tool results in this conversation are current \u2014 do not repeat a list call to re-find or confirm them. Write tools return the affected record; that response is the confirmation, so never follow a write with a read just to verify it. When a name lookup misses twice, stop and ask the user instead of searching again.\n\nIf a call fails with an authentication error, tell the user to reconnect this connector (their session may have expired). Do NOT tell them to run any terminal or `bookipi login` command."
+      instructions: "Bookipi runs a small business: invoices, customers, items, expenses and receipts, deals, proposals, eSign contracts, payment links, reports, meetings and the company website. Everything reflects the signed-in account and its active company.\n\n" + (allowWrites ? "Every tool whose annotations mark it read-only only reads. The rest MODIFY real business records \u2014 read the description before calling one, and prefer confirming with the user first.\n\n" : "All operations are read-only.\n\n") + "Every operation is listed as its own tool, so the tool list is the whole surface. Arguments are validated strictly against each tool's schema: pass exactly the parameter names it declares, because a near-miss is rejected rather than silently ignored.\n\nWork from results you already have: ids and fields from earlier tool results in this conversation are current \u2014 do not repeat a list call to re-find or confirm them. Write tools return the affected record; that response is the confirmation, so never follow a write with a read just to verify it. When a name lookup misses twice, stop and ask the user instead of searching again.\n\n" + // Always, read-only too: list_contracts points here, and preparing an
+      // eSign happens in the web app either way.
+      esignGuide() + "\n\nIf a call fails with an authentication error, tell the user to reconnect this connector (their session may have expired). Do NOT tell them to run any terminal or `bookipi login` command."
     }
   );
   const clientProps = () => ({
@@ -90567,7 +90221,7 @@ import http from "node:http";
 import { randomUUID as randomUUID2 } from "node:crypto";
 import { isIP } from "node:net";
 import { readFileSync as readFileSync3 } from "node:fs";
-import path11 from "node:path";
+import path10 from "node:path";
 
 // node_modules/.pnpm/@hono+node-server@2.1.4_hono@4.13.13/node_modules/@hono/node-server/dist/constants-BLSFu_RU.mjs
 var X_ALREADY_SENT = "x-hono-already-sent";
@@ -93105,7 +92759,7 @@ function favicon() {
   if (faviconCache !== void 0) return faviconCache;
   const candidates = [
     new URL("../../assets/icon.png", import.meta.url),
-    path11.join(process.cwd(), "assets", "icon.png")
+    path10.join(process.cwd(), "assets", "icon.png")
   ];
   for (const candidate of candidates) {
     try {
@@ -93330,7 +92984,7 @@ async function handleMcp(req, res, body) {
 }
 async function handleHttp(req, res) {
   const method = req.method ?? "GET";
-  const path12 = (req.url ?? "/").split("?")[0];
+  const path11 = (req.url ?? "/").split("?")[0];
   const search = new URLSearchParams((req.url ?? "").split("?")[1] ?? "");
   if (method === "OPTIONS") {
     res.writeHead(204, {
@@ -93343,11 +92997,11 @@ async function handleHttp(req, res) {
     res.end();
     return;
   }
-  if (method === "GET" && path12 === "/health") {
+  if (method === "GET" && path11 === "/health") {
     sendJson(res, 200, { status: "ok", service: "bookipi-mcp" });
     return;
   }
-  if (method === "GET" && path12 === "/favicon.ico") {
+  if (method === "GET" && path11 === "/favicon.ico") {
     const icon = favicon();
     if (!icon) {
       sendJson(res, 404, { error: "not_found" });
@@ -93361,8 +93015,8 @@ async function handleHttp(req, res) {
     res.end(icon);
     return;
   }
-  if (method === "GET" && path12.startsWith("/preview/")) {
-    const id = path12.slice("/preview/".length);
+  if (method === "GET" && path11.startsWith("/preview/")) {
+    const id = path11.slice("/preview/".length);
     const acceptsGzip = /\bgzip\b/i.test(String(req.headers["accept-encoding"] ?? ""));
     const isBrowser = /text\/html/i.test(String(req.headers["accept"] ?? ""));
     let body;
@@ -93391,7 +93045,7 @@ async function handleHttp(req, res) {
     res.end(body);
     return;
   }
-  if (method === "GET" && path12 === "/.well-known/openai-apps-challenge") {
+  if (method === "GET" && path11 === "/.well-known/openai-apps-challenge") {
     const token = (process.env["OPENAI_APPS_CHALLENGE_TOKEN"] ?? "").trim();
     if (!token) {
       sendJson(res, 404, { error: "not_found" });
@@ -93404,15 +93058,15 @@ async function handleHttp(req, res) {
     res.end(token);
     return;
   }
-  if (method === "GET" && path12.startsWith("/.well-known/oauth-protected-resource")) {
+  if (method === "GET" && path11.startsWith("/.well-known/oauth-protected-resource")) {
     sendJson(res, 200, protectedResourceMetadata());
     return;
   }
-  if (method === "GET" && (path12 === "/.well-known/oauth-authorization-server" || path12 === "/.well-known/openid-configuration")) {
+  if (method === "GET" && (path11 === "/.well-known/oauth-authorization-server" || path11 === "/.well-known/openid-configuration")) {
     sendJson(res, 200, authorizationServerMetadata());
     return;
   }
-  if (method === "POST" && path12 === "/oauth/register") {
+  if (method === "POST" && path11 === "/oauth/register") {
     const raw = await readRawBody(req);
     let parsed;
     try {
@@ -93425,7 +93079,7 @@ async function handleHttp(req, res) {
     sendJson(res, "error" in client ? 400 : 201, client);
     return;
   }
-  if (method === "GET" && path12 === "/oauth/authorize") {
+  if (method === "GET" && path11 === "/oauth/authorize") {
     try {
       const result = await buildAuthorizeRedirect(search);
       if ("location" in result) redirect2(res, result.location);
@@ -93438,7 +93092,7 @@ async function handleHttp(req, res) {
     }
     return;
   }
-  if (method === "GET" && path12 === "/oauth/callback") {
+  if (method === "GET" && path11 === "/oauth/callback") {
     try {
       const clientIp = clientIpOf(req);
       const result = await handleCallback(search, clientIp);
@@ -93454,12 +93108,12 @@ async function handleHttp(req, res) {
     }
     return;
   }
-  if (method === "POST" && path12 === "/oauth/token") {
+  if (method === "POST" && path11 === "/oauth/token") {
     const out = await handleToken(new URLSearchParams(await readRawBody(req)));
     sendJson(res, out.status, out.json);
     return;
   }
-  if (path12 === MCP_PATH) {
+  if (path11 === MCP_PATH) {
     if (method !== "POST" && method !== "GET" && method !== "DELETE") {
       sendJsonRpcError(res, 405, -32601, "Method not allowed.");
       return;

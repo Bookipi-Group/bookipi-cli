@@ -34,7 +34,11 @@ bookipi paylink send <id> --customer @c1 --to maria@acme.com --yes         # ema
   `whoami.defaultCompany` then requires `isStripeMerchant === true` **and**
   `stripeOnboardingStatus === "approved"` on `companiesOne`. Uses the same
   `BPAY_TOKEN` (no main session). If Stripe isn't connected + approved it
-  refuses with a clear message — finish Stripe setup in BookiPay first. (Note:
+  refuses with a message naming the fix: card payments are set up once in the
+  Bookipi **web app** (Payment Links → accept card payments → Stripe's identity
+  checks). That step cannot be done from the CLI — relay the link in the error
+  and stop; don't retry. A company that has never set this up has no payment
+  links at all: `paylink list` says so instead of failing. (Note:
   the main API's `bookipayOnboardingStatus` is **not** used — it doesn't reflect
   Stripe. `list`/`get` are not gated.)
 

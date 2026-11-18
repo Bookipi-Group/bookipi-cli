@@ -3,11 +3,16 @@
 ## Summary
 
 ```bash
-# Invoice summary — overview of created, paid, overdue, unpaid totals + monthly breakdown
+# Revenue summary — invoiced and paid in the period, a breakdown, and what is owed today
 bookipi report summary
 bookipi report summary --start 2026-01-01 --end 2026-03-31
-bookipi report summary --cycle year
+bookipi report summary --start 2026-07-01 --end 2026-09-30 --cycle quarter   # "last quarter"
+bookipi report summary --cycle year                                          # week | month | quarter | year
 ```
+
+How to read it, and what to say to the user:
+- **Invoiced** is invoices *dated* in the period, by the date on the invoice. **Paid** is payments *received* in the period, by payment date — so it can include payments on older invoices.
+- **Unpaid / Overdue** are *as of today*, across every invoice, by balance. They are not for the period, and they match `report digest`.
 
 ## Top Customers
 
@@ -79,13 +84,17 @@ Insights are sorted by severity: critical (red), warning (yellow), info, positiv
 A concise "what happened" briefing — invoiced vs collected, overdue breakdown by severity, top customers, recent payments, and a pipeline-at-a-glance section (active deal value, stage breakdown, deals closed this period, deals stalling in proposal/contract stage). Proposals and contracts are surfaced via their parent deals to keep the digest short.
 
 ```bash
-bookipi report digest                            # this week (default)
+bookipi report digest                            # the last 7 days (default, --period week)
+bookipi report digest --period last-week         # the 7 days before that
 bookipi report digest --period today             # today only
 bookipi report digest --period yesterday         # yesterday
 bookipi report digest --period month             # month-to-date
+bookipi report digest --period last-month        # the previous calendar month
 bookipi report digest --start 2026-03-01 --end 2026-03-31  # custom range
 bookipi report digest --json                     # structured JSON
 ```
+
+**Two kinds of figure — keep them apart when you relay it.** *Invoiced*, *Collected*, top customers and recent payments are **for the period**. *Unpaid* and *Overdue* are **as of today**: everything still owed, whenever it was invoiced, by balance (what is left to pay). Never present unpaid or overdue as "this week's".
 
 The digest is designed for both human presentation and scheduled automation (see Monday morning digest schedule).
 
@@ -112,7 +121,7 @@ Use this when the user seems unsure what to do, says "what now?", or for the ini
 
 ### "Show me my revenue" / "How much did I invoice?" / "What are my numbers?"
 
-Use `report summary` for an overview with monthly breakdown. Add `--start` and `--end` for a specific period. Use `--cycle year` for annual aggregation.
+Use `report summary` for an overview with monthly breakdown. Add `--start` and `--end` for a specific period. Use `--cycle quarter` or `--cycle year` for a coarser breakdown (`week` for a finer one).
 
 ### "Who are my top customers?" / "Who owes me the most?"
 

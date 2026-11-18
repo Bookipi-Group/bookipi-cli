@@ -34,15 +34,30 @@ notes and purchase orders; record payments and issue receipts; copy an invoice
 into another document type; send
 reminders on overdue invoices; add customers and catalogue items; log expenses
 from a photographed receipt; move deals through the pipeline; draft and send
-proposals; prepare eSign contracts; and edit and publish the website.
+proposals; send eSign contracts for signature; and edit and publish the
+website.
 
 **Payments:** Bookipi can issue a payment link and record that an invoice has
 been paid. Money moves only on Bookipay's own hosted checkout, in the
 customer's browser. No funds are transferred by the connector.
 
+Payment links need card payments set up first. That is a one-time step in the
+Bookipi web app — open **Payment Links**, choose to accept card payments, and
+finish Stripe's identity checks — and it cannot be done from a conversation.
+Until then the connector reports that you have no payment links and tells you
+where to set them up.
+
+**eSign:** anything to be signed goes through Bookipi eSign. Claude writes the
+document itself (there is no AI Contract tool), or starts from a template in
+your account or the Bookipi library, or from a PDF you have. Signers and the
+signature and date tags are placed in the eSign web app. If Claude can use a
+browser it does that there; if not, it gives you the link and the steps.
+Either way it stops at the "Finish & send" dialog and sends only when you
+confirm.
+
 ## Connect
 
-**claude.ai / Claude Desktop:** go to **Settings → Connectors → Add custom
+**claude.ai / Claude Desktop:** go to **Customize → Connectors → Add custom
 connector**, paste `https://mcp.bookipi.com/mcp`, and click **Add**.
 
 **Claude Code:**
@@ -92,7 +107,7 @@ would be created or changed, and nothing is written until you confirm.
 
 Remove the connector wherever you added it:
 
-- **claude.ai / Claude Desktop:** **Settings → Connectors**, find Bookipi and
+- **claude.ai / Claude Desktop:** **Customize → Connectors**, find Bookipi and
   remove it.
 - **Claude Code:** `claude mcp remove bookipi`
 
@@ -119,7 +134,7 @@ has a connector tool.
 | Filtering the list by customer or date, or sorting it | `invoice list --customer`, `--from`, `--to`, `--sort` | `list_invoices` filters by status, document type and a text search. |
 | Changing an invoice's status or number, or editing one line item | `invoice update --status`, `--number`, `--add-item`, `--set-item`, `--remove-item`, `--reset-status` | `update_invoice` replaces the whole `items` list; it can't set the status or number. |
 | Scanning a receipt or attaching a photo from your computer | `expense scan`, `expense upload`, `item set-photo`, `invoice create --photo` | The hosted connector can't read your disk, and there is no way to send it the file yet. It works only when the MCP server runs locally (`bookipi mcp`). |
-| Uploading your own PDF as an eSign contract | `contract upload` | Not available. Draft one with `draft_contract` instead. |
+| Uploading a PDF as an eSign contract | `contract upload` | The connector can't receive the file. It is uploaded in the eSign web app, by Claude in a browser or by you. |
 | The staged overdue-collections ladder (gentle, firm, final) | `invoice collections` | `remind_invoice` sends one reminder per invoice; it picks gentler wording for invoices not yet overdue. |
 | Switching the default company | `company set` | Pass `company_id` on each call; `whoami` lists the companies. |
 | Sign-in, workspace setup, calendar setup | `login`, `setup`, `init`, `calendar` | Not needed: sign-in happens when you connect. `calendar_status` reports the calendar connection. |

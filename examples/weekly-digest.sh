@@ -4,7 +4,7 @@
 # SLACK_WEBHOOK_URL is set.
 #
 #   ./weekly-digest.sh                 # this week
-#   ./weekly-digest.sh month           # today | yesterday | week | month
+#   ./weekly-digest.sh month           # today | yesterday | week | last-week | month | last-month
 #   SLACK_WEBHOOK_URL=https://hooks.slack.com/... ./weekly-digest.sh
 #
 # Read-only: it never changes anything in Bookipi.

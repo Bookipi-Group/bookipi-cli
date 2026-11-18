@@ -9,6 +9,122 @@ under a version you already have will not reach you. `claude plugin update`
 reports "already at the latest version" and keeps serving the cached copy —
 refresh the marketplace first (`/plugin marketplace update bookipi-cli`).
 
+## 0.51.0 — 2026-11-19
+
+### Removed
+- **AI Contract is gone, from the connector and the CLI.** `draft_contract`,
+  `draft_contract_from_proposal` and `finalize_contract` are no longer
+  connector tools, and `contract draft`, `contract create-from-proposal` and
+  `contract finalize` are no longer CLI commands. The assistant writes a better
+  contract than AI Contract did, and the tool kept pulling eSign requests away
+  from eSign.
+
+### Changed
+- Every request to get something signed now goes to **Bookipi eSign**: a
+  document the assistant writes for you, a template from your account or the
+  Bookipi library, or a PDF you have. The assistant prepares it in the eSign
+  web app — signers found in (or added to) your customers, the signature tag
+  just above its line, the date tag on its line — and **stops at the Send
+  screen** until you confirm that send. Without a browser it gives you the link
+  and the same steps. It never sends a document for signature as a plain
+  email. A contract prepared in the browser is sent from its "Finish & send"
+  dialog, so its message, CC and reminders apply. In the CLI, a contract you
+  wrote goes in with `contract upload`.
+- `send_contract` and `contract send` take only a contract's id; there are no
+  AI drafts left to resolve.
+
+### Fixed
+- Payment links on a company that has never set up card payments: the message
+  now says what actually has to happen (accept card payments on the Payment
+  Links page of the web app, then Stripe's identity checks) and links to it.
+  It used to say "open Payment Links in the web app once", which does not
+  activate anything. Listing payment links on such a company answers "none
+  yet" with the same pointer, where it used to fail. `create_paylink`'s
+  preview runs the same check as the real call, so it no longer passes and
+  then errors. The connector page now mentions the setup step.
+- `document_numbering` no longer reports an `enabled` flag per document type.
+  It read as "this company has purchase orders switched off", but it is
+  Bookipi's default value for credit notes, delivery notes and purchase orders
+  on every company, and nothing acts on it: the web app and the connector both
+  create those documents regardless.
+- The public connector page said estimates, credit notes, delivery notes and
+  purchase orders were "Not yet" supported. They are; the page is corrected.
+- "What was my revenue last quarter?" works. The revenue report
+  (`report_summary` on the connector, `report summary` in the CLI) offered a
+  `quarter` cycle that Bookipi's report API does not have and failed with a
+  server error; quarters are now built from months. `week` is offered too, and
+  an unknown cycle is refused with the list of valid ones.
+- The revenue report's unpaid and overdue figures are now everything owed as
+  of today, by balance — the same numbers as the digest. They were scoped to
+  the date range in two different ways and matched nothing else ("6 overdue"
+  beside the digest's "8 overdue").
+- The revenue report counts an invoice in the period printed on it. An invoice
+  dated 31 July and entered in September was counted as September's, because
+  Bookipi's report API goes by the day an invoice was created. Invoiced totals
+  are now read from the invoices by their own date; paid totals still go by
+  payment date. This can differ from the web app's Reports page for a
+  backdated invoice.
+- The connector's revenue report returns a simpler shape: `invoiced`, `paid`,
+  `buckets` and `owedNow`. `report summary --json` returns the same.
+- Suggestions count invoices and customers separately and quote the days the
+  invoices really span: "Send reminders for 8 overdue invoices from 3
+  customers … 7 to 87 days past due", where it said "8 overdue customers" and
+  always "7-89 days" (`report_suggestions` on the connector, `report suggest`
+  in the CLI). The outstanding amount is now by balance, so it agrees with the
+  overdue total; it counted a part-paid invoice in full. Overdue invoices are
+  read in full, not just the 100 newest, and ones with nothing left to pay are
+  left out.
+- Proposal emails no longer arrive with "&apos;" in the subject line. Sent
+  with no subject from the connector or the CLI, a proposal now goes out as
+  "Proposal from <your company>" with the message "Looking forward to doing
+  business with you", the web app's own defaults; it used to be "You've
+  received a proposal", and Bookipi's mail service turns an apostrophe in a
+  subject into "&apos;". A subject you type keeps its apostrophes, written as
+  ’ so they survive. `send_proposal`'s preview shows the subject and message.
+- Reminder emails name the invoice by its own number and write the due date
+  in your company's date format: "invoice invoice-1 … (due 17/11/2026)", or
+  "17 Nov 2026" if that is your setting, matching the "Due:" line at the top
+  of the email. They said "INV-invoice-1" and "2026-11-17" (`remind_invoice`
+  on the connector, `invoice remind` and `invoice collections` in the CLI).
+  An invoice with no due date reads "due on receipt". The default message on
+  a plain send formats its due date the same way.
+- A document sent without a typed message no longer arrives with an empty
+  message box (`send_invoice` on the connector, `invoice send` in the CLI,
+  for invoices, estimates and the other document types). It now carries the
+  same default the web app pre-fills: the message your company saved for that
+  document type if there is one, otherwise "Hi Jenny, Here's estimate
+  estimate-2 for $1,500.00. Thank you!" with the amount, due date, deposit
+  request and pay-online line as they apply. The connector's send preview
+  shows the message in full before anything is sent.
+- The digest's figures match the period it states (`report_digest` on the
+  connector, `report digest` in the CLI):
+  - **Invoiced and collected** are for the period, with real counts. They were
+    the trailing twelve months' amounts beside a count of 0, so a weekly digest
+    showed the year's billing.
+  - **Unpaid and overdue** are everything still owed as of today, by balance.
+    They were limited to invoices from the last twelve months and unpaid was
+    summed by invoice total, so a part-paid invoice counted in full.
+  - **Recent activity** lists payments received in the period. It listed the
+    latest paid invoices whenever they were paid.
+  - **`last-week` and `last-month`** work. Both were offered by the connector
+    and silently returned this week, labelled "This week". An unknown period is
+    now refused.
+  - The CLI digest no longer crashes when more was collected in a period than
+    was invoiced in it.
+- Expense date ranges and merchant search work. `list_expenses` on the
+  connector and `expense list` in the CLI accepted a start date, an end date
+  and a search, and applied none of them, so "my expenses this month" returned
+  every expense on the account. The range is now applied by Bookipi, both ends
+  inclusive, and the search matches anywhere in the merchant name. The list is
+  ordered by purchase date, newest first. `expense list --end` no longer
+  defaults to today, which hid future-dated expenses.
+- `send_contract` refuses a contract with no signature field. Bookipi accepted
+  the send, but the signer could only view and complete it, and the contract
+  ended up marked signed with no signature on it. `contract send` in the CLI
+  already refused. Both now also refuse a contract that is already signed or
+  declined, and `send_contract` no longer emails the signers again when the
+  contract was already sent.
+
 ## 0.50.0 — 2026-11-19
 
 ### Added
