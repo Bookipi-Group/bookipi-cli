@@ -175,7 +175,10 @@ Don't list every overdue invoice if there are 20 — top 3 plus the total tells 
 **Unpaid payment links.** Also pull `paylink list --json`. For the **active** links
 (cap ~10), run `paylink status <id>` to find ones still **awaiting payment**; surface
 those (title, amount, age). Skip links already paid. If a link has partial/failed
-attempts, note it. Keep it to a short list — this is "what's still owed", not a ledger.
+attempts, note it. If status says **"Collected: unknown"**, Bookipay did not
+report payments — don't count that link as awaiting payment; at most add one line
+that payment-link status couldn't be checked. Keep it to a short list — this is
+"what's still owed", not a ledger.
 
 ### 4. Awaiting action
 

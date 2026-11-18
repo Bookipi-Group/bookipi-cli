@@ -65,6 +65,11 @@ no successful payments yet, say "no payments yet". `--json` returns
 `{ link, payments, summary }` (`summary.totalCollectedCents`, `successfulCount`,
 `attempts`).
 
+If it prints **"Collected: unknown"** (`--json`: `payments` and `summary` are
+`null`), Bookipay did not report this link's payments. Say the payment status
+is unknown and point the user to their Bookipay dashboard. Never report it as
+"no payments yet" or unpaid.
+
 If the user wants to track this **on a schedule**, offer two options: schedule just
 this link's check, or fold it into **one daily status sweep** that also covers
 invoices, proposals, and contracts — see `docs/morning-brief.md` § Scheduling.

@@ -13,7 +13,7 @@ Key facts for agents:
 ## Connect over MCP (no install)
 
 - Server URL: `https://mcp.bookipi.com/mcp` (streamable HTTP, OAuth). Listed in the official MCP Registry as `io.github.Bookipi-Group/bookipi`.
-- claude.ai or Claude Desktop: Customize → Connectors → Add custom connector, paste the URL.
+- claude.ai or Claude Desktop: Settings → Connectors → Add custom connector, paste the URL.
 - ChatGPT: the Bookipi app is in the ChatGPT app directory. Open Apps, search "Bookipi", click Connect and sign in. Same connector, minus receipt and photo uploads (those need a local file).
 - Claude Code: `claude mcp add --transport http bookipi https://mcp.bookipi.com/mcp`.
 - Gemini CLI: the extension below bundles the connector; run `/mcp auth bookipi` once to sign in.
@@ -32,7 +32,7 @@ Key facts for agents:
 - First run: `bookipi setup` reports the CLI, workspace and sign-in state as JSON and names the one next step (`next.action`). `bookipi init` creates a project-folder workspace and signs in; `bookipi login` signs in for every folder.
 - Commands take `--json` for machine-readable output (`whoami` prints JSON already). Run `bookipi <group> --help` for flags.
 
-Command groups: `invoice`, `customer`, `item`, `expense`, `paylink`, `deal`, `proposal`, `contract`, `report`, `meeting`, `calendar`, `company`, `website`, plus `setup`, `init`, `login`, `logout`, `whoami` and `mcp`.
+Command groups: `invoice`, `customer`, `item`, `expense`, `paylink`, `deal`, `lead`, `signal`, `proposal`, `contract`, `report`, `meeting`, `calendar`, `company`, `website`, plus `setup`, `init`, `login`, `logout`, `whoami` and `mcp`.
 
 ## Docs
 
@@ -54,6 +54,8 @@ Command groups: `invoice`, `customer`, `item`, `expense`, `paylink`, `deal`, `pr
 - [Proposals](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/skills/bookipi-cli/docs/quick-quote.md): AI proposal, send, then turn an accepted proposal into an invoice
 - [Contracts](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/skills/bookipi-cli/docs/win-deal.md): eSign contracts after a proposal is accepted, or standalone
 - [Stalled deals](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/skills/bookipi-cli/docs/stalled-recovery.md): re-engage deals that went quiet
+- [Leads](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/skills/bookipi-cli/docs/leads.md): describe an audience, preview who matches, look one person up
+- [Signals](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/skills/bookipi-cli/docs/signals.md): what the CRM noticed on the timeline and suggests doing next
 - [Meetings](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/skills/bookipi-cli/docs/meetings.md): recorded meetings, transcripts and AI summaries
 - [Reports](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/skills/bookipi-cli/docs/reports.md): revenue, top customers, dashboards and insights
 - [Morning brief](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/skills/bookipi-cli/docs/morning-brief.md): a daily summary with the day's actions prepared as drafts

@@ -42,7 +42,7 @@ customer's browser. No funds are transferred by the connector.
 
 ## Connect
 
-**claude.ai / Claude Desktop:** go to **Customize → Connectors → Add custom
+**claude.ai / Claude Desktop:** go to **Settings → Connectors → Add custom
 connector**, paste `https://mcp.bookipi.com/mcp`, and click **Add**.
 
 **Claude Code:**
@@ -92,7 +92,7 @@ would be created or changed, and nothing is written until you confirm.
 
 Remove the connector wherever you added it:
 
-- **claude.ai / Claude Desktop:** **Customize → Connectors**, find Bookipi and
+- **claude.ai / Claude Desktop:** **Settings → Connectors**, find Bookipi and
   remove it.
 - **Claude Code:** `claude mcp remove bookipi`
 

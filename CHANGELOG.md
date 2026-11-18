@@ -9,6 +9,39 @@ under a version you already have will not reach you. `claude plugin update`
 reports "already at the latest version" and keeps serving the cached copy —
 refresh the marketplace first (`/plugin marketplace update bookipi-cli`).
 
+## Unreleased
+
+### Fixed
+- `paylink status` (and the connector's `paylink_status`) no longer fails
+  when Bookipay does not report a link's payments, as on staging since Bookipay
+  dropped that lookup. It shows the link and says the collected amount is
+  unknown instead of erroring. `paylink_status` also stopped counting failed
+  attempts as paid: `paid`, `paymentCount` and `collected` now cover
+  successful payments only.
+
+## 0.48.0 — 2026-11-16
+
+### Added
+- Signals from the CLI: a new `signal` group. `signal list` reads what the
+  CRM noticed on the account's timeline and suggests doing next (an unpaid
+  invoice, a failed payment, a bounced email), pending and most severe first,
+  with filters for status, record type, record and rule. `signal execute` and
+  `signal dismiss` record what the user decided; they change the signal only
+  and send nothing. CLI and skill only.
+- Prospecting from the CLI: a new `lead` group. `lead suggest "<audience>"`
+  turns plain words into audience filters, `lead filters` lists the allowed
+  values, `lead preview` shows a sample of about five matching people (no
+  contact details), `lead enrich` looks one person up by LinkedIn URL, email
+  or name and company (`--contacts` adds email and phone), `lead list` reads
+  the leads saved in the CRM, and `lead limits` shows the plan's allowance.
+  All read-only; nothing is emailed or saved. CLI and skill only.
+- The connector creates every document type, not only invoices:
+  **estimates, credit notes, delivery notes and purchase orders**.
+  `create_invoice` takes `document_type` (`estimate`, `credit_note`,
+  `delivery_note`, `purchase_order`; default `invoice`), and `list_invoices`
+  takes it too, so those documents can be listed. Before this, asking the
+  connector for an estimate created a real invoice.
+
 ## 0.47.0 — 2026-11-09
 
 ### Added

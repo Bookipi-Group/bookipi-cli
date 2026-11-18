@@ -51,7 +51,7 @@ import {
   uploadItemImage,
   useConfigDir,
   wasBookipiTokenRejected
-} from "./chunks/chunk-NNVAFQL4.js";
+} from "./chunks/chunk-BLU5Q6T5.js";
 import {
   __commonJS,
   __export,
@@ -9185,8 +9185,8 @@ var require_util2 = __commonJS({
       }
       return values;
     }
-    function getDecodeSplit(name, list) {
-      const value = list.get(name, true);
+    function getDecodeSplit(name, list2) {
+      const value = list2.get(name, true);
       if (value === null) {
         return null;
       }
@@ -22898,9 +22898,9 @@ var require_headers = __commonJS({
       // https://fetch.spec.whatwg.org/#dom-headers-getsetcookie
       getSetCookie() {
         webidl.brandCheck(this, _Headers);
-        const list = this.#headersList.cookies;
-        if (list) {
-          return [...list];
+        const list2 = this.#headersList.cookies;
+        if (list2) {
+          return [...list2];
         }
         return [];
       }
@@ -22924,8 +22924,8 @@ var require_headers = __commonJS({
        * @param {Headers} target
        * @param {HeadersList} list
        */
-      static setHeadersList(target, list) {
-        target.#headersList = list;
+      static setHeadersList(target, list2) {
+        target.#headersList = list2;
       }
     };
     var { getHeadersGuard, setHeadersGuard, getHeadersList, setHeadersList } = Headers2;
@@ -23876,13 +23876,13 @@ var require_request2 = __commonJS({
         if (this.signal.aborted) {
           ac.abort(this.signal.reason);
         } else {
-          let list = dependentControllerMap.get(this.signal);
-          if (list === void 0) {
-            list = /* @__PURE__ */ new Set();
-            dependentControllerMap.set(this.signal, list);
+          let list2 = dependentControllerMap.get(this.signal);
+          if (list2 === void 0) {
+            list2 = /* @__PURE__ */ new Set();
+            dependentControllerMap.set(this.signal, list2);
           }
           const acRef = new WeakRef(ac);
-          list.add(acRef);
+          list2.add(acRef);
           util2.addAbortListener(
             ac.signal,
             buildAbort(acRef)
@@ -36953,8 +36953,8 @@ var require_dist = __commonJS({
         return ajv;
       }
       const [formats, exportName] = opts.mode === "fast" ? [formats_1.fastFormats, fastName] : [formats_1.fullFormats, fullName];
-      const list = opts.formats || formats_1.formatNames;
-      addFormats(ajv, list, formats, exportName);
+      const list2 = opts.formats || formats_1.formatNames;
+      addFormats(ajv, list2, formats, exportName);
       if (opts.keywords)
         (0, limit_1.default)(ajv);
       return ajv;
@@ -36966,11 +36966,11 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list, fs10, exportName) {
+    function addFormats(ajv, list2, fs10, exportName) {
       var _a3;
       var _b;
       (_a3 = (_b = ajv.opts.code).formats) !== null && _a3 !== void 0 ? _a3 : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
-      for (const f of list)
+      for (const f of list2)
         ajv.addFormat(f, fs10[f]);
     }
     module.exports = exports = formatsPlugin;
@@ -37952,9 +37952,20 @@ function parsePaging(opts) {
   if (isNaN(perPage) || perPage < 1) failWith("Invalid limit value", { json: json3 });
   return { page, perPage };
 }
+function checkKeys(flag, values, allowed, json3) {
+  const bad = values.find((v) => !allowed.includes(v));
+  if (bad !== void 0) {
+    failWith(`Invalid ${flag} value '${bad}'. Valid keys: ${allowed.join(", ")}`, { json: json3 });
+  }
+  return values;
+}
 function collectList(value, previous = []) {
   const parts2 = value.split(",").map((s) => s.trim()).filter(Boolean);
   return [...previous, ...parts2];
+}
+function collectValues(value, previous = []) {
+  const trimmed = value.trim();
+  return trimmed ? [...previous, trimmed] : previous;
 }
 
 // src/commands/auth/login.ts
@@ -38965,6 +38976,13 @@ var DOCUMENT_TYPES = [
   { code: 4, name: "purchase-order", label: "Purchase Order", prefix: "PO" }
 ];
 var DOCUMENT_TYPE_NAMES = DOCUMENT_TYPES.map((d) => d.name);
+var DOCUMENT_TYPE_ARGS = DOCUMENT_TYPE_NAMES.map(toArg);
+function toArg(name) {
+  return name.replace(/-/g, "_");
+}
+function documentTypeArg(code) {
+  return toArg(documentTypeByCode(code).name);
+}
 var ALIASES = {
   quote: "estimate",
   quotation: "estimate",
@@ -39292,19 +39310,19 @@ async function resolveCustomerId(value) {
     return exactMatches[0]._id;
   }
   if (exactMatches.length > 1) {
-    const list2 = exactMatches.map((c) => `  - ${customerLabel(c)} (${c._id})`).join("\n");
+    const list3 = exactMatches.map((c) => `  - ${customerLabel(c)} (${c._id})`).join("\n");
     throw new Error(
       `Multiple customers exactly match "${value}". Specify by handle or ID:
-${list2}`
+${list3}`
     );
   }
   if (customers.length === 1) {
     return customers[0]._id;
   }
-  const list = customers.slice(0, 5).map((c) => `  - ${customerLabel(c)} (${c._id})`).join("\n");
+  const list2 = customers.slice(0, 5).map((c) => `  - ${customerLabel(c)} (${c._id})`).join("\n");
   throw new Error(
     `Multiple customers match "${value}" but none exactly. Specify by handle or ID:
-${list}`
+${list2}`
   );
 }
 function customerLabel(c) {
@@ -39380,6 +39398,8 @@ function calendarDate(date5) {
 }
 
 // src/core/formatters/BaseFormatter.ts
+var DASH = "\u2014";
+var cell = (value) => value?.replace(/[|\r\n]+/g, " ").trim() || DASH;
 var BaseFormatter = class {
   /**
    * Format currency value in the user's current company currency. The
@@ -41356,10 +41376,10 @@ async function resolveItem(value, companyId) {
       return fromRecord(match);
     }
     if (exactMatches.length > 1) {
-      const list = exactMatches.map((i) => `  - ${i.name} @ ${formatCurrency(i.price ?? 0)} (${i._id})`).join("\n");
+      const list2 = exactMatches.map((i) => `  - ${i.name} @ ${formatCurrency(i.price ?? 0)} (${i._id})`).join("\n");
       throw new Error(
         `Multiple items exactly match "${name}". Please specify by handle or ID:
-${list}`
+${list2}`
       );
     }
     if (matches.length > 0) {
@@ -41514,11 +41534,11 @@ function candidateNames(c) {
   ].filter(Boolean);
 }
 function ambiguous(value, rows, exact) {
-  const list = rows.slice(0, 5).map((c) => `  - ${displayName(c)} (${String(c["_id"])})`).join("\n");
+  const list2 = rows.slice(0, 5).map((c) => `  - ${displayName(c)} (${String(c["_id"])})`).join("\n");
   return new Error(
     exact ? `Multiple customers exactly match "${value}". Please specify by id:
-${list}` : `Multiple customers match "${value}" but none exactly. Please specify by id:
-${list}`
+${list2}` : `Multiple customers match "${value}" but none exactly. Please specify by id:
+${list2}`
   );
 }
 async function findOrCreateCustomer(value, companyId, extraFields) {
@@ -44922,7 +44942,7 @@ var createCommand4 = new Command("create").description("Create a new item/produc
     if (opts.photo) {
       process.stderr.write(`  \u2022 Uploading ${opts.photo}...
 `);
-      const { uploadItemImage: uploadItemImage2 } = await import("./chunks/uploadItemImage-P76FFFZG.js");
+      const { uploadItemImage: uploadItemImage2 } = await import("./chunks/uploadItemImage-5OIFTMVF.js");
       const { filename } = await uploadItemImage2(opts.photo);
       record2.photos = [{ filename }];
     }
@@ -46094,11 +46114,18 @@ var PAYMENT_LINK_PAYMENTS_QUERY = `
     }
   }
 `;
+var QUERY_REMOVED = /Cannot query field "payment_link_paymentsMany"|Unknown type "FilterFindManypaymentLinkPaymentsInput"/;
 async function getPaymentLinkPayments(paymentLinkId) {
-  const data = await bpayGraphql({
-    query: PAYMENT_LINK_PAYMENTS_QUERY,
-    variables: { filter: { paymentLinkId }, limit: 100 }
-  });
+  let data;
+  try {
+    data = await bpayGraphql({
+      query: PAYMENT_LINK_PAYMENTS_QUERY,
+      variables: { filter: { paymentLinkId }, limit: 100 }
+    });
+  } catch (err2) {
+    if (err2 instanceof Error && QUERY_REMOVED.test(err2.message)) return null;
+    throw err2;
+  }
   const rows = data?.payment_link_paymentsMany ?? [];
   return [...rows].sort(
     (a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? ""))
@@ -46117,12 +46144,15 @@ var statusCommand = new Command("status").description(
       getPaymentLink(id).catch(() => null),
       getPaymentLinkPayments(id)
     ]);
-    const summary = summarizePaymentStatus(payments);
+    if (!link && !payments) {
+      throw new Error(`No payment link found with id "${id}"`);
+    }
+    const summary = payments ? summarizePaymentStatus(payments) : null;
     if (opts.json) {
       console.log(JSON.stringify({ link, payments, summary }, null, 2));
       return;
     }
-    const cur = upper(link?.currency ?? payments[0]?.currency ?? null);
+    const cur = upper(link?.currency ?? payments?.[0]?.currency ?? null);
     console.log(`# Payment Link Status${link?.title ? ` \u2014 ${link.title}` : ""}
 `);
     if (link) {
@@ -46131,7 +46161,11 @@ var statusCommand = new Command("status").description(
       const url2 = paymentLinkUrl(link.shortCode);
       if (url2) console.log(`- Link:        ${url2}`);
     }
-    if (summary.successfulCount > 0) {
+    if (!summary) {
+      console.log(
+        `- Collected:   unknown \u2014 Bookipay no longer reports payments per link; check the Bookipay dashboard`
+      );
+    } else if (summary.successfulCount > 0) {
       console.log(
         `- Collected:   \u{1F4B0} ${formatCents(summary.totalCollectedCents, cur)} across ${summary.successfulCount} payment${summary.successfulCount > 1 ? "s" : ""}`
       );
@@ -46142,7 +46176,7 @@ var statusCommand = new Command("status").description(
     } else {
       console.log(`- Collected:   no payments yet`);
     }
-    if (payments.length > 0) {
+    if (payments?.length) {
       console.log(`
 Payments:`);
       for (const p of payments) {
@@ -47893,13 +47927,13 @@ function analyzeContactList(orders, overdueInvoices, now2 = /* @__PURE__ */ new 
     if (entries.has(key2)) entries.get(key2).reasons.push(reason);
     else entries.set(key2, { name: r.name, reasons: [reason], priority: 0.1 });
   }
-  const list = [...entries.values()].sort((a, b) => b.priority - a.priority).slice(0, 5);
-  if (list.length === 0) return [];
+  const list2 = [...entries.values()].sort((a, b) => b.priority - a.priority).slice(0, 5);
+  if (list2.length === 0) return [];
   return [{
     emoji: "\u{1F4C7}",
     category: "Customers",
-    title: `Contact ${list.length} ${list.length === 1 ? "customer" : "customers"} this week`,
-    detail: list.map((e) => `${e.name} \u2014 ${e.reasons.join("; ")}`).join(" \xB7 "),
+    title: `Contact ${list2.length} ${list2.length === 1 ? "customer" : "customers"} this week`,
+    detail: list2.map((e) => `${e.name} \u2014 ${e.reasons.join("; ")}`).join(" \xB7 "),
     severity: "info"
   }];
 }
@@ -50248,6 +50282,706 @@ var updateCommand3 = new Command("update").description(
 // src/commands/deal/index.ts
 var dealCommand = new Command("deal").description("Manage deals (project pipelines)").addCommand(listCommand7).addCommand(createCommand7).addCommand(updateCommand3);
 
+// src/usecases/lead/suggestLeadFilters.ts
+var LEAD_SUGGEST_FILTERS_QUERY = `
+  query LeadSuggestFilters($description: String!, $targetCount: Int) {
+    crmLeadAutopilotSuggestFiltersFromDescription(
+      description: $description
+      targetCount: $targetCount
+    ) {
+      matched
+      errorMessage
+      categories {
+        title
+        industries
+        companySizes
+        countries
+        jobTitles
+        fundingStages
+      }
+    }
+  }
+`;
+async function suggestLeadFilters(options) {
+  const data = await bookipiGraphql({
+    query: LEAD_SUGGEST_FILTERS_QUERY,
+    variables: {
+      description: options.description,
+      ...options.count !== void 0 ? { targetCount: options.count } : {}
+    },
+    ...options.companyId ? { companyId: options.companyId } : {}
+  });
+  const result = data?.crmLeadAutopilotSuggestFiltersFromDescription;
+  if (!result) throw new Error("The server returned no filter suggestion. Try again.");
+  return result;
+}
+
+// src/core/formatters/LeadFormatter.ts
+var list = (values) => cell(values?.join(", "));
+var LeadFormatter = class extends BaseFormatter {
+  format(view, options) {
+    if (options?.json === true) return JSON.stringify(view.data, null, 2);
+    switch (view.kind) {
+      case "preview":
+        return this.formatPeople(
+          "Matching people \u2014 sample",
+          view.data,
+          "Nobody matched. Widen the audience: more industries, sizes or job titles."
+        );
+      case "lookup":
+        return this.formatPeople(
+          "Lookup results",
+          view.data.people,
+          "No profile matched. Add a LinkedIn URL or the company name to narrow it."
+        );
+      case "suggestion":
+        return this.formatSuggestion(view.data);
+      case "filterValues":
+        return this.formatFilterValues(view.data);
+      case "leads":
+        return this.formatLeads(view.data);
+      case "limits":
+        return this.formatLimits(view.data);
+    }
+  }
+  /** People from a preview or a lookup. Contact columns only when any has them. */
+  formatPeople(title, people, emptyMessage) {
+    const output2 = `# ${title} (${people.length})
+`;
+    if (people.length === 0) return `${output2}
+${emptyMessage}
+`;
+    const withContacts = people.some((p) => p.emails?.length || p.phoneNumbers?.length);
+    const headers = ["Name", "Job title", "Company", "Industry", "LinkedIn"];
+    if (withContacts) headers.push("Email", "Phone");
+    const rows = people.map((p) => {
+      const row = [cell(p.name), cell(p.jobTitle), cell(p.companyName), cell(p.industry), cell(p.linkedInUrl)];
+      if (withContacts) row.push(list(p.emails), list(p.phoneNumbers));
+      return row;
+    });
+    return `${output2}
+${this.createTable(headers, rows)}`;
+  }
+  formatSuggestion(suggestion) {
+    if (!suggestion.matched || suggestion.categories.length === 0) {
+      const reason = suggestion.errorMessage || "Describe the industry, company size and country.";
+      return `# Suggested audiences (0)
+
+No audience matched that description. ${reason}
+`;
+    }
+    let output2 = `# Suggested audiences (${suggestion.categories.length})
+`;
+    for (const set2 of suggestion.categories) {
+      output2 += this.section(set2.title, 2);
+      output2 += this.listItem("Industries", list(set2.industries));
+      output2 += this.listItem("Company sizes", list(set2.companySizes));
+      output2 += this.listItem("Countries", list(set2.countries));
+      if (set2.jobTitles?.length) output2 += this.listItem("Job titles", list(set2.jobTitles));
+      if (set2.fundingStages?.length) output2 += this.listItem("Funding stages", list(set2.fundingStages));
+    }
+    return output2;
+  }
+  formatFilterValues(values) {
+    let output2 = "# Audience filter values\n";
+    output2 += this.section("Company sizes", 2);
+    output2 += `${list(values.companySizes)}
+`;
+    output2 += this.section(`Industries (${values.industries.length})`, 2);
+    output2 += `${list(values.industries)}
+`;
+    output2 += this.section("Job titles", 2);
+    for (const group of values.jobTitles) {
+      output2 += this.listItem(group.category, list(group.titles));
+    }
+    return output2;
+  }
+  formatLeads({ items: leads, pageInfo: meta3 }) {
+    let output2 = `# Leads (${leads.length} found)
+`;
+    if (leads.length === 0) return `${output2}
+No leads found.
+`;
+    const headers = ["Name", "Job title", "Company", "Email", "Phone", "Country", "Source", "Added"];
+    const rows = leads.map((lead) => {
+      const emails = lead.emails?.length ? lead.emails : lead.email ? [lead.email] : [];
+      const added = lead.sourcedAt || lead.createdAt;
+      return [
+        cell(lead.name),
+        cell(lead.jobTitle),
+        cell(lead.companyName),
+        list(emails),
+        list(lead.phoneNumbers),
+        cell(lead.country),
+        cell(lead.source),
+        added ? this.formatDate(added) : DASH
+      ];
+    });
+    output2 += `
+${this.createTable(headers, rows)}`;
+    if (meta3) {
+      output2 += `
+Page ${meta3.currentPage ?? 1} of ${meta3.pageCount ?? 1} (${meta3.itemCount ?? leads.length} total, ${meta3.perPage ?? leads.length} per page)
+`;
+    }
+    return output2;
+  }
+  formatLimits(limits) {
+    let output2 = "# Lead sourcing limits\n\n";
+    output2 += this.listItem("Daily limit", limits.maxDailyLeads);
+    output2 += this.listItem(
+      "This month",
+      `${limits.currentLeadCounts} of ${limits.maxMonthlyLeads} leads sourced`
+    );
+    return output2;
+  }
+};
+
+// src/commands/lead/suggest.ts
+var suggestCommand2 = new Command("suggest").description(
+  "Turn a plain-language audience into filter sets for `lead preview` (industries, company sizes, countries, job titles)"
+).argument("<description>", 'The audience, e.g. "accounting firms in Sydney with 10 to 50 staff"').option("--count <number>", "How many filter sets to suggest").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (description, opts) => {
+    let count;
+    if (opts.count !== void 0) {
+      count = Number(opts.count);
+      if (!Number.isInteger(count) || count < 1) {
+        failWith("Invalid --count value: use a whole number, 1 or more", { json: opts.json });
+      }
+    }
+    const suggestion = await suggestLeadFilters({ description, count });
+    console.log(new LeadFormatter().format({ kind: "suggestion", data: suggestion }, opts));
+  })
+);
+
+// src/usecases/lead/listLeadFilterValues.ts
+var LEAD_FILTER_VALUES_QUERY = `
+  query LeadFilterValues {
+    crmLeadAutopilotsIndustries
+    crmLeadAutopilotsCompanySizes
+    crmLeadAutopilotsJobTitles {
+      category
+      titles
+    }
+  }
+`;
+async function listLeadFilterValues(options = {}) {
+  const data = await bookipiGraphql({
+    query: LEAD_FILTER_VALUES_QUERY,
+    ...options.companyId ? { companyId: options.companyId } : {}
+  });
+  return {
+    industries: data?.crmLeadAutopilotsIndustries ?? [],
+    companySizes: data?.crmLeadAutopilotsCompanySizes ?? [],
+    jobTitles: data?.crmLeadAutopilotsJobTitles ?? []
+  };
+}
+
+// src/commands/lead/filters.ts
+var filtersCommand = new Command("filters").description("List the values `lead preview` accepts: industries, company sizes and job titles").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (opts) => {
+    const values = await listLeadFilterValues();
+    console.log(new LeadFormatter().format({ kind: "filterValues", data: values }, opts));
+  })
+);
+
+// src/usecases/lead/previewLeads.ts
+var LEAD_COMPANY_SIZES = ["micro", "small", "medium", "large", "enterprise"];
+var LEAD_FUNDING_STAGES = [
+  "early_or_bootstrapped",
+  "growth_stage",
+  "late_stage",
+  "ipo_or_exited"
+];
+var LEAD_PERSON_FIELDS = `
+      name
+      jobTitle
+      companyName
+      industry
+      linkedInUrl
+      emails
+      phoneNumbers
+`;
+var LEAD_PREVIEW_QUERY = `
+  query LeadPreview(
+    $industries: [String!]!
+    $companySizes: [EnumcrmLeadAutopilotsCompanySizes!]!
+    $countries: [String!]!
+    $jobTitles: [String!]
+    $fundingStages: [EnumcrmLeadAutopilotsFundingStages!]
+  ) {
+    crmLeadAutopilotsPreviewLeadsResults(
+      industries: $industries
+      companySizes: $companySizes
+      countries: $countries
+      jobTitles: $jobTitles
+      fundingStages: $fundingStages
+    ) {${LEAD_PERSON_FIELDS}    }
+  }
+`;
+async function previewLeads(options) {
+  if (!options.industries.length || !options.companySizes.length || !options.countries.length) {
+    throw new ValidationError(
+      "An audience needs at least one industry, one company size and one country."
+    );
+  }
+  const data = await bookipiGraphql({
+    query: LEAD_PREVIEW_QUERY,
+    variables: {
+      industries: options.industries,
+      companySizes: options.companySizes,
+      countries: options.countries,
+      ...options.jobTitles?.length ? { jobTitles: options.jobTitles } : {},
+      ...options.fundingStages?.length ? { fundingStages: options.fundingStages } : {}
+    },
+    ...options.companyId ? { companyId: options.companyId } : {}
+  });
+  return data?.crmLeadAutopilotsPreviewLeadsResults ?? [];
+}
+
+// src/commands/lead/preview.ts
+var previewCommand2 = new Command("preview").description(
+  "Show a sample of people matching an audience (about 5, without email or phone \u2014 use `lead enrich` for one person's contact details)"
+).option(
+  "--industry <name>",
+  "Industry, exactly as `lead filters` or `lead suggest` spells it (repeatable; at least one)",
+  collectValues,
+  []
+).option(
+  "--size <key>",
+  `Company size: ${LEAD_COMPANY_SIZES.join(", ")} (repeatable, or comma-separated; at least one)`,
+  collectList,
+  []
+).option("--country <code>", "Two-letter country code, e.g. AU (repeatable, or comma-separated; at least one)", collectList, []).option("--title <text>", "Job title (repeatable)", collectValues, []).option(
+  "--funding <key>",
+  `Funding stage: ${LEAD_FUNDING_STAGES.join(", ")} (repeatable, or comma-separated)`,
+  collectList,
+  []
+).option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (opts) => {
+    const json3 = opts.json === true;
+    const people = await previewLeads({
+      industries: opts.industry,
+      companySizes: checkKeys("--size", opts.size, LEAD_COMPANY_SIZES, json3),
+      countries: opts.country.map((code) => code.toUpperCase()),
+      jobTitles: opts.title,
+      fundingStages: checkKeys("--funding", opts.funding, LEAD_FUNDING_STAGES, json3)
+    });
+    console.log(new LeadFormatter().format({ kind: "preview", data: people }, opts));
+  })
+);
+
+// src/usecases/lead/enrichLead.ts
+import { setTimeout as sleep3 } from "node:timers/promises";
+var LEAD_ENRICH_REQUEST_QUERY = `
+  query LeadEnrichRequest(
+    $name: String
+    $email: String
+    $companyName: String
+    $linkedInUrl: String
+    $jobTitle: String
+    $keywords: [String!]
+    $countryCode: String
+    $shouldSearchContactDetails: Boolean
+  ) {
+    requestCustomerEnrichmentData(
+      name: $name
+      email: $email
+      companyName: $companyName
+      linkedInUrl: $linkedInUrl
+      jobTitle: $jobTitle
+      keywords: $keywords
+      countryCode: $countryCode
+      shouldSearchContactDetails: $shouldSearchContactDetails
+    ) {
+      requestId
+    }
+  }
+`;
+var LEAD_ENRICH_POLL_QUERY = `
+  query LeadEnrichPoll($requestId: String!) {
+    pollCustomerEnrichmentData(requestId: $requestId) {
+      status
+      data {${LEAD_PERSON_FIELDS}      }
+    }
+  }
+`;
+var DEFAULT_TIMEOUT_MS = 6e4;
+var DEFAULT_POLL_INTERVAL_MS = 2e3;
+async function enrichLead(options) {
+  if (!options.linkedInUrl && !options.email && !options.name) {
+    throw new ValidationError(
+      "Say who to look up: a LinkedIn URL, an email, or a name (with a company where you know it)."
+    );
+  }
+  const scope = options.companyId ? { companyId: options.companyId } : {};
+  const started = await bookipiGraphql({
+    query: LEAD_ENRICH_REQUEST_QUERY,
+    variables: {
+      ...options.linkedInUrl ? { linkedInUrl: options.linkedInUrl } : {},
+      ...options.email ? { email: options.email } : {},
+      ...options.name ? { name: options.name } : {},
+      ...options.companyName ? { companyName: options.companyName } : {},
+      ...options.jobTitle ? { jobTitle: options.jobTitle } : {},
+      ...options.keywords?.length ? { keywords: options.keywords } : {},
+      ...options.countryCode ? { countryCode: options.countryCode } : {},
+      ...options.contacts ? { shouldSearchContactDetails: true } : {}
+    },
+    ...scope
+  });
+  const requestId = started?.requestCustomerEnrichmentData?.requestId;
+  if (!requestId) throw new Error("The server did not start the lookup. Try again.");
+  const interval = options.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
+  const deadline = Date.now() + (options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+  for (; ; ) {
+    const polled = await bookipiGraphql({
+      query: LEAD_ENRICH_POLL_QUERY,
+      variables: { requestId },
+      ...scope
+    });
+    const result = polled?.pollCustomerEnrichmentData;
+    if (result?.status === "completed") return { requestId, people: result.data ?? [] };
+    if (!result || result.status === "failed") {
+      throw new Error("The lookup failed at the data provider. Run it again to retry.");
+    }
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) {
+      throw new Error(
+        "The lookup is still running. Run the same command again in a moment \u2014 it picks up this lookup instead of starting a new one."
+      );
+    }
+    await sleep3(Math.min(interval, remaining));
+  }
+}
+
+// src/commands/lead/enrich.ts
+var enrichCommand = new Command("enrich").description(
+  "Look one person up \u2014 job, company, LinkedIn, and with --contacts their email and phone. Give a LinkedIn URL, an email, or a name with a company."
+).option("--linkedin <url>", "The person's LinkedIn profile URL (the most reliable key)").option("--email <address>", "The person's email address").option("--name <text>", "The person's name").option("--company <text>", "The company they work at").option("--title <text>", "Their job title").option("--keyword <text>", "Extra search keyword (repeatable)", collectValues, []).option("--country <code>", "Two-letter country code, e.g. AU").option("--contacts", "Also look up email and phone (top match only)").option("--timeout <seconds>", "How long to wait for the lookup", "60").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (opts) => {
+    const json3 = opts.json === true;
+    const timeout = Number(opts.timeout);
+    if (!Number.isFinite(timeout) || timeout <= 0) {
+      failWith("Invalid --timeout value: use a number of seconds above 0", { json: json3 });
+    }
+    const result = await enrichLead({
+      linkedInUrl: opts.linkedin,
+      email: opts.email,
+      name: opts.name,
+      companyName: opts.company,
+      jobTitle: opts.title,
+      keywords: opts.keyword,
+      countryCode: opts.country?.toUpperCase(),
+      contacts: opts.contacts === true,
+      timeoutMs: timeout * 1e3
+    });
+    console.log(new LeadFormatter().format({ kind: "lookup", data: result }, opts));
+  })
+);
+
+// src/usecases/lead/listLeads.ts
+var LEAD_SOURCES = [
+  "lead_autopilot",
+  "manual",
+  "website_form",
+  "ai_receptionist",
+  "meeting",
+  "fiber_ai"
+];
+var LEADS_LIST_QUERY = `
+  query LeadsList(
+    $page: Int
+    $perPage: Int
+    $filter: FilterFindManycrmLeadsInput
+    $sort: SortFindManycrmLeadsInput
+  ) {
+    crmLeadsPagination(page: $page, perPage: $perPage, filter: $filter, sort: $sort) {
+      items {
+        _id
+        name
+        email
+        emails
+        phoneNumbers
+        jobTitle
+        companyName
+        linkedInUrl
+        country
+        industry
+        source
+        sourcedAt
+        createdAt
+        convertedToCustomer
+      }
+      pageInfo {${PAGE_INFO_FIELDS}      }
+    }
+  }
+`;
+async function listLeads(options = {}) {
+  const data = await bookipiGraphql({
+    query: LEADS_LIST_QUERY,
+    variables: {
+      page: options.page ?? 1,
+      perPage: options.perPage ?? 25,
+      filter: {
+        ...options.source ? { source: options.source } : {},
+        ...options.name ? { name: options.name } : {}
+      },
+      sort: "_ID_DESC"
+    },
+    ...options.companyId ? { companyId: options.companyId } : {}
+  });
+  const page = data?.crmLeadsPagination;
+  return { items: page?.items ?? [], pageInfo: page?.pageInfo ?? null };
+}
+
+// src/commands/lead/list.ts
+var listCommand8 = new Command("list").description("List leads saved in the CRM, with the contact details found for them").option(
+  "--source <key>",
+  `Only leads from one source (${LEAD_SOURCES.join(", ")}); lead_autopilot = prospects sourced by Lead Autopilot`
+).option("--search <name>", "Match on the lead's name").option("-p, --page <number>", "Page number", "1").option("-l, --limit <number>", "Items per page", "25").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (opts) => {
+    const { page, perPage } = parsePaging(opts);
+    const [source] = checkKeys(
+      "--source",
+      opts.source ? [opts.source] : [],
+      LEAD_SOURCES,
+      opts.json === true
+    );
+    const data = await listLeads({
+      source,
+      name: opts.search,
+      page,
+      perPage
+    });
+    console.log(new LeadFormatter().format({ kind: "leads", data }, opts));
+  })
+);
+
+// src/usecases/lead/getLeadLimits.ts
+var LEAD_LIMITS_QUERY = `
+  query LeadLimits {
+    crmLeadAutopilotLimitDetails {
+      maxDailyLeads
+      maxMonthlyLeads
+      currentLeadCounts
+    }
+  }
+`;
+async function getLeadLimits(options = {}) {
+  const data = await bookipiGraphql({
+    query: LEAD_LIMITS_QUERY,
+    ...options.companyId ? { companyId: options.companyId } : {}
+  });
+  const limits = data?.crmLeadAutopilotLimitDetails;
+  if (!limits) throw new Error("The server returned no lead limits. Try again.");
+  return limits;
+}
+
+// src/commands/lead/limits.ts
+var limitsCommand = new Command("limits").description("Show the plan's daily and monthly lead-sourcing limits and this month's usage").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (opts) => {
+    const limits = await getLeadLimits();
+    console.log(new LeadFormatter().format({ kind: "limits", data: limits }, opts));
+  })
+);
+
+// src/commands/lead/index.ts
+var leadCommand = new Command("lead").description("Find prospects: describe an audience, preview who matches, look one person up").addCommand(suggestCommand2).addCommand(filtersCommand).addCommand(previewCommand2).addCommand(enrichCommand).addCommand(listCommand8).addCommand(limitsCommand);
+
+// src/usecases/signal/fragments.ts
+var SIGNAL_FIELDS = `
+        id
+        patternId
+        entityType
+        entityId
+        label
+        actionType
+        severity
+        explanation
+        evidence {
+          eventType
+          occurredAt
+          summary
+        }
+        status
+        ttl
+        executedAt
+        dismissedAt
+        receivedAt
+`;
+var SIGNAL_TRANSITION_FIELDS = `
+      signal {${SIGNAL_FIELDS}      }
+      transitioned
+`;
+
+// src/usecases/signal/listSignals.ts
+var SIGNAL_STATUSES = ["pending", "executed", "dismissed", "expired"];
+var SIGNAL_ENTITY_TYPES = [
+  "call",
+  "contract",
+  "customer",
+  "deal",
+  "email",
+  "invoice",
+  "lead",
+  "meeting",
+  "note",
+  "proposal",
+  "sequence",
+  "vault"
+];
+var SIGNAL_SORTS = { severity: "SEVERITY_RECENCY", recent: "RECENT_FIRST" };
+var SIGNAL_SORT_KEYS = ["severity", "recent"];
+var SIGNALS_LIST_QUERY = `
+  query SignalsList(
+    $page: Int
+    $perPage: Int
+    $filter: OntologySignalsFilterInput
+    $sort: OntologySignalsSort
+  ) {
+    ontologySignalsPagination(page: $page, perPage: $perPage, filter: $filter, sort: $sort) {
+      items {${SIGNAL_FIELDS}      }
+      pageInfo {${PAGE_INFO_FIELDS}      }
+    }
+  }
+`;
+async function listSignals(options = {}) {
+  const data = await bookipiGraphql({
+    query: SIGNALS_LIST_QUERY,
+    variables: {
+      page: options.page ?? 1,
+      perPage: options.perPage ?? 25,
+      filter: {
+        ...options.status ? { status: options.status } : {},
+        ...options.entityType ? { entityType: options.entityType } : {},
+        ...options.entityId ? { entityId: options.entityId } : {},
+        ...options.patternId ? { patternId: options.patternId } : {}
+      },
+      sort: SIGNAL_SORTS[options.sort ?? "severity"]
+    },
+    ...options.companyId ? { companyId: options.companyId } : {}
+  });
+  const page = data?.ontologySignalsPagination;
+  return { items: page?.items ?? [], pageInfo: page?.pageInfo ?? null };
+}
+
+// src/core/formatters/SignalFormatter.ts
+var SignalFormatter = class extends BaseFormatter {
+  format(view, options) {
+    if (options?.json === true) return JSON.stringify(view.data, null, 2);
+    return view.kind === "signals" ? this.formatSignals(view.data) : this.formatTransition(view.data);
+  }
+  formatSignals({ items: signals, pageInfo: meta3 }) {
+    let output2 = `# Signals (${signals.length} found)
+`;
+    if (signals.length === 0) return `${output2}
+No signals found.
+`;
+    const headers = ["Severity", "Signal", "About", "Why", "Kind", "Status", "Received", "ID"];
+    const rows = signals.map((signal) => [
+      cell(signal.severity),
+      cell(signal.label),
+      cell([signal.entityType, signal.entityId].filter(Boolean).join(" ")),
+      cell(signal.explanation),
+      cell(signal.actionType),
+      cell(signal.status),
+      this.formatDate(signal.receivedAt),
+      cell(signal.id)
+    ]);
+    output2 += `
+${this.createTable(headers, rows)}`;
+    if (meta3) {
+      output2 += `
+Page ${meta3.currentPage ?? 1} of ${meta3.pageCount ?? 1} (${meta3.itemCount ?? signals.length} total, ${meta3.perPage ?? signals.length} per page)
+`;
+    }
+    return output2;
+  }
+  formatTransition({ signal, transitioned }) {
+    if (!signal) return "Signal not found.\n";
+    if (!transitioned) {
+      return `Signal ${signal.id} was already ${signal.status}; nothing changed.
+`;
+    }
+    return `Signal ${signal.id} marked ${signal.status}: ${cell(signal.label)}
+`;
+  }
+};
+
+// src/commands/signal/list.ts
+var listCommand9 = new Command("list").description("List what the CRM noticed on the account: suggested next steps and notices").option("--status <key>", `One of ${SIGNAL_STATUSES.join(", ")} (default: pending)`).option("--entity <type>", `Only signals about one kind of record (${SIGNAL_ENTITY_TYPES.join(", ")})`).option("--entity-id <id>", "Only signals about this record (id or handle, e.g. @i1)").option("--pattern <id>", "Only signals raised by this rule, e.g. suggest-send-payment-reminder-v1").option("--sort <key>", `${SIGNAL_SORT_KEYS.join(" or ")}: most severe first, or newest first`, "severity").option("-p, --page <number>", "Page number", "1").option("-l, --limit <number>", "Items per page", "25").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (opts) => {
+    const json3 = opts.json === true;
+    const { page, perPage } = parsePaging(opts);
+    const [status] = checkKeys("--status", opts.status ? [opts.status] : [], SIGNAL_STATUSES, json3);
+    const [entityType] = checkKeys("--entity", opts.entity ? [opts.entity] : [], SIGNAL_ENTITY_TYPES, json3);
+    const [sort] = checkKeys("--sort", [opts.sort], SIGNAL_SORT_KEYS, json3);
+    const data = await listSignals({
+      status,
+      entityType,
+      entityId: opts.entityId ? HandleRegistry.getInstance().resolve(opts.entityId) : void 0,
+      patternId: opts.pattern,
+      sort,
+      page,
+      perPage
+    });
+    console.log(new SignalFormatter().format({ kind: "signals", data }, opts));
+  })
+);
+
+// src/usecases/signal/executeSignal.ts
+var SIGNAL_EXECUTE_MUTATION = `
+  mutation SignalExecute($signalId: String!) {
+    result: ontologySignalExecute(signalId: $signalId) {${SIGNAL_TRANSITION_FIELDS}    }
+  }
+`;
+async function executeSignal(options) {
+  const data = await bookipiGraphql({
+    query: SIGNAL_EXECUTE_MUTATION,
+    variables: { signalId: options.signalId },
+    ...options.companyId ? { companyId: options.companyId } : {}
+  });
+  const result = data?.result;
+  return { signal: result?.signal ?? null, transitioned: result?.transitioned === true };
+}
+
+// src/commands/signal/execute.ts
+var executeCommand = new Command("execute").description("Mark a pending signal as acted on. Records the outcome only: it sends and changes nothing else").argument("<id>", "Signal id from `signal list`").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (id, opts) => {
+    const data = await executeSignal({ signalId: id });
+    if (!data.signal) throw new Error(`Signal not found: ${id}`);
+    console.log(new SignalFormatter().format({ kind: "transition", data }, opts));
+  })
+);
+
+// src/usecases/signal/dismissSignal.ts
+var SIGNAL_DISMISS_MUTATION = `
+  mutation SignalDismiss($signalId: String!) {
+    result: ontologySignalDismiss(signalId: $signalId) {${SIGNAL_TRANSITION_FIELDS}    }
+  }
+`;
+async function dismissSignal(options) {
+  const data = await bookipiGraphql({
+    query: SIGNAL_DISMISS_MUTATION,
+    variables: { signalId: options.signalId },
+    ...options.companyId ? { companyId: options.companyId } : {}
+  });
+  const result = data?.result;
+  return { signal: result?.signal ?? null, transitioned: result?.transitioned === true };
+}
+
+// src/commands/signal/dismiss.ts
+var dismissCommand = new Command("dismiss").description("Mark a pending signal as not wanted, so it stops being suggested").argument("<id>", "Signal id from `signal list`").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (id, opts) => {
+    const data = await dismissSignal({ signalId: id });
+    if (!data.signal) throw new Error(`Signal not found: ${id}`);
+    console.log(new SignalFormatter().format({ kind: "transition", data }, opts));
+  })
+);
+
+// src/commands/signal/index.ts
+var signalCommand = new Command("signal").description("Signals: what the CRM noticed on the timeline and suggests doing next").addCommand(listCommand9).addCommand(executeCommand).addCommand(dismissCommand);
+
 // src/usecases/proposal/listProposals.ts
 var PROPOSAL_STATUSES = [
   "draft",
@@ -50510,7 +51244,7 @@ Page ${page} of ${pages} (${items} total, ${perPage} per page)
 };
 
 // src/commands/proposal/list.ts
-var listCommand8 = new Command("list").description("List proposals").option(
+var listCommand10 = new Command("list").description("List proposals").option(
   "-s, --status <statuses>",
   `Comma-separated list of statuses to filter by (${PROPOSAL_STATUSES.join(", ")})`
 ).option("--search <query>", "Free-text search across proposal/customer fields").option("--ai-only", "Only AI-generated proposals").option("-p, --page <number>", "Page number", "1").option("-l, --limit <number>", "Items per page", "15").option("--sort <field>", "Sort string", "createdAt_desc").option("--json", "Output raw JSON instead of formatted").action(
@@ -51295,7 +52029,7 @@ Server: ${result.message} (status ${result.statusCode ?? "?"})`);
 );
 
 // src/commands/proposal/index.ts
-var proposalCommand = new Command("proposal").description("Manage proposals").addCommand(listCommand8).addCommand(generateCommand).addCommand(updateCommand4).addCommand(duplicateCommand2).addCommand(deleteCommand4).addCommand(sendCommand3);
+var proposalCommand = new Command("proposal").description("Manage proposals").addCommand(listCommand10).addCommand(generateCommand).addCommand(updateCommand4).addCommand(duplicateCommand2).addCommand(deleteCommand4).addCommand(sendCommand3);
 
 // src/core/auth/signitToken.ts
 var REFRESH_LEEWAY_MS2 = 6e4;
@@ -51565,7 +52299,7 @@ Page ${page} of ${pages} (${items} total, ${perPage} per page)
 };
 
 // src/commands/contract/list.ts
-var listCommand9 = new Command("list").description("List eSign contracts (documents)").option(
+var listCommand11 = new Command("list").description("List eSign contracts (documents)").option(
   "-s, --status <values>",
   `Comma-separated list of statuses to filter by (${CONTRACT_STATUSES.join(", ")})`
 ).option(
@@ -52699,7 +53433,7 @@ Status: ${updated?.status ?? "?"}`);
 );
 
 // src/commands/contract/index.ts
-var contractCommand = new Command("contract").description("Manage eSign contracts (documents)").addCommand(listCommand9).addCommand(draftCommand).addCommand(uploadCommand2).addCommand(createFromProposalCommand2).addCommand(finalizeCommand).addCommand(sendCommand4);
+var contractCommand = new Command("contract").description("Manage eSign contracts (documents)").addCommand(listCommand11).addCommand(draftCommand).addCommand(uploadCommand2).addCommand(createFromProposalCommand2).addCommand(finalizeCommand).addCommand(sendCommand4);
 
 // src/usecases/meeting/getCustomerWhoami.ts
 var CUSTOMER_WHOAMI_QUERY = `
@@ -52780,7 +53514,7 @@ async function listCompanies() {
 }
 
 // src/commands/company/list.ts
-var listCommand10 = new Command("list").description("List all companies on this account and show the current default").option("--json", "Output raw JSON instead of formatted").action(
+var listCommand12 = new Command("list").description("List all companies on this account and show the current default").option("--json", "Output raw JSON instead of formatted").action(
   withErrors(async (opts) => {
     const result = await listCompanies();
     if (opts.json) {
@@ -52901,7 +53635,7 @@ var setCommand = new Command("set").description("Set the default company by ID o
 );
 
 // src/commands/company/index.ts
-var companyCommand = new Command("company").description("Manage the active company").addCommand(listCommand10).addCommand(setCommand);
+var companyCommand = new Command("company").description("Manage the active company").addCommand(listCommand12).addCommand(setCommand);
 
 // src/commands/website/index.ts
 import { writeFileSync as writeFileSync2, readFileSync } from "node:fs";
@@ -55264,7 +55998,7 @@ var publishCommand = new Command("publish").description(
     );
   })
 );
-var previewCommand2 = new Command("preview").description(
+var previewCommand3 = new Command("preview").description(
   "Render the current website draft to a self-contained HTML preview \u2014 ready to show as an Artifact. Multi-page sites render EVERY page into one navigable file by default (inter-page links become in-file anchors); --page <slug> renders just that page. Reuses the AI-generated (v4) draft from the builder; --full writes a standalone browsable document instead of an embed fragment. Classic (section-based) sites have no page layout to render \u2014 the command points to `website content` and the builder link instead."
 ).option("--page <slug>", "Which page to render (slug or name; default: home)").option(
   "--all",
@@ -55556,7 +56290,7 @@ var analyticsCommand = new Command("analytics").description(
     console.log(summarizeAnalytics(analytics));
   })
 );
-var websiteCommand = new Command("website").description("The company's AI-built website (status, builder links)").addCommand(statusCommand3).addCommand(contentCommand).addCommand(analyticsCommand).addCommand(openCommand2).addCommand(createCommand8).addCommand(generateCommand2).addCommand(addPageCommand).addCommand(askCommand).addCommand(publishCommand).addCommand(previewCommand2).addCommand(pageCommand).addCommand(pagesCommand).addCommand(updateCommand5);
+var websiteCommand = new Command("website").description("The company's AI-built website (status, builder links)").addCommand(statusCommand3).addCommand(contentCommand).addCommand(analyticsCommand).addCommand(openCommand2).addCommand(createCommand8).addCommand(generateCommand2).addCommand(addPageCommand).addCommand(askCommand).addCommand(publishCommand).addCommand(previewCommand3).addCommand(pageCommand).addCommand(pagesCommand).addCommand(updateCommand5);
 
 // node_modules/.pnpm/zod@4.6.7/node_modules/zod/v3/helpers/util.js
 var util;
@@ -75395,8 +76129,8 @@ var contributors = {
 function aggregateChecks(schema) {
   const agg = {};
   const def = schema._zod.def;
-  const list = schema._zod.traits.has("$ZodCheck") ? [schema, ...def.checks ?? []] : def.checks ?? [];
-  for (const ch of list)
+  const list2 = schema._zod.traits.has("$ZodCheck") ? [schema, ...def.checks ?? []] : def.checks ?? [];
+  for (const ch of list2)
     contributors[ch._zod.def.check]?.(agg, ch._zod.def);
   const bag = schema._zod.bag;
   if (bag.minimum !== void 0)
@@ -84976,6 +85710,12 @@ var INVOICE_STATUSES = [
   "undelivered",
   "paid"
 ];
+var documentTypeParam = {
+  document_type: external_exports.enum(DOCUMENT_TYPE_ARGS).optional().describe("Default invoice.")
+};
+function documentTypeCode(arg) {
+  return arg ? resolveDocumentType(arg).code : void 0;
+}
 
 // src/mcp/reads/account.ts
 var accountReads = [
@@ -85481,6 +86221,10 @@ function projectPaymentLinkList(raw) {
     count: result?.count ?? null
   };
 }
+function documentTypeOf(doc) {
+  const code = doc.type;
+  return typeof code === "number" && code !== 1 ? { documentType: documentTypeArg(code) } : {};
+}
 function projectCreatedInvoice(raw) {
   const doc = raw ?? void 0;
   if (!doc || typeof doc !== "object") return { invoice: null };
@@ -85488,6 +86232,7 @@ function projectCreatedInvoice(raw) {
   return {
     id: doc._id ?? null,
     invoiceNumber: doc.no ?? null,
+    ...documentTypeOf(doc),
     total: doc.total ?? null,
     amountDue: doc.amountDue ?? null,
     date: calendarDate(doc.date),
@@ -85512,6 +86257,7 @@ function projectPlannedInvoice(raw) {
   const repeats = repeatsOf(doc);
   return {
     invoiceNumber: doc.no ?? null,
+    ...documentTypeOf(doc),
     customerName: customerName(customer, { preferCompany: true }),
     total: doc.total ?? null,
     date: calendarDate(doc.date),
@@ -85686,6 +86432,7 @@ function projectPaylinkStatus(link, payments) {
   const l = link ?? null;
   if (!l) return { found: false };
   const rows = asRows(payments);
+  const summary = payments == null ? null : summarizePaymentStatus(rows);
   return {
     found: true,
     id: l["_id"] ?? null,
@@ -85695,33 +86442,31 @@ function projectPaylinkStatus(link, payments) {
     currency: l["currency"] ?? null,
     // The question is "was it paid", so lead with the answer rather than making
     // the caller count the array.
-    paid: rows.length > 0,
-    paymentCount: rows.length,
-    collected: rows.reduce(
-      (n, p) => n + (typeof p["amount"] === "number" ? p["amount"] : 0),
-      0
-    ),
+    paid: summary?.paid ?? null,
+    paymentCount: summary?.successfulCount ?? null,
+    collected: summary?.totalCollectedCents ?? null,
     payments: rows.slice(0, 10).map((p) => ({
       amount: p["amount"] ?? null,
       status: p["status"] ?? null,
       paidAt: p["createdAt"] ?? p["paidAt"] ?? null
-    }))
+    })),
+    ...summary ? {} : { note: "Payment history for this link is unavailable from Bookipay right now." }
   };
 }
 
 // src/mcp/reads/invoices.ts
-var DOCUMENT_TYPE_ARGS = DOCUMENT_TYPE_NAMES.map((n) => n.replace(/-/g, "_"));
 var invoiceReads = [
   {
     name: "list_invoices",
     group: "invoices",
     title: "List invoices, newest first",
-    description: "List the active company's invoices, most recent first. Filter by status and free-text search, and page through results. For 'who owes me money', filter to overdue plus sent/read/partialPaid and read `amountDue`.\nReturns one row per invoice with exactly these fields: id, invoiceNumber, customerId, customerName, customerEmail, date, dueDate, total, amountDue, status, computedStatus, paymentStatus, repeats (null for a one-off) \u2014 plus pageInfo. `computedStatus` is the one to trust for overdue; `status` can still read 'sent' past the due date. Line items, tax breakdown and payment history are NOT returned here \u2014 fetch a single invoice for those. No currency field: it belongs to the company, see whoami.",
+    description: "List the active company's invoices, most recent first \u2014 or, with `document_type`, its estimates, credit notes, delivery notes or purchase orders. Filter by status and free-text search, and page through results. For 'who owes me money', filter to overdue plus sent/read/partialPaid and read `amountDue`.\nReturns one row per invoice with exactly these fields: id, invoiceNumber, customerId, customerName, customerEmail, date, dueDate, total, amountDue, status, computedStatus, paymentStatus, repeats (null for a one-off) \u2014 plus pageInfo. `computedStatus` is the one to trust for overdue; `status` can still read 'sent' past the due date. Line items, tax breakdown and payment history are NOT returned here \u2014 fetch a single invoice for those. No currency field: it belongs to the company, see whoami.",
     readOnly: true,
     inputSchema: external_exports.object({
       ...companyScope,
       status: external_exports.array(external_exports.enum(INVOICE_STATUSES)).optional().describe("Filter by one or more statuses (default: all active)."),
       search: external_exports.string().optional().describe("Free-text match on invoice number or customer name."),
+      ...documentTypeParam,
       ...paging
     }),
     run: async (args) => {
@@ -85731,6 +86476,7 @@ var invoiceReads = [
           compact({
             status: a.status,
             search: a.search,
+            docType: documentTypeCode(a.document_type),
             page: a.page,
             perPage: a.per_page,
             companyId: a.company_id
@@ -85743,11 +86489,11 @@ var invoiceReads = [
     name: "list_recurring_invoices",
     group: "invoices",
     title: "List documents set to repeat",
-    description: "List what is set to repeat \u2014 'what am I billing on repeat?', 'which quotes repeat?'. Invoices unless `document_type` says otherwise. Pass `generated_from` (a repeating invoice id) instead to list what that repeat has produced. To stop one, use update_invoice `stop_repeating`.",
+    description: "List what is set to repeat \u2014 'what am I billing on repeat?', 'which estimates repeat?'. Invoices unless `document_type` says otherwise. Pass `generated_from` (a repeating invoice id) instead to list what that repeat has produced. To stop one, use update_invoice `stop_repeating`.",
     readOnly: true,
     inputSchema: external_exports.object({
       ...companyScope,
-      document_type: external_exports.enum(DOCUMENT_TYPE_ARGS).optional().describe("Default invoice."),
+      ...documentTypeParam,
       generated_from: external_exports.string().optional().describe("Repeating invoice id, or one it generated: list its history."),
       ...paging
     }),
@@ -85766,14 +86512,13 @@ var invoiceReads = [
           })
         );
       }
-      const docType = a.document_type ? resolveDocumentType(a.document_type).code : void 0;
       return projectRecurringList(
         await listRecurringInvoices(
           compact({
             page: a.page,
             perPage: a.per_page,
             companyId: a.company_id,
-            docType
+            docType: documentTypeCode(a.document_type)
           })
         )
       );
@@ -86156,7 +86901,7 @@ var catalogReads = [
     name: "paylink_status",
     group: "payments",
     title: "Whether one payment link has been paid",
-    description: "One payment link with the money that came through it \u2014 'did they pay the link', 'has that link been used', 'how much came in on it'.\nReturns `paid` as the headline, plus paymentCount, collected, and up to 10 individual payments. `found: false` means no link with that id.\nGet the id from list_paylinks. For every link at once, use list_paylinks \u2014 this is the detail view for one.",
+    description: "One payment link with the money that came through it \u2014 'did they pay the link', 'has that link been used', 'how much came in on it'.\nReturns `paid` as the headline, plus paymentCount, collected, and up to 10 individual payments. `found: false` means no link with that id. `paid: null` means payments could not be read \u2014 say it is unknown, never that the link is unpaid.\nGet the id from list_paylinks. For every link at once, use list_paylinks \u2014 this is the detail view for one.",
     readOnly: true,
     inputSchema: external_exports.object({
       paylink_id: external_exports.string().describe("Payment link id, as returned by list_paylinks.")
@@ -86166,9 +86911,15 @@ var catalogReads = [
       const linkId = a.paylink_id;
       const [link, payments] = await Promise.all([
         getPaymentLink(linkId),
-        getPaymentLinkPayments(linkId).catch(() => [])
+        // null when Bookipay no longer reports per-link payments. Any other
+        // failure is held until we know the link exists: a bad id must still
+        // answer `found: false`, not the payments query's error.
+        getPaymentLinkPayments(linkId).catch(
+          (err2) => err2 instanceof Error ? err2 : new Error(String(err2))
+        )
       ]);
-      return projectPaylinkStatus(link, payments);
+      if (link && payments instanceof Error) throw payments;
+      return projectPaylinkStatus(link, payments instanceof Error ? null : payments);
     }
   }
 ];
@@ -86744,8 +87495,8 @@ function registerInvoiceWrites(server) {
   server.registerTool(
     "create_invoice",
     {
-      title: "Create an invoice",
-      description: "Create a new invoice for an existing customer.\nREQUIRES IDS, NOT NAMES. Call list_customers to get `customer_id` first, and whoami to get `company_id`. This operation will not create a customer, and will not guess which company \u2014 an invoice in the wrong business, or addressed to a customer record that did not exist a moment ago, is not recoverable by deleting it.\nThe invoice number is assigned from the company's own sequence unless you pass `number`. Report the number that comes back rather than the one you expected.\nCreating a document consumes the account's subscription quota. If a call fails without a clear answer, call list_invoices to check whether it landed before trying again.\nPREVIEW FIRST. Call with `plan: true` to get back exactly what would be created \u2014 the assigned number, the computed total, the deposit \u2014 writing nothing. Show that to the user, get a yes, then call again without `plan`. Do this whenever the user has not already approved these specific amounts, and always when you inferred any of them.",
+      title: "Create an invoice, estimate or other document",
+      description: "Create a new invoice for an existing customer \u2014 or, with `document_type`, an estimate, credit note, delivery note or purchase order.\nREQUIRES IDS, NOT NAMES. Call list_customers to get `customer_id` first, and whoami to get `company_id`. This operation will not create a customer, and will not guess which company \u2014 an invoice in the wrong business, or addressed to a customer record that did not exist a moment ago, is not recoverable by deleting it.\nThe invoice number is assigned from the company's own sequence unless you pass `number`. Report the number that comes back rather than the one you expected.\nCreating a document consumes the account's subscription quota. If a call fails without a clear answer, call list_invoices to check whether it landed before trying again.\nPREVIEW FIRST. Call with `plan: true` to get back exactly what would be created \u2014 the assigned number, the computed total, the deposit \u2014 writing nothing. Show that to the user, get a yes, then call again without `plan`. Do this whenever the user has not already approved these specific amounts, and always when you inferred any of them.",
       inputSchema: {
         company_id: external_exports.string().describe(
           "Company to invoice from, as returned by whoami. Required \u2014 unlike read operations, this does not fall back to the default company."
@@ -86753,6 +87504,7 @@ function registerInvoiceWrites(server) {
         customer_id: external_exports.string().describe("Existing customer id, as returned by list_customers."),
         date: external_exports.string().describe("Invoice date, YYYY-MM-DD."),
         items: external_exports.array(lineItem).min(1).describe("Line items."),
+        ...documentTypeParam,
         number: external_exports.string().optional().describe(
           "Explicit invoice number. Omit to take the company's next in sequence, which is almost always what you want."
         ),
@@ -86791,6 +87543,7 @@ function registerInvoiceWrites(server) {
       }
     },
     async (args) => {
+      const docType = resolveDocumentType(args.document_type ?? "invoice");
       const schedule = args.repeat ? buildSchedule(
         {
           ...toScheduleChange({
@@ -86804,6 +87557,7 @@ function registerInvoiceWrites(server) {
       const draft = await draftInvoice({
         companyId: args.company_id,
         customerId: args.customer_id,
+        docType: docType.code,
         date: args.date,
         items: args.items.map(compact2),
         ...args.number ? { number: args.number } : {},
@@ -86816,6 +87570,7 @@ function registerInvoiceWrites(server) {
       const existing = args.number ? null : await recentDuplicate(
         args.company_id,
         args.customer_id,
+        docType.code,
         draft.record
       );
       const duplicateMessage = existing ? `This looks like a duplicate of ${existing.no} (id ${existing._id}) \u2014 same customer, same total, same line items, created in the last ${DUPLICATE_WINDOW_MS / 6e4} minutes, in case the first call succeeded and only its response was lost.
@@ -86830,7 +87585,7 @@ If this is genuinely a second invoice, pass an explicit \`number\` to say so \u2
           plan: projectPlannedInvoice(draft.record),
           number_assigned: draft.numberAssigned,
           ...preview2 ? { preview: preview2 } : {},
-          note: duplicateMessage ? `WOULD BE REFUSED. ${duplicateMessage}` : "Nothing was created. Call again without `plan` to create this invoice."
+          note: duplicateMessage ? `WOULD BE REFUSED. ${duplicateMessage}` : `Nothing was created. Call again without \`plan\` to create this ${docType.label.toLowerCase()}.`
         });
       }
       if (duplicateMessage) {
@@ -86840,7 +87595,7 @@ If this is genuinely a second invoice, pass an explicit \`number\` to say so \u2
       const created = data.invoicesCreateOne?.record;
       if (!created) {
         return fail(
-          "The create returned no record, so it is unclear whether the invoice was written. Call list_invoices for this customer before retrying."
+          `The create returned no record, so it is unclear whether the ${docType.label.toLowerCase()} was written. Call list_invoices for this customer and \`document_type\` before retrying.`
         );
       }
       const preview = args.preview === false ? null : await buildInvoicePreview(
@@ -87377,11 +88132,14 @@ If this is genuinely a second invoice, pass an explicit \`number\` to say so \u2
     }
   );
 }
-async function recentDuplicate(companyId, customerId, record2) {
+async function recentDuplicate(companyId, customerId, docType, record2) {
   try {
     const data = await listInvoices({
       customerId,
       companyId,
+      // Same type only: an estimate and the invoice made from it share lines and
+      // total, and are not duplicates of each other.
+      docType,
       perPage: 10,
       sort: "createdAt_desc"
     });
@@ -91983,6 +92741,8 @@ program2.addCommand(paylinkCommand);
 program2.addCommand(reportCommand);
 program2.addCommand(meetingCommand);
 program2.addCommand(dealCommand);
+program2.addCommand(leadCommand);
+program2.addCommand(signalCommand);
 program2.addCommand(proposalCommand);
 program2.addCommand(contractCommand);
 program2.addCommand(calendarCommand);
