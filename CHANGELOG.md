@@ -9,7 +9,26 @@ under a version you already have will not reach you. `claude plugin update`
 reports "already at the latest version" and keeps serving the cached copy —
 refresh the marketplace first (`/plugin marketplace update bookipi-cli`).
 
-## Unreleased
+## 0.50.0 — 2026-11-19
+
+### Added
+- AI receptionist from the CLI: `receptionist get` shows its status, phone
+  number, subscription and the published and draft setup; `receptionist stats`
+  counts calls by type with the change against the period before (and the AI's
+  summary with `--summary`); `receptionist call list` and `call get` read the
+  call log, summaries and transcripts; `call read` and `call status` mark a
+  call read or set its follow-up status. `receptionist draft save` creates or
+  changes the draft (voice, tone, hours, greeting, FAQ, contacts…) and never
+  makes it live. `receptionist publish` does, so it refuses without `--yes`; it
+  needs a subscription (bought in the web app, which `receptionist open` links
+  to). CLI and skill only.
+- Events from the CLI: `event list` reads what happened on the account's CRM
+  timeline (an invoice paid, a payment failed, a contract signed, an email
+  replied to), newest first, with filters for event type, record type,
+  record and customer, and a cursor for the next page. Read-only. CLI and
+  skill only.
+
+## 0.49.0 — 2026-11-18
 
 ### Fixed
 - `paylink status` (and the connector's `paylink_status`) no longer fails

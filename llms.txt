@@ -32,7 +32,7 @@ Key facts for agents:
 - First run: `bookipi setup` reports the CLI, workspace and sign-in state as JSON and names the one next step (`next.action`). `bookipi init` creates a project-folder workspace and signs in; `bookipi login` signs in for every folder.
 - Commands take `--json` for machine-readable output (`whoami` prints JSON already). Run `bookipi <group> --help` for flags.
 
-Command groups: `invoice`, `customer`, `item`, `expense`, `paylink`, `deal`, `lead`, `signal`, `proposal`, `contract`, `report`, `meeting`, `calendar`, `company`, `website`, plus `setup`, `init`, `login`, `logout`, `whoami` and `mcp`.
+Command groups: `invoice`, `customer`, `item`, `expense`, `paylink`, `deal`, `lead`, `signal`, `event`, `receptionist`, `proposal`, `contract`, `report`, `meeting`, `calendar`, `company`, `website`, plus `setup`, `init`, `login`, `logout`, `whoami` and `mcp`.
 
 ## Docs
 
@@ -56,6 +56,8 @@ Command groups: `invoice`, `customer`, `item`, `expense`, `paylink`, `deal`, `le
 - [Stalled deals](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/skills/bookipi-cli/docs/stalled-recovery.md): re-engage deals that went quiet
 - [Leads](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/skills/bookipi-cli/docs/leads.md): describe an audience, preview who matches, look one person up
 - [Signals](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/skills/bookipi-cli/docs/signals.md): what the CRM noticed on the timeline and suggests doing next
+- [Events](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/skills/bookipi-cli/docs/events.md): what happened on the CRM timeline — payments, signatures, replies, bookings
+- [AI receptionist](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/skills/bookipi-cli/docs/receptionist.md): the receptionist's status, call stats, call log and transcripts, plus setting up the draft and publishing
 - [Meetings](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/skills/bookipi-cli/docs/meetings.md): recorded meetings, transcripts and AI summaries
 - [Reports](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/skills/bookipi-cli/docs/reports.md): revenue, top customers, dashboards and insights
 - [Morning brief](https://raw.githubusercontent.com/Bookipi-Group/bookipi-cli/main/skills/bookipi-cli/docs/morning-brief.md): a daily summary with the day's actions prepared as drafts
