@@ -9,6 +9,30 @@ under a version you already have will not reach you. `claude plugin update`
 reports "already at the latest version" and keeps serving the cached copy —
 refresh the marketplace first (`/plugin marketplace update bookipi-cli`).
 
+## 0.52.0 — 2026-11-19
+
+### Added
+- `bookipi company get` shows the active company's details as its documents
+  print them: name, business number and its label, address, phone, email and
+  the logo's address. `--json` gives the same as `{ "company": { ... } }`.
+- More for the AI receptionist: `receptionist voice preview` gives a link to a
+  sample of a voice in a tone, `receptionist test-questions` suggests questions
+  for a test call, and `receptionist summary read` clears the call summary's
+  new badge. `receptionist call list` filters by `--caller`, takes several
+  `--type` values and sorts by caller, name, type or status; `receptionist
+  stats --all` counts every call so far. `receptionist get --json` now includes
+  `vapiClientKey` and the plan's `callLimitPerMonth`.
+
+### Changed
+- Recurring invoices on the connector have their own tools.
+  `start_recurring_invoice` makes an existing invoice recurring or changes its
+  schedule, and `stop_recurring_invoice` ends one. The `repeat` and
+  `stop_repeating` options are gone from `create_invoice` and
+  `update_invoice`: create the invoice, then make it recurring. Because every
+  scheduled run emails the customer, that step now gets its own confirmation,
+  like sending. The CLI's `invoice create --recurring` and
+  `invoice update` flags are unchanged.
+
 ## 0.51.0 — 2026-11-19
 
 ### Removed
@@ -131,13 +155,19 @@ refresh the marketplace first (`/plugin marketplace update bookipi-cli`).
 - AI receptionist from the CLI: `receptionist get` shows its status, phone
   number, subscription and the published and draft setup; `receptionist stats`
   counts calls by type with the change against the period before (and the AI's
-  summary with `--summary`); `receptionist call list` and `call get` read the
+  summary with `--summary`); `receptionist call list` (filter by `--caller`, sort by caller, name,
+  type or status) and `call get` read the
   call log, summaries and transcripts; `call read` and `call status` mark a
   call read or set its follow-up status. `receptionist draft save` creates or
   changes the draft (voice, tone, hours, greeting, FAQ, contacts…) and never
   makes it live. `receptionist publish` does, so it refuses without `--yes`; it
   needs a subscription (bought in the web app, which `receptionist open` links
-  to). CLI and skill only.
+  to). `receptionist voice preview` gives a link to a sample of a voice in a
+  tone, `receptionist test-questions` suggests questions for a test call, and
+  `receptionist summary read` clears the call summary's new badge. `get --json`
+  now includes the `vapiClientKey` the web test call starts with and the
+  plan's `callLimitPerMonth`. CLI and skill
+  only.
 - Events from the CLI: `event list` reads what happened on the account's CRM
   timeline (an invoice paid, a payment failed, a contract signed, an email
   replied to), newest first, with filters for event type, record type,

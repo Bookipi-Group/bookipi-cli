@@ -14,14 +14,18 @@ reaches callers until `publish`.
 ```bash
 bookipi receptionist get                                   # status, phone number, subscription, published and draft setup
 bookipi receptionist stats                                 # call counts by type, last 30 days, with change vs the period before
+bookipi receptionist stats --all                           # every call so far, no comparison
 bookipi receptionist stats --from 2026-11-01 --to 2026-11-15 --summary
 bookipi receptionist call list                             # the newest 20 calls
-bookipi receptionist call list --type callback_request     # callback_request, follow_up_needed, scheduling or none
+bookipi receptionist call list --type callback_request     # callback_request, follow_up_needed, scheduling or none; comma-separate several
 bookipi receptionist call list --search "Diane" --from 2026-11-01
+bookipi receptionist call list --caller +61491570156       # one caller's calls, by exact number
+bookipi receptionist call list --sort caller               # also caller-desc, name, type, status (add -desc), newest, oldest
 bookipi receptionist call list --page 2 --limit 50         # up to 100 per page; more is refused
 bookipi receptionist call get <id>                         # one call: summary, transcript, recording, collected details
 bookipi receptionist call status <id> in-progress          # to-do, in-progress, busy or completed
 bookipi receptionist call read <id>                        # mark a call as read
+bookipi receptionist summary read                          # mark the AI call summary as read
 ```
 
 ## Setting up and changing the draft
@@ -62,6 +66,9 @@ A test call can only start from Bookipi's web app, so `bookipi receptionist open
 --page test` gives an authenticated link there. Share it as a link.
 
 ```bash
+bookipi receptionist voice preview --voice Jess --tone warm   # link to a sample; --message "..." up to 200 characters
+bookipi receptionist test-questions                           # questions to ask in a test call
+bookipi receptionist test-questions --existing "Do you deliver?" --existing "Are you open Sunday?"
 bookipi receptionist publish --yes       # only after the user said yes
 bookipi receptionist open --page test    # link to try a test call in the web app
 ```
