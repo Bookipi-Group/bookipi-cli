@@ -63,6 +63,18 @@ bookipi customer emails @c1 --json
 
 > **`send-email` is for ad-hoc / freeform messages.** For invoice / proposal / contract sends, use the resource-specific commands (`invoice send`, `proposal send`, `contract send`) — those generate the right templates and update record state. Don't use `customer send-email` to deliver an invoice.
 
+### Importing many customers
+
+The CLI adds customers one at a time. To bring in a spreadsheet (Excel or CSV)
+or Google Contacts, send the user to the web app, which is the only place the
+import runs:
+
+```bash
+bookipi customer open      # prints an authenticated 🔗 link to the Customers page
+```
+
+There they choose **Add**, then **Add multiple customers**.
+
 ## Item/Product Commands
 
 ```bash

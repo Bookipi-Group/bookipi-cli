@@ -51,7 +51,7 @@ import {
   uploadItemImage,
   useConfigDir,
   wasBookipiTokenRejected
-} from "./chunks/chunk-IHEVGLTH.js";
+} from "./chunks/chunk-2QQQ3ANQ.js";
 import {
   __commonJS,
   __export,
@@ -44967,8 +44967,22 @@ _Showing ${shown.length} of ${ledger.rows.length} payments \u2014 drop \`--limit
   })
 );
 
+// src/commands/customer/open.ts
+var openCommand = new Command("open").description(
+  "Mint an authenticated link to the Customers page in the Bookipi web app, where the spreadsheet and Google Contacts imports are. The link signs the user in automatically (short-lived)."
+).option("--json", "Output raw JSON { url }").action(
+  withErrors(async (opts) => {
+    const url2 = await buildAuthenticatedUrl(`${config.BOOKIPI_WEB_URL}/crm/customers`);
+    console.log(
+      opts.json ? JSON.stringify({ url: url2 }, null, 2) : `\u{1F517} **Open Customers in Bookipi:** ${url2}
+
+\u{1F4A1} The link signs you in automatically (short-lived). To import a spreadsheet, choose Add, then Add multiple customers.`
+    );
+  })
+);
+
 // src/commands/customer/index.ts
-var customerCommand = new Command("customer").description("Manage customers").addCommand(listCommand2).addCommand(getCommand2).addCommand(paymentsCommand).addCommand(updateCommand2).addCommand(createCommand3).addCommand(deleteCommand2).addCommand(sendEmailCommand).addCommand(emailsCommand);
+var customerCommand = new Command("customer").description("Manage customers").addCommand(listCommand2).addCommand(getCommand2).addCommand(paymentsCommand).addCommand(updateCommand2).addCommand(createCommand3).addCommand(deleteCommand2).addCommand(sendEmailCommand).addCommand(emailsCommand).addCommand(openCommand);
 
 // src/core/formatters/ItemFormatter.ts
 var ItemFormatter = class extends BaseFormatter {
@@ -45105,7 +45119,7 @@ var createCommand4 = new Command("create").description("Create a new item/produc
     if (opts.photo) {
       process.stderr.write(`  \u2022 Uploading ${opts.photo}...
 `);
-      const { uploadItemImage: uploadItemImage2 } = await import("./chunks/uploadItemImage-6W4V6DK3.js");
+      const { uploadItemImage: uploadItemImage2 } = await import("./chunks/uploadItemImage-SOJDXCMN.js");
       const { filename } = await uploadItemImage2(opts.photo);
       record2.photos = [{ filename }];
     }
@@ -49828,7 +49842,7 @@ var suggestCommand = new Command("suggest").description("Smart recommendations \
 );
 
 // src/commands/report/open.ts
-var openCommand = new Command("open").description(
+var openCommand2 = new Command("open").description(
   "Mint an authenticated link to the Reports page in the Bookipi web app. The link signs the user in automatically (short-lived)."
 ).option("--json", "Output raw JSON { reportsUrl }").action(
   withErrors(async (opts) => {
@@ -49846,7 +49860,7 @@ var openCommand = new Command("open").description(
 );
 
 // src/commands/report/index.ts
-var reportCommand = new Command("report").description("Invoice reports and analytics").addCommand(summaryCommand).addCommand(customersCommand).addCommand(itemsCommand).addCommand(dashboardCommand).addCommand(insightsCommand).addCommand(digestCommand).addCommand(suggestCommand).addCommand(openCommand);
+var reportCommand = new Command("report").description("Invoice reports and analytics").addCommand(summaryCommand).addCommand(customersCommand).addCommand(itemsCommand).addCommand(dashboardCommand).addCommand(insightsCommand).addCommand(digestCommand).addCommand(suggestCommand).addCommand(openCommand2);
 
 // src/core/auth/meetAppToken.ts
 var REFRESH_LEEWAY_MS = 6e4;
@@ -52312,7 +52326,7 @@ var publishCommand = new Command("publish").description(
 // src/commands/receptionist/open.ts
 var PAGES = { dashboard: "/receptionist/dashboard", test: "/receptionist/create?step=assistant-test" };
 var PAGE_KEYS = Object.keys(PAGES);
-var openCommand2 = new Command("open").description("Mint an authenticated link to the receptionist in the Bookipi web app: the dashboard (subscribe, publish) or the test call page. The link signs the user in (short-lived)").option("--page <page>", `${PAGE_KEYS.join(" or ")}`, "dashboard").option("--json", "Output raw JSON { url }").action(
+var openCommand3 = new Command("open").description("Mint an authenticated link to the receptionist in the Bookipi web app: the dashboard (subscribe, publish) or the test call page. The link signs the user in (short-lived)").option("--page <page>", `${PAGE_KEYS.join(" or ")}`, "dashboard").option("--json", "Output raw JSON { url }").action(
   withErrors(async (opts) => {
     const [page] = checkKeys("--page", [opts.page], PAGE_KEYS, opts.json === true);
     const url2 = await buildAuthenticatedUrl(`${config.BOOKIPI_WEB_URL}${PAGES[page ?? "dashboard"]}`);
@@ -52401,7 +52415,7 @@ var readCommand2 = new Command("read").description("Mark the AI call summary as 
 var summaryCommand2 = new Command("summary").description("The AI summary of the receptionist's calls").addCommand(readCommand2);
 
 // src/commands/receptionist/index.ts
-var receptionistCommand = new Command("receptionist").description("AI receptionist: its setup, calls, transcripts, call stats, draft, voice samples, test questions and publishing").addCommand(getCommand4).addCommand(statsCommand).addCommand(callCommand).addCommand(draftCommand).addCommand(publishCommand).addCommand(openCommand2).addCommand(voiceCommand).addCommand(testQuestionsCommand).addCommand(summaryCommand2);
+var receptionistCommand = new Command("receptionist").description("AI receptionist: its setup, calls, transcripts, call stats, draft, voice samples, test questions and publishing").addCommand(getCommand4).addCommand(statsCommand).addCommand(callCommand).addCommand(draftCommand).addCommand(publishCommand).addCommand(openCommand3).addCommand(voiceCommand).addCommand(testQuestionsCommand).addCommand(summaryCommand2);
 
 // src/usecases/proposal/listProposals.ts
 var PROPOSAL_STATUSES = [
@@ -56426,7 +56440,7 @@ var statusCommand4 = new Command("status").description(
     );
   })
 );
-var openCommand3 = new Command("open").description(
+var openCommand4 = new Command("open").description(
   "Mint an authenticated link into the website builder (edit the existing website). The link carries a short-lived token."
 ).option("--json", "Output raw JSON { websiteLink }").action(
   withErrors(async (opts) => {
@@ -57101,7 +57115,7 @@ var analyticsCommand = new Command("analytics").description(
     console.log(summarizeAnalytics(analytics));
   })
 );
-var websiteCommand = new Command("website").description("The company's AI-built website (status, builder links)").addCommand(statusCommand4).addCommand(contentCommand).addCommand(analyticsCommand).addCommand(openCommand3).addCommand(createCommand8).addCommand(generateCommand2).addCommand(addPageCommand).addCommand(askCommand).addCommand(publishCommand2).addCommand(previewCommand4).addCommand(pageCommand).addCommand(pagesCommand).addCommand(updateCommand5);
+var websiteCommand = new Command("website").description("The company's AI-built website (status, builder links)").addCommand(statusCommand4).addCommand(contentCommand).addCommand(analyticsCommand).addCommand(openCommand4).addCommand(createCommand8).addCommand(generateCommand2).addCommand(addPageCommand).addCommand(askCommand).addCommand(publishCommand2).addCommand(previewCommand4).addCommand(pageCommand).addCommand(pagesCommand).addCommand(updateCommand5);
 
 // node_modules/.pnpm/zod@4.6.7/node_modules/zod/v3/helpers/util.js
 var util;

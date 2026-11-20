@@ -9,6 +9,13 @@ under a version you already have will not reach you. `claude plugin update`
 reports "already at the latest version" and keeps serving the cached copy —
 refresh the marketplace first (`/plugin marketplace update bookipi-cli`).
 
+## 0.53.0 — 2026-11-20
+
+### Added
+- `bookipi customer open` gives a link to the Customers page in the Bookipi web
+  app that signs you in, for the spreadsheet and Google Contacts imports, which
+  only the web app can run.
+
 ## 0.52.0 — 2026-11-19
 
 ### Added
