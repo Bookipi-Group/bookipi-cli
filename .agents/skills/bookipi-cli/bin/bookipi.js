@@ -33,6 +33,7 @@ import {
   graphqlRequest,
   nativeConfigDir,
   normaliseExpiry,
+  parsePresignFields,
   postToS3,
   refreshOidcToken,
   refreshOidcTokenWith,
@@ -51,7 +52,7 @@ import {
   uploadItemImage,
   useConfigDir,
   wasBookipiTokenRejected
-} from "./chunks/chunk-2QQQ3ANQ.js";
+} from "./chunks/chunk-JLFTMZ74.js";
 import {
   __commonJS,
   __export,
@@ -1223,7 +1224,7 @@ var require_command = __commonJS({
     var EventEmitter = __require("node:events").EventEmitter;
     var childProcess = __require("node:child_process");
     var path11 = __require("node:path");
-    var fs9 = __require("node:fs");
+    var fs10 = __require("node:fs");
     var process3 = __require("node:process");
     var { Argument: Argument2, humanReadableArgName } = require_argument();
     var { CommanderError: CommanderError2 } = require_error();
@@ -2217,7 +2218,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @param {string} subcommandName
        */
       _checkForMissingExecutable(executableFile, executableDir, subcommandName) {
-        if (fs9.existsSync(executableFile)) return;
+        if (fs10.existsSync(executableFile)) return;
         const executableDirMessage = executableDir ? `searched for local subcommand relative to directory '${executableDir}'` : "no directory for search for local subcommand, use .executableDir() to supply a custom directory";
         const executableMissing = `'${executableFile}' does not exist
  - if '${subcommandName}' is not meant to be an executable command, remove description parameter from '.command()' and use '.description()' instead
@@ -2236,10 +2237,10 @@ Expecting one of '${allowedValues.join("', '")}'`);
         const sourceExt = [".js", ".ts", ".tsx", ".mjs", ".cjs"];
         function findFile(baseDir, baseName) {
           const localBin = path11.resolve(baseDir, baseName);
-          if (fs9.existsSync(localBin)) return localBin;
+          if (fs10.existsSync(localBin)) return localBin;
           if (sourceExt.includes(path11.extname(baseName))) return void 0;
           const foundExt = sourceExt.find(
-            (ext) => fs9.existsSync(`${localBin}${ext}`)
+            (ext) => fs10.existsSync(`${localBin}${ext}`)
           );
           if (foundExt) return `${localBin}${foundExt}`;
           return void 0;
@@ -2251,7 +2252,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
         if (this._scriptPath) {
           let resolvedScriptPath;
           try {
-            resolvedScriptPath = fs9.realpathSync(this._scriptPath);
+            resolvedScriptPath = fs10.realpathSync(this._scriptPath);
           } catch {
             resolvedScriptPath = this._scriptPath;
           }
@@ -13223,19 +13224,19 @@ var require_round_robin_pool = __commonJS({
           this[kAddClient](dispatcher);
           return dispatcher;
         }
-        let checked = 0;
-        while (checked < clientsLength) {
+        let checked2 = 0;
+        while (checked2 < clientsLength) {
           this[kIndex] = (this[kIndex] + 1) % clientsLength;
           const client = this[kClients][this[kIndex]];
           if (clientTtlOption != null && clientTtlOption > 0 && client.ttl && Date.now() - client.ttl > clientTtlOption) {
             this[kRemoveClient](client);
-            checked++;
+            checked2++;
             continue;
           }
           if (!client[kNeedDrain]) {
             return client;
           }
-          checked++;
+          checked2++;
         }
         if (!this[kConnections] || clientsLength < this[kConnections]) {
           const dispatcher = this[kFactory](this[kUrl], this[kOptions]);
@@ -36351,7 +36352,7 @@ var require_discriminator = __commonJS({
       error: error62,
       code(cxt) {
         const { gen, data, schema, parentSchema, it } = cxt;
-        const { oneOf } = parentSchema;
+        const { oneOf: oneOf2 } = parentSchema;
         if (!it.opts.discriminator) {
           throw new Error("discriminator: requires discriminator option");
         }
@@ -36360,7 +36361,7 @@ var require_discriminator = __commonJS({
           throw new Error("discriminator: requires propertyName");
         if (schema.mapping)
           throw new Error("discriminator: mapping is not supported");
-        if (!oneOf)
+        if (!oneOf2)
           throw new Error("discriminator: requires oneOf keyword");
         const valid = gen.let("valid", false);
         const tag = gen.const("tag", (0, codegen_1._)`${data}${(0, codegen_1.getProperty)(tagName)}`);
@@ -36388,8 +36389,8 @@ var require_discriminator = __commonJS({
           const oneOfMapping = {};
           const topRequired = hasRequired(parentSchema);
           let tagRequired = true;
-          for (let i = 0; i < oneOf.length; i++) {
-            let sch = oneOf[i];
+          for (let i = 0; i < oneOf2.length; i++) {
+            let sch = oneOf2[i];
             if ((sch === null || sch === void 0 ? void 0 : sch.$ref) && !(0, util_1.schemaHasRulesButRef)(sch, it.self.RULES)) {
               const ref = sch.$ref;
               sch = compile_1.resolveRef.call(it.self, it.schemaEnv.root, it.baseId, ref);
@@ -36966,12 +36967,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list2, fs9, exportName) {
+    function addFormats(ajv, list2, fs10, exportName) {
       var _a3;
       var _b;
       (_a3 = (_b = ajv.opts.code).formats) !== null && _a3 !== void 0 ? _a3 : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list2)
-        ajv.addFormat(f, fs9[f]);
+        ajv.addFormat(f, fs10[f]);
     }
     module.exports = exports = formatsPlugin;
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -37943,6 +37944,13 @@ function applyConfirmGates(program3) {
     const command = path11.split(" ").reduce((cmd, name) => cmd?.commands.find((c) => c.name() === name), program3);
     if (!command) throw new Error(`applyConfirmGates: no command "${path11}"`);
     command.addOption(yesOption(what)).hook("preAction", (cmd) => requireConfirmation(cmd.opts(), what));
+  }
+}
+function checked(check2, json3) {
+  try {
+    return check2();
+  } catch (err2) {
+    return failWith(err2 instanceof Error ? err2.message : String(err2), { json: json3 === true });
   }
 }
 function parsePaging(opts) {
@@ -39577,7 +39585,7 @@ function localStartOfDayIso(dateOnly) {
   const [y, m, d] = dateOnly.split("-").map(Number);
   return new Date(y, m - 1, d, 0, 0, 0, 0).toISOString();
 }
-function dueDateFromDueIn(invoiceDate, days) {
+function dueDateFromDueIn(invoiceDate, days3) {
   const base = new Date(invoiceDate);
   if (Number.isNaN(base.getTime())) {
     throw new Error(`Invoice has an unparseable date: "${invoiceDate}"`);
@@ -39585,7 +39593,7 @@ function dueDateFromDueIn(invoiceDate, days) {
   const snapped = new Date(
     Math.round(base.getTime() / MS_PER_DAY2) * MS_PER_DAY2
   );
-  snapped.setUTCDate(snapped.getUTCDate() + days);
+  snapped.setUTCDate(snapped.getUTCDate() + days3);
   return snapped.toISOString().slice(0, 10);
 }
 
@@ -40291,6 +40299,7 @@ var COMPANY_RENDER_QUERY = `
       displayEmail
       phoneNumber
       additionalInfo
+      website
       contactName
       fax
       businessNumber
@@ -40312,6 +40321,8 @@ var COMPANY_RENDER_QUERY = `
       paymentInstruction2
       paymentInstruction3
       hasPaymentInstructionQRCode
+      dueIn
+      expiryTerm
       logoExists
       logoScale
       hasSignature
@@ -40322,6 +40333,11 @@ var COMPANY_RENDER_QUERY = `
     }
   }
 `;
+async function requireCompanyRenderContext() {
+  const company = await getCompanyRenderContext();
+  if (!company) throw new Error("No company found for this sign-in.");
+  return company;
+}
 async function getCompanyRenderContext(companyId) {
   const cid = companyId || getDefaultCompany();
   if (!cid) {
@@ -41402,7 +41418,7 @@ function fromRecord(record2, fallbackPrice = 0) {
   };
 }
 async function resolveItem(value, companyId) {
-  const isMongoId = (s) => /^[a-f0-9]{24}$/i.test(s);
+  const isMongoId2 = (s) => /^[a-f0-9]{24}$/i.test(s);
   async function findOrCreateItem(name, price, description) {
     const searchData = await listItems({ search: name, perPage: 10, companyId });
     const matches = searchData.searchItems?.items || [];
@@ -41448,7 +41464,7 @@ ${list2}`
   if (value.startsWith("@")) {
     const id = registry3.resolve(value);
     console.error(`Resolved handle ${value} \u2192 ${id}`);
-    if (!isMongoId(id)) {
+    if (!isMongoId2(id)) {
       console.error(
         `Warning: handle ${value} contains name "${id}" instead of an ID, searching by name...`
       );
@@ -45119,7 +45135,7 @@ var createCommand4 = new Command("create").description("Create a new item/produc
     if (opts.photo) {
       process.stderr.write(`  \u2022 Uploading ${opts.photo}...
 `);
-      const { uploadItemImage: uploadItemImage2 } = await import("./chunks/uploadItemImage-SOJDXCMN.js");
+      const { uploadItemImage: uploadItemImage2 } = await import("./chunks/uploadItemImage-VGCNT5ST.js");
       const { filename } = await uploadItemImage2(opts.photo);
       record2.photos = [{ filename }];
     }
@@ -47786,7 +47802,7 @@ function groupOverdueByCustomer(overdueInvoices, now2 = /* @__PURE__ */ new Date
     const c = inv.customerReference || inv.customer;
     const id = inv.customerReference?._id || inv.customer?._id || "unknown";
     const amount = inv.amountDue || inv.total || 0;
-    const days = daysOverdue(inv.dueDate, now2);
+    const days3 = daysOverdue(inv.dueDate, now2);
     let row = byCustomer[id];
     if (!row) {
       row = { name: customerName(c, { preferCompany: true }), count: 0, total: 0, maxDays: 0 };
@@ -47794,7 +47810,7 @@ function groupOverdueByCustomer(overdueInvoices, now2 = /* @__PURE__ */ new Date
     }
     row.count++;
     row.total += amount;
-    row.maxDays = Math.max(row.maxDays, days);
+    row.maxDays = Math.max(row.maxDays, days3);
   }
   return byCustomer;
 }
@@ -48388,10 +48404,10 @@ function analyzeChaseList(overdueInvoices, now2 = /* @__PURE__ */ new Date()) {
   const ranked = overdueInvoices.map((inv) => {
     const c = inv.customerReference || inv.customer || {};
     const amount = inv.amountDue || inv.total || 0;
-    const days = daysOverdue(inv.dueDate, now2);
+    const days3 = daysOverdue(inv.dueDate, now2);
     const rawNo = inv.no ? String(inv.no).trim() : "";
     const label = rawNo || "an invoice";
-    return { name: getCustomerName(c), amount, days, label };
+    return { name: getCustomerName(c), amount, days: days3, label };
   }).filter((x) => x.amount > 0).sort((a, b) => b.amount - a.amount).slice(0, 3);
   if (ranked.length === 0) return [];
   const lines = ranked.map((x) => `${x.label} \u2014 ${x.name}, ${formatCurrency(x.amount)}${x.days ? ` (${x.days}d overdue)` : ""}`).join(" \xB7 ");
@@ -49189,12 +49205,12 @@ function computePipeline(dealsResponse, period) {
     }
     activeValue += value;
     if ((status === "proposal" || status === "contract") && value > 0) {
-      const days = daysSince(d?.updatedAt);
-      if (days >= 7) {
+      const days3 = daysSince(d?.updatedAt);
+      if (days3 >= 7) {
         stalled.push({
           name: getDealName(d),
           stage: status,
-          daysSinceUpdate: days,
+          daysSinceUpdate: days3,
           value
         });
       }
@@ -49236,16 +49252,16 @@ function getPeriodDates(period, now2 = /* @__PURE__ */ new Date()) {
   });
   const short = (d) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   const monthName = (d) => d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-  const days = (name, first, last) => span(`${name} (${short(first)} \u2013 ${short(last)})`, first, last);
+  const days3 = (name, first, last) => span(`${name} (${short(first)} \u2013 ${short(last)})`, first, last);
   switch (period) {
     case "today":
       return span("Today", day(0), day(0));
     case "yesterday":
       return span("Yesterday", day(-1), day(-1));
     case "week":
-      return days("This week", day(-6), day(0));
+      return days3("This week", day(-6), day(0));
     case "last-week":
-      return days("Last week", day(-13), day(-7));
+      return days3("Last week", day(-13), day(-7));
     case "month": {
       const first = new Date(now2.getFullYear(), now2.getMonth(), 1);
       return span(`This month (${monthName(first)})`, first, day(0));
@@ -49604,15 +49620,15 @@ function suggestOverdueActions(overdueInvoices) {
     });
   }
   const moderate = overdueInvoices.filter((inv) => {
-    const days = daysOverdue(inv.dueDate);
-    return days >= 7 && days < 90;
+    const days3 = daysOverdue(inv.dueDate);
+    return days3 >= 7 && days3 < 90;
   });
   if (moderate.length >= 2) {
     const modTotal = moderate.reduce((s, inv) => s + (inv.amountDue || inv.total || 0), 0);
     const customerCount = Object.keys(groupOverdueByCustomer(moderate)).length;
-    const days = moderate.map((inv) => daysOverdue(inv.dueDate));
-    const oldest = Math.max(...days);
-    const newest = Math.min(...days);
+    const days3 = moderate.map((inv) => daysOverdue(inv.dueDate));
+    const oldest = Math.max(...days3);
+    const newest = Math.min(...days3);
     const span = newest === oldest ? `${oldest}` : `${newest} to ${oldest}`;
     actions.push({
       priority: 2,
@@ -49722,8 +49738,8 @@ function suggestItemActions(items, totalRevenue) {
 function suggestQuickWins(overdueInvoices) {
   const actions = [];
   const justOverdue = (overdueInvoices || []).filter((inv) => {
-    const days = daysOverdue(inv.dueDate);
-    return days >= 1 && days <= 7;
+    const days3 = daysOverdue(inv.dueDate);
+    return days3 >= 1 && days3 <= 7;
   });
   if (justOverdue.length > 0) {
     const justOverdueTotal = justOverdue.reduce(
@@ -50242,12 +50258,12 @@ var listCommand6 = new Command("list").description(
     if (opts.to) {
       to = opts.to;
     } else if (opts.days) {
-      const days = parseInt(opts.days, 10);
-      if (isNaN(days) || days < 1) {
+      const days3 = parseInt(opts.days, 10);
+      if (isNaN(days3) || days3 < 1) {
         failWith("Invalid --days value", { json: opts?.json });
       }
       const end = new Date(now2);
-      end.setDate(end.getDate() + days);
+      end.setDate(end.getDate() + days3);
       end.setHours(23, 59, 59, 999);
       to = end.toISOString();
     } else if (isSearch) {
@@ -51860,10 +51876,10 @@ function parseDateBound(value, flag, endOfDay, json3) {
   if (isNaN(date5.getTime()) || rolledOver) failWith(`Invalid ${flag} value '${value}'. Use YYYY-MM-DD or an ISO datetime`, { json: json3 });
   return date5.toISOString();
 }
-function resolveDateRange(opts, days) {
+function resolveDateRange(opts, days3) {
   const json3 = opts.json === true;
   const end = opts.to ? parseDateBound(opts.to, "--to", true, json3) : (/* @__PURE__ */ new Date()).toISOString();
-  const start = opts.from ? parseDateBound(opts.from, "--from", false, json3) : new Date(new Date(end).getTime() - days * DAY_MS).toISOString();
+  const start = opts.from ? parseDateBound(opts.from, "--from", false, json3) : new Date(new Date(end).getTime() - days3 * DAY_MS).toISOString();
   if (start > end) failWith("--from must be before --to", { json: json3 });
   return { start, end };
 }
@@ -51877,9 +51893,9 @@ var statsCommand = new Command("stats").description("Call counts by type with th
       console.log(new ReceptionistFormatter().format({ kind: "stats", data: await getCallStats() }, opts));
       return;
     }
-    const days = parseInt(opts.days, 10);
-    if (isNaN(days) || days < 1) failWith("Invalid --days value", { json: json3 });
-    const { start, end } = resolveDateRange(opts, days);
+    const days3 = parseInt(opts.days, 10);
+    if (isNaN(days3) || days3 < 1) failWith("Invalid --days value", { json: json3 });
+    const { start, end } = resolveDateRange(opts, days3);
     console.log(new ReceptionistFormatter().format({ kind: "stats", data: await getCallStats({ start, end, summary: opts.summary === true }) }, opts));
   })
 );
@@ -54202,8 +54218,128 @@ Status: ${updated?.status ?? "?"}`);
   })
 );
 
+// src/core/ids.ts
+var isMongoId = (value) => /^[a-f0-9]{24}$/i.test(value);
+
+// src/usecases/contract/templates.ts
+var LIST_TEMPLATES_QUERY = `
+  query getSignItTemplateList($search: String!, $page: Int, $perPage: Int) {
+    getSignItTemplateList(search: $search, page: $page, perPage: $perPage) {
+      count
+      items {
+        _id
+        title
+      }
+    }
+  }
+`;
+var LIST_LIBRARY_TEMPLATES_QUERY = `
+  query getSignItTemplateLibraryList($search: String!, $page: Int, $perPage: Int) {
+    getSignItTemplateLibraryList(search: $search, page: $page, perPage: $perPage) {
+      count
+      items {
+        _id
+        title
+      }
+    }
+  }
+`;
+var SAVE_AS_TEMPLATE_MUTATION = `
+  mutation saveDocumentAsTemplate($documentId: MongoID!, $templateName: String) {
+    saveDocumentAsTemplate(documentId: $documentId, templateName: $templateName) {
+      _id
+      title
+    }
+  }
+`;
+var CREATE_FROM_TEMPLATE_MUTATION = `
+  mutation createDocumentFromTemplate($templateId: MongoID!, $isMaster: Boolean) {
+    createDocumentFromTemplate(templateId: $templateId, isMaster: $isMaster) {
+      _id
+      title
+      status
+    }
+  }
+`;
+async function listContractTemplates(opts = {}) {
+  const variables = { search: opts.search?.trim() ?? "", page: opts.page ?? 1, perPage: opts.perPage ?? 20 };
+  const data = opts.library ? (await bookipiGraphql({ query: LIST_LIBRARY_TEMPLATES_QUERY, variables }))?.getSignItTemplateLibraryList : (await bookipiGraphql({ query: LIST_TEMPLATES_QUERY, variables }))?.getSignItTemplateList;
+  const items = Array.isArray(data?.items) ? data.items : [];
+  return { count: typeof data?.count === "number" ? data.count : items.length, items };
+}
+async function saveContractAsTemplate(documentId, name) {
+  const data = await bookipiGraphql({
+    query: SAVE_AS_TEMPLATE_MUTATION,
+    variables: { documentId, ...name?.trim() ? { templateName: name.trim() } : {} }
+  });
+  const template = data?.saveDocumentAsTemplate;
+  if (!template?._id) throw new Error("Bookipi did not return the saved template.");
+  return template;
+}
+async function createContractFromTemplate(templateId, library = false) {
+  const data = await bookipiGraphql({ query: CREATE_FROM_TEMPLATE_MUTATION, variables: { templateId, isMaster: library } });
+  const document = data?.createDocumentFromTemplate;
+  if (!document?._id) throw new Error("Bookipi did not return the new contract.");
+  return { documentId: document._id, title: document.title ?? null, status: document.status ?? null };
+}
+
+// src/commands/contract/templates.ts
+var LIMIT_MAX = 100;
+var templatesCommand = new Command("templates").description("List the company's eSign contract templates, or Bookipi's ready-made ones with --library (service agreement, NDA and the like)").option("--library", "Bookipi's ready-made templates instead of the company's own").option("--search <text>", "Only templates whose title matches").option("--page <number>", "Page number, from 1", "1").option("--limit <number>", "Templates per page", "20").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (opts) => {
+    const { page, perPage } = parsePaging(opts);
+    if (perPage > LIMIT_MAX) failWith(`Invalid limit value: ${LIMIT_MAX} at most`, { json: opts.json });
+    const library = opts.library === true;
+    const { count, items } = await listContractTemplates({ library, search: opts.search, page, perPage });
+    if (opts.json) {
+      console.log(JSON.stringify({ library, count, templates: items }, null, 2));
+      return;
+    }
+    console.log(`
+# ${library ? "Bookipi's contract templates" : "Your contract templates"} (${count})
+`);
+    if (!items.length) console.log(library ? "None match." : "None yet. Save one with `bookipi contract save-template <contract>`, or see Bookipi's with --library.");
+    for (const template of items) console.log(`- ${template.title ?? "(untitled)"} \u2014 ${template._id}`);
+    console.log("");
+  })
+);
+var saveTemplateCommand = new Command("save-template").description("Keep a contract as a template, so later contracts can start from it. The contract itself is not changed or sent.").argument("<contract>", "Contract ID or handle (@k1)").option("--name <name>", "Template name (defaults to the contract's title)").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (contract, opts) => {
+    const documentId = HandleRegistry.getInstance().resolve(contract);
+    const template = await saveContractAsTemplate(documentId, opts.name);
+    if (opts.json) {
+      console.log(JSON.stringify({ template }, null, 2));
+      return;
+    }
+    console.log(`
+Saved as a template: ${template.title ?? "(untitled)"} \u2014 ${template._id}`);
+    console.log(`Start a contract from it with \`bookipi contract from-template ${template._id}\`.
+`);
+  })
+);
+var fromTemplateCommand = new Command("from-template").description("Start a new draft contract from a template and return its editor link. Nothing is sent. Add --library for one of Bookipi's ready-made templates.").argument("<template>", "Template ID, from `contract templates`").option("--library", "The template is one of Bookipi's ready-made ones").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (template, opts) => {
+    const templateId = template.trim();
+    if (!isMongoId(templateId)) failWith(`"${template}" is not a template ID. List them with \`bookipi contract templates\`.`, { json: opts.json });
+    const { documentId, title, status } = await createContractFromTemplate(templateId, opts.library === true);
+    const editUrl = await buildAuthenticatedUrl(contractEditUrl(documentId));
+    const handle = HandleRegistry.getInstance().register("k", documentId);
+    if (opts.json) {
+      console.log(JSON.stringify({ documentId, title, status, editUrl }, null, 2));
+      return;
+    }
+    console.log(`
+# ${title ?? "New contract"} [${handle}]
+`);
+    console.log(`- Status: ${status ?? "draft"} (not sent)`);
+    console.log(`
+\u{1F517} **Fill it in, add signers and place the signature:** ${editUrl}
+`);
+  })
+);
+
 // src/commands/contract/index.ts
-var contractCommand = new Command("contract").description("Manage eSign contracts (documents)").addCommand(listCommand13).addCommand(uploadCommand2).addCommand(sendCommand4);
+var contractCommand = new Command("contract").description("Manage eSign contracts (documents)").addCommand(listCommand13).addCommand(uploadCommand2).addCommand(sendCommand4).addCommand(templatesCommand).addCommand(saveTemplateCommand).addCommand(fromTemplateCommand);
 
 // src/usecases/meeting/getCustomerWhoami.ts
 var CUSTOMER_WHOAMI_QUERY = `
@@ -54268,12 +54404,50 @@ var statusCommand3 = new Command("status").description("Check whether Google Cal
 // src/commands/calendar/index.ts
 var calendarCommand = new Command("calendar").description("Calendar connectivity and setup").addCommand(statusCommand3);
 
+// src/core/formatters/CompanyFormatter.ts
+var days = (count) => `${count} day${count === 1 ? "" : "s"}`;
+var CompanyFormatter = class extends BaseFormatter {
+  /** The company's details as its documents print them. */
+  format(company) {
+    return [
+      `
+# ${company.name ?? "(unnamed company)"}
+`,
+      `${company.abbrBusinessNumber ?? "Business number"}: ${company.businessNumber ?? "not set"}`,
+      `Address: ${company.addressLines.join(", ") || "not set"}`,
+      `Phone: ${company.phoneNumber ?? "not set"}`,
+      `Email: ${company.email ?? "not set"}`,
+      `Website: ${company.website ?? "not set"}`,
+      `Logo: ${company.logoUrl ?? "none"}`,
+      ""
+    ].join("\n");
+  }
+  formatStyle(style) {
+    return [`Style: ${style.on ? "on" : "off (Bookipi's plain layout)"}`, `Colour: ${style.color}`, `Font: ${style.font}`, `Size: ${style.size}`, ""].join("\n");
+  }
+  formatTerms(terms) {
+    const due = terms.invoiceDueDays;
+    return [
+      `Invoices due: ${due === null ? "no due date" : due === 0 ? "on receipt" : `${days(due)} after the invoice date`}`,
+      `Proposals valid: ${terms.proposalValidDays === null ? "not set" : days(terms.proposalValidDays)}`,
+      `Payment instructions: ${terms.paymentInstructions ?? "none"}`,
+      ""
+    ].join("\n");
+  }
+};
+
 // src/usecases/company/getCompanyDetails.ts
 var LOGO_BASE = "https://s3.amazonaws.com/bookipi/";
 var text = (value) => {
   const trimmed = typeof value === "string" ? value.trim() : "";
   return trimmed || null;
 };
+function addressLines(company) {
+  const address = company.address ?? {};
+  const streets = [["address1", company.a1], ["address2", company.a2], ["address3", company.a3]].map(([part, older]) => text(address[part] != null ? address[part] : older));
+  const locality = [address.city, address.state, address.zip].map(text).filter((part) => part !== null).join(" ");
+  return [...streets, text(locality), text(address.country)].filter((line) => line !== null);
+}
 function companyDetails(company) {
   const logoExists = company.logoExists === true;
   return {
@@ -54283,7 +54457,8 @@ function companyDetails(company) {
     phoneNumber: text(company.phoneNumber),
     businessNumber: text(company.businessNumber),
     abbrBusinessNumber: text(company.abbrBusinessNumber),
-    addressLines: [company.a1, company.a2, company.a3].map(text).filter((line) => line !== null),
+    website: text(company.website),
+    addressLines: addressLines(company),
     logoExists,
     logoUrl: logoExists && /^[a-f0-9]{24}$/.test(company._id) ? `${LOGO_BASE}${company._id}/logo.jpg` : null
   };
@@ -54294,7 +54469,7 @@ async function getCompanyDetails(companyId) {
 }
 
 // src/commands/company/get.ts
-var getCommand6 = new Command("get").description("Show the active company's details as its documents print them: name, business number, address, contact and logo").option("--json", "Output raw JSON instead of formatted").action(
+var getCommand6 = new Command("get").description("Show the active company's details as its documents print them: name, business number, address, contact, website and logo").option("--json", "Output raw JSON instead of formatted").action(
   withErrors(async (opts) => {
     const company = await getCompanyDetails();
     if (opts.json) {
@@ -54305,16 +54480,7 @@ var getCommand6 = new Command("get").description("Show the active company's deta
       console.log("No company found for this sign-in.");
       return;
     }
-    const taxLabel = company.abbrBusinessNumber ?? "Business number";
-    console.log(`
-# ${company.name ?? "(unnamed company)"}
-`);
-    console.log(`${taxLabel}: ${company.businessNumber ?? "not set"}`);
-    console.log(`Address: ${company.addressLines.join(", ") || "not set"}`);
-    console.log(`Phone: ${company.phoneNumber ?? "not set"}`);
-    console.log(`Email: ${company.email ?? "not set"}`);
-    console.log(`Logo: ${company.logoUrl ?? "none"}`);
-    console.log("");
+    console.log(new CompanyFormatter().format(company));
   })
 );
 
@@ -54370,6 +54536,59 @@ var listCommand14 = new Command("list").description("List all companies on this 
     } else {
       console.log("Switch with: bookipi company set <id-or-name>");
     }
+  })
+);
+
+// src/usecases/company/setCompanyLogo.ts
+import fs9 from "node:fs";
+var LOGO_MAX_BYTES = 10 * 1024 * 1024;
+var GET_LOGO_UPLOAD_URL_QUERY = `
+  query getCompanyLogoUploadUrl($contentType: String!) {
+    getCompanyLogoUploadUrl(contentType: $contentType) {
+      url
+      fields
+    }
+  }
+`;
+function logoContentType(bytes) {
+  if (bytes.length >= 4 && bytes[0] === 137 && bytes[1] === 80 && bytes[2] === 78 && bytes[3] === 71) return "image/png";
+  if (bytes.length >= 3 && bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255) return "image/jpeg";
+  return null;
+}
+async function setCompanyLogo(filePath) {
+  const stat = fs9.statSync(filePath, { throwIfNoEntry: false });
+  if (!stat?.isFile()) throw new Error(`File not found: ${filePath}`);
+  const size = stat.size;
+  if (size === 0) throw new Error(`${filePath} is empty.`);
+  if (size > LOGO_MAX_BYTES) throw new Error(`${filePath} is larger than 10 MB, the most Bookipi takes for a logo.`);
+  const head = Buffer.alloc(8);
+  const handle = fs9.openSync(filePath, "r");
+  try {
+    fs9.readSync(handle, head, 0, 8, 0);
+  } finally {
+    fs9.closeSync(handle);
+  }
+  const contentType3 = logoContentType(head);
+  if (!contentType3) throw new Error(`${filePath} is not a PNG or JPEG image, the only kinds Bookipi takes for a logo.`);
+  const data = await bookipiGraphql({ query: GET_LOGO_UPLOAD_URL_QUERY, variables: { contentType: contentType3 } });
+  const upload = data?.getCompanyLogoUploadUrl;
+  if (!upload?.url) throw new Error("Bookipi gave no address to upload the logo to.");
+  await postToS3(filePath, { url: upload.url, fields: parsePresignFields(upload.fields) }, contentType3, { addContentTypeField: false });
+  const updated = await getCompanyDetails();
+  if (!updated) throw new Error("The logo was uploaded, but the company could not be read back.");
+  return updated;
+}
+
+// src/commands/company/logo.ts
+var logoCommand = new Command("logo").description("Replace the active company's logo with a PNG or JPEG file (10 MB at most). Every document the company sends shows it.").argument("<file>", "Path to the PNG or JPEG image").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (file2, opts) => {
+    const company = await setCompanyLogo(file2);
+    if (opts.json) {
+      console.log(JSON.stringify({ company }, null, 2));
+      return;
+    }
+    console.log("\nLogo replaced.");
+    console.log(new CompanyFormatter().format(company));
   })
 );
 
@@ -54454,8 +54673,226 @@ var setCommand = new Command("set").description("Set the default company by ID o
   })
 );
 
+// src/usecases/company/updateCompany.ts
+var ADDRESS_PARTS = ["address1", "address2", "address3", "city", "state", "zip"];
+var WEBSITE_MAX = 2048;
+var UPDATE_COMPANY_MUTATION = `
+  mutation companiesUpdateById($record: UpdateOneByIdInput!) {
+    companiesUpdateById(record: $record) {
+      recordId
+    }
+  }
+`;
+var changesAddress = (address = {}) => ADDRESS_PARTS.some((part) => address[part] !== void 0);
+function companyChangesRecord(changes) {
+  const record2 = {};
+  if (changes.name !== void 0) {
+    const name = changes.name.trim();
+    if (!name) throw new Error("The company name cannot be empty.");
+    record2.name = name;
+  }
+  if (changes.businessNumber !== void 0) record2.businessNumber = changes.businessNumber.trim();
+  if (changes.businessNumberLabel !== void 0) record2.abbrBusinessNumber = changes.businessNumberLabel.trim();
+  if (changes.phone !== void 0) record2.phoneNumber = changes.phone.trim();
+  if (changes.email !== void 0) {
+    const email3 = changes.email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email3)) throw new Error(`"${changes.email}" is not an email address.`);
+    record2.displayEmail = email3;
+  }
+  if (changes.website !== void 0) {
+    const website = changes.website.trim();
+    const protocol = URL.canParse(website) ? new URL(website).protocol : "";
+    if (website && (protocol !== "https:" && protocol !== "http:" || website.length > WEBSITE_MAX)) {
+      throw new Error(`"${changes.website}" is not a web address. Give it in full, e.g. https://example.com.`);
+    }
+    record2.website = website;
+  }
+  if (Object.keys(record2).length === 0 && !changesAddress(changes.address)) throw new Error("No fields to update. Give at least one option.");
+  return record2;
+}
+var kept = (value) => typeof value === "string" ? value : "";
+function mergedAddress(current, changes) {
+  const now2 = current ?? {};
+  return {
+    ...Object.fromEntries(ADDRESS_PARTS.map((part) => [part, changes[part]?.trim() ?? kept(now2[part])])),
+    country: kept(now2.country)
+  };
+}
+async function updateCompanyRecord(record2) {
+  const data = await bookipiGraphql({ query: UPDATE_COMPANY_MUTATION, variables: { record: record2 } });
+  if (!data?.companiesUpdateById?.recordId) throw new Error("Bookipi did not confirm the change to the company.");
+}
+async function updateCompany(changes) {
+  const record2 = companyChangesRecord(changes);
+  if (changes.address && changesAddress(changes.address)) {
+    record2.address = mergedAddress((await requireCompanyRenderContext()).address, changes.address);
+  }
+  await updateCompanyRecord(record2);
+  const updated = await getCompanyDetails();
+  if (!updated) throw new Error("The company was changed, but its details could not be read back.");
+  return updated;
+}
+
+// src/usecases/company/companyStyle.ts
+var STYLE_COLORS = { white: "#ffffff", blue: "#437EF7", green: "#31C48D", orange: "#FF8A4C" };
+var STYLE_FONTS = ["normal", "classic", "round"];
+var STYLE_SIZES = ["medium", "large"];
+function companyStyle(company) {
+  const settings = company.documentCustomizationSettings;
+  return {
+    on: company.shouldUseDocumentCustomization === true,
+    color: settings?.color || STYLE_COLORS.white,
+    font: settings?.font?.name || STYLE_FONTS[0],
+    size: settings?.font?.size || STYLE_SIZES[0]
+  };
+}
+var oneOf = (value, allowed, what) => {
+  const picked = value.trim().toLowerCase();
+  if (!allowed.includes(picked)) throw new Error(`"${value}" is not a ${what}. Use one of: ${allowed.join(", ")}.`);
+  return picked;
+};
+function styleColor(value) {
+  const given = value.trim();
+  const name = given.toLowerCase();
+  if (Object.hasOwn(STYLE_COLORS, name)) return STYLE_COLORS[name];
+  if (!/^#[0-9a-f]{6}$/i.test(given)) {
+    throw new Error(`"${value}" is not a colour. Use ${Object.keys(STYLE_COLORS).join(", ")} or a hex colour such as #1a2b3c.`);
+  }
+  return given;
+}
+function styleChanges(changes) {
+  const given = {
+    ...changes.color === void 0 ? {} : { color: styleColor(changes.color) },
+    ...changes.font === void 0 ? {} : { font: oneOf(changes.font, STYLE_FONTS, "font") },
+    ...changes.size === void 0 ? {} : { size: oneOf(changes.size, STYLE_SIZES, "size") },
+    ...changes.on === void 0 ? {} : { on: changes.on }
+  };
+  if (Object.keys(given).length === 0) throw new Error("No fields to update. Give at least one option.");
+  return given;
+}
+function styleRecord(current, changes) {
+  const { on, ...look } = styleChanges(changes);
+  if (Object.keys(look).length === 0) return { shouldUseDocumentCustomization: on };
+  const style = { ...current, ...look };
+  return {
+    shouldUseDocumentCustomization: on ?? true,
+    documentCustomizationSettings: { color: style.color, font: { name: style.font, size: style.size } }
+  };
+}
+async function getCompanyStyle() {
+  return companyStyle(await requireCompanyRenderContext());
+}
+async function setCompanyStyle(changes) {
+  await updateCompanyRecord(styleRecord(await getCompanyStyle(), changes));
+  return getCompanyStyle();
+}
+
+// src/commands/company/style.ts
+var styleCommand = new Command("style").description(
+  "Show how the active company's documents look, or change it with the options: one colour, font and size for every invoice, estimate and the rest. With no option it only shows."
+).option("--color <color>", `Accent colour: ${Object.keys(STYLE_COLORS).join(", ")}, or a hex colour such as #1a2b3c`).option("--font <font>", `Font: ${STYLE_FONTS.join(", ")}`).option("--size <size>", `Text size: ${STYLE_SIZES.join(", ")}`).option("--on", "Use this style on the company's documents").option("--off", "Go back to Bookipi's plain layout; the colour, font and size stay stored, though they cannot be read while it is off").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (opts) => {
+    if (opts.on && opts.off) failWith("Give --on or --off, not both.", { json: opts.json });
+    const changes = { color: opts.color, font: opts.font, size: opts.size, on: opts.on ? true : opts.off ? false : void 0 };
+    const changing = Object.values(changes).some((value) => value !== void 0);
+    if (changing) checked(() => styleChanges(changes), opts.json);
+    const style = changing ? await setCompanyStyle(changes) : await getCompanyStyle();
+    if (opts.json) {
+      console.log(JSON.stringify({ style }, null, 2));
+      return;
+    }
+    console.log(changing ? "\nUpdated.\n" : "");
+    console.log(new CompanyFormatter().formatStyle(style));
+  })
+);
+
+// src/usecases/company/companyTerms.ts
+var PROPOSAL_VALID_MAX_DAYS = 36524;
+var NO_DUE_DATE = -1;
+function companyTerms(company) {
+  const lines = [company.paymentInstruction1, company.paymentInstruction2, company.paymentInstruction3].map((line) => typeof line === "string" ? line.trim() : "").filter(Boolean);
+  const due = company.dueIn;
+  return {
+    invoiceDueDays: typeof due === "number" && due >= 0 ? due : null,
+    proposalValidDays: typeof company.expiryTerm === "number" ? company.expiryTerm : null,
+    paymentInstructions: company.hasPaymentInstruction && lines.length ? lines.join("\n") : null
+  };
+}
+function days2(value, what, max) {
+  const given = value.trim();
+  const count = /^\d+$/.test(given) ? Number(given) : NaN;
+  if (!Number.isSafeInteger(count) || count > max) throw new Error(`"${value}" is not a number of days for ${what}. Give a whole number from 0 to ${max}.`);
+  return count;
+}
+function termsRecord(current, changes) {
+  const record2 = {};
+  if (changes.invoiceDue !== void 0) {
+    record2.dueIn = changes.invoiceDue.trim().toLowerCase() === "none" ? NO_DUE_DATE : days2(changes.invoiceDue, "an invoice's due date", 3650);
+  }
+  if (changes.proposalValid !== void 0) record2.expiryTerm = days2(changes.proposalValid, "a proposal's validity", PROPOSAL_VALID_MAX_DAYS);
+  if (changes.paymentInstructions !== void 0) {
+    const text2 = changes.paymentInstructions.trim();
+    record2.paymentInstruction1 = text2;
+    record2.paymentInstruction2 = "";
+    record2.paymentInstruction3 = "";
+    record2.hasPaymentInstruction = Boolean(text2) || current.hasPaymentInstructionQRCode === true;
+  }
+  if (Object.keys(record2).length === 0) throw new Error("No fields to update. Give at least one option.");
+  return record2;
+}
+async function getCompanyTerms() {
+  return companyTerms(await requireCompanyRenderContext());
+}
+async function setCompanyTerms(changes) {
+  await updateCompanyRecord(termsRecord(changes.paymentInstructions === void 0 ? {} : await requireCompanyRenderContext(), changes));
+  return getCompanyTerms();
+}
+
+// src/commands/company/terms.ts
+var termsCommand = new Command("terms").description(
+  "Show the terms the active company's new documents start with, or change them with the options: when an invoice is due, how long a proposal stays open, and the payment instructions printed on invoices. With no option it only shows."
+).option("--invoice-due <days>", "Days until a new invoice is due: 0 is on receipt, none is no due date").option("--proposal-valid <days>", "Days a new proposal stays open to accept").option("--payment-instructions <text>", "How to pay, as printed on invoices, e.g. bank details. An empty string removes them").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (opts) => {
+    const changes = { invoiceDue: opts.invoiceDue, proposalValid: opts.proposalValid, paymentInstructions: opts.paymentInstructions };
+    const changing = Object.values(changes).some((value) => value !== void 0);
+    if (changing) checked(() => termsRecord({}, changes), opts.json);
+    const terms = changing ? await setCompanyTerms(changes) : await getCompanyTerms();
+    if (opts.json) {
+      console.log(JSON.stringify({ terms }, null, 2));
+      return;
+    }
+    console.log(changing ? "\nUpdated.\n" : "");
+    console.log(new CompanyFormatter().formatTerms(terms));
+  })
+);
+
+// src/commands/company/update.ts
+var updateCommand5 = new Command("update").description(
+  "Change the active company's details as its documents print them: name, business number, address, phone, email and website. Only the options given are changed; pass an empty string to clear one (the name and the email cannot be cleared). The country is not changed here."
+).option("--name <name>", "Business name").option("--business-number <number>", "Business or tax number, e.g. an ABN").option("--business-number-label <label>", "What the business number is called on documents, e.g. ABN").option("--phone <phone>", "Phone number").option("--email <email>", "The email customers see. It also becomes the company's own email").option("--website <url>", "Website address in full, e.g. https://example.com").option("--address1 <line>", "Address line 1").option("--address2 <line>", "Address line 2").option("--address3 <line>", "Address line 3").option("--city <city>", "City or suburb").option("--state <state>", "State or region").option("--zip <code>", "Postcode or ZIP").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (opts) => {
+    const changes = {
+      name: opts.name,
+      businessNumber: opts.businessNumber,
+      businessNumberLabel: opts.businessNumberLabel,
+      phone: opts.phone,
+      email: opts.email,
+      website: opts.website,
+      address: Object.fromEntries(ADDRESS_PARTS.map((part) => [part, opts[part]]))
+    };
+    checked(() => companyChangesRecord(changes), opts.json);
+    const company = await updateCompany(changes);
+    if (opts.json) {
+      console.log(JSON.stringify({ company }, null, 2));
+      return;
+    }
+    console.log("\nUpdated.");
+    console.log(new CompanyFormatter().format(company));
+  })
+);
+
 // src/commands/company/index.ts
-var companyCommand = new Command("company").description("Manage the active company").addCommand(getCommand6).addCommand(listCommand14).addCommand(setCommand);
+var companyCommand = new Command("company").description("Manage the active company").addCommand(getCommand6).addCommand(listCommand14).addCommand(setCommand).addCommand(updateCommand5).addCommand(logoCommand).addCommand(styleCommand).addCommand(termsCommand);
 
 // src/commands/website/index.ts
 import { writeFileSync as writeFileSync2, readFileSync as readFileSync2 } from "node:fs";
@@ -55786,13 +56223,13 @@ var CONTACTS_QUERY = `
     }
   }
 `;
-async function getWebsiteAnalytics(days = 30) {
+async function getWebsiteAnalytics(days3 = 30) {
   const end = /* @__PURE__ */ new Date();
-  const start = new Date(end.getTime() - days * 864e5);
+  const start = new Date(end.getTime() - days3 * 864e5);
   const input2 = {
     startDate: start.toISOString(),
     endDate: end.toISOString(),
-    period: days > 92 ? "MONTH" : "DAY"
+    period: days3 > 92 ? "MONTH" : "DAY"
   };
   const [visitsData, trendData, contactsData] = await Promise.all([
     builderGraphql({ query: VISIT_ANALYTICS_QUERY, variables: { input: input2 } }),
@@ -55803,7 +56240,7 @@ async function getWebsiteAnalytics(days = 30) {
     })
   ]);
   return {
-    days,
+    days: days3,
     visits: visitsData?.getVisitLogAnalytics?.data ?? [],
     inquiryTrend: trendData?.getContactAnalytics?.data ?? [],
     inquiries: contactsData?.getContacts ?? {
@@ -57008,7 +57445,7 @@ var pagesCommand = new Command("pages").description(
     );
   })
 );
-var updateCommand5 = new Command("update").description(
+var updateCommand6 = new Command("update").description(
   "Edit the content of the current AI-built (v4) website and re-render the preview. Use --find/--replace for a text swap, or --html-file to submit a fully edited page. Persists to the builder (the edit shows there too). Text/content edits only \u2014 structural changes belong in the builder."
 ).option("--page <slug>", "Which page to edit (slug or name; default: home)").option("--find <text>", "Exact text to replace (use with --replace)").option("--replace <text>", "Replacement text (use with --find)").option(
   "--html-file <path>",
@@ -57106,8 +57543,8 @@ var analyticsCommand = new Command("analytics").description(
   "Website traffic and inquiries from the builder service: visit counts with device split, inquiry trend, and the actual contact-form messages. Default window is 30 days."
 ).option("--days <n>", "Window in days (rolls up by month past ~3 months)", "30").option("--json", "Output the raw analytics JSON").action(
   withErrors(async (opts) => {
-    const days = Math.max(1, parseInt(opts.days, 10) || 30);
-    const analytics = await getWebsiteAnalytics(days);
+    const days3 = Math.max(1, parseInt(opts.days, 10) || 30);
+    const analytics = await getWebsiteAnalytics(days3);
     if (opts.json) {
       console.log(JSON.stringify(analytics, null, 2));
       return;
@@ -57115,7 +57552,7 @@ var analyticsCommand = new Command("analytics").description(
     console.log(summarizeAnalytics(analytics));
   })
 );
-var websiteCommand = new Command("website").description("The company's AI-built website (status, builder links)").addCommand(statusCommand4).addCommand(contentCommand).addCommand(analyticsCommand).addCommand(openCommand4).addCommand(createCommand8).addCommand(generateCommand2).addCommand(addPageCommand).addCommand(askCommand).addCommand(publishCommand2).addCommand(previewCommand4).addCommand(pageCommand).addCommand(pagesCommand).addCommand(updateCommand5);
+var websiteCommand = new Command("website").description("The company's AI-built website (status, builder links)").addCommand(statusCommand4).addCommand(contentCommand).addCommand(analyticsCommand).addCommand(openCommand4).addCommand(createCommand8).addCommand(generateCommand2).addCommand(addPageCommand).addCommand(askCommand).addCommand(publishCommand2).addCommand(previewCommand4).addCommand(pageCommand).addCommand(pagesCommand).addCommand(updateCommand6);
 
 // node_modules/.pnpm/zod@4.6.7/node_modules/zod/v3/helpers/util.js
 var util;

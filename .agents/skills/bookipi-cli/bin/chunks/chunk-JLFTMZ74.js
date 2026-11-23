@@ -17658,8 +17658,8 @@ var {
 
 // src/config.ts
 var BUILD_ENV = "prod";
-var CLI_VERSION = "0.53.0";
-var BUILD_STAMP = "932fe3c 2026-11-20";
+var CLI_VERSION = "0.54.0";
+var BUILD_STAMP = "d6ac0e8 2026-11-23";
 var config = {
   AUTH_SERVER: process.env["AUTH_SERVER"] ?? "https://auth.bookipi.com",
   APP_ID: process.env["APP_ID"] ?? "1dd166d9569f4f7eb0f08a22c8f0d54a",
@@ -18499,6 +18499,17 @@ async function bookipiGraphql({
 // src/core/api/s3Upload.ts
 import fs2 from "fs";
 import path2 from "path";
+function parsePresignFields(raw) {
+  if (typeof raw !== "string") {
+    if (raw && typeof raw === "object") return raw;
+    throw new Error("Presign response had a malformed `fields` payload \u2014 cannot build the S3 form.");
+  }
+  try {
+    return JSON.parse(raw);
+  } catch {
+    throw new Error("Presign response had a malformed `fields` payload \u2014 cannot build the S3 form.");
+  }
+}
 async function postToS3(filePath, presigned, contentType, opts = {}) {
   const { addContentTypeField = true } = opts;
   const form = new FormData();
@@ -18651,6 +18662,7 @@ export {
   refreshOidcToken,
   wasBookipiTokenRejected,
   bookipiGraphql,
+  parsePresignFields,
   postToS3,
   uploadItemImage
 };

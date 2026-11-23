@@ -9,6 +9,30 @@ under a version you already have will not reach you. `claude plugin update`
 reports "already at the latest version" and keeps serving the cached copy —
 refresh the marketplace first (`/plugin marketplace update bookipi-cli`).
 
+## Unreleased
+
+### Added
+- `bookipi company update` changes the active company's details as its documents
+  print them: name, business number and its label, address, phone, email and
+  website. Only the options given are changed.
+- `bookipi company logo <file>` replaces the company's logo with a PNG or JPEG
+  file.
+- `bookipi company get` now shows the company's website.
+- `bookipi company style` shows and changes how the company's documents look:
+  one accent colour, font and text size for every document type.
+- `bookipi company terms` shows and changes what new documents start with: when
+  an invoice is due, how long a proposal stays open, and the payment
+  instructions printed on invoices.
+- Contract templates: `bookipi contract templates` lists the company's own and,
+  with `--library`, Bookipi's ready-made ones; `contract from-template` starts a
+  draft from one; `contract save-template` keeps a contract as a template.
+
+### Fixed
+- `bookipi company get` shows the address a company keeps today, with its city,
+  state, postcode and country, the way documents print it. It read only an
+  older set of fields, so an address set in the web app or with
+  `company update` showed as not set.
+
 ## 0.53.0 — 2026-11-20
 
 ### Added
