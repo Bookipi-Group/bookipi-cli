@@ -70,9 +70,11 @@ no successful payments yet, say "no payments yet". `--json` returns
 `attempts`).
 
 If it prints **"Collected: unknown"** (`--json`: `payments` and `summary` are
-`null`), Bookipay did not report this link's payments. Say the payment status
-is unknown and point the user to their Bookipay dashboard. Never report it as
-"no payments yet" or unpaid.
+`null`), Bookipay did not report this link's payments. It currently reports
+none for any link, and the web app's Payment Links page doesn't show them
+either. Say the payment status is unknown, and suggest confirming with the
+payer or looking for the payout. Never report it as "no payments yet" or
+unpaid, and don't offer a scheduled check: it can't find out either.
 
 If the user wants to track this **on a schedule**, offer two options: schedule just
 this link's check, or fold it into **one daily status sweep** that also covers

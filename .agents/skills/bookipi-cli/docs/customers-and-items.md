@@ -16,9 +16,12 @@ bookipi customer list --json
 bookipi customer get @c1
 bookipi customer get @c1 --json
 
-# Create a customer
+# Create a customer: a person (listed under People) or a company (under Companies)
 bookipi customer create --first-name "John" --last-name "Doe" --email "john@example.com"
+bookipi customer create --first-name "Jane" --last-name "Chen" --works-at "Acme Corp" --email "jane@acme.com"
 bookipi customer create --company-name "Acme Corp" --email "billing@acme.com" --phone "+1234567890"
+# --company-name makes the customer a company; a person's employer goes in --works-at.
+# --type person|company says it outright.
 
 # Create with additional fields via --data
 bookipi customer create --first-name "Jane" --last-name "Smith" \
@@ -29,11 +32,12 @@ bookipi customer update @c1 --email "new@example.com"
 bookipi customer update @c1 --notes "Referred by Acme"
 bookipi customer update @c1 --data '{"phone":"+61400000000","jobTitle":"CTO"}'
 
-# Delete a customer — this is a soft delete (moves to trash, not permanent)
-# The record continues to exist server-side; linked invoices are unaffected.
-bookipi customer delete @c1
-bookipi customer delete 6621a3f4c8b2e10012abc123
-bookipi customer delete @c1 --json
+# Delete a customer — a soft delete (moves to trash); their documents stay.
+# Needs --yes. Without it, it refuses and says who would go and which
+# documents they still have: ask the user with that, then re-run with --yes.
+bookipi customer delete @c1 --yes
+bookipi customer delete 6621a3f4c8b2e10012abc123 --yes
+bookipi customer delete @c1 --yes --json
 
 # Send a standalone email to a customer — independent of any invoice/proposal/contract.
 # Use when the user says "email Acme about X", "send a note to @c1", "follow up with

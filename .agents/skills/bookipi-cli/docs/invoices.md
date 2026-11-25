@@ -24,7 +24,9 @@ bookipi invoice preview @i1 --stdout > invoice.html     # raw HTML to stdout (do
 # NOTE: --pdf (the htmlToPdf service) is intentionally NOT used by this skill for now — prefer HTML / the web link.
 
 # Create an invoice — --customer and --item accept IDs, handles, or names
-# If a name is given, the CLI searches existing records and creates if not found.
+# A name is matched to existing records; nothing is ever created here. A customer
+# that matches nothing stops the command (ask the user, `customer create`, re-run
+# with its handle — SKILL.md rule #8). A new line with a price is a one-off line.
 # 🔴 ONE create with ALL --item flags — never create-then-update per line, and no
 # list/search first unless the name is uncertain (SKILL.md rule #8: one search
 # per entity, then ask). The create response is the confirmation — don't re-list.
@@ -77,7 +79,8 @@ bookipi invoice duplicate @i1 --customer "Acme Corp"   # reissue the copy to a d
 # from the company's numbering settings (by default `estimate-1`, `estimate-2`, …).
 bookipi invoice duplicate @i1 --type estimate          # invoice → estimate (aka a quote document)
 bookipi invoice duplicate @i1 --as credit-note         # invoice → credit note
-# Copy into a DIFFERENT company you own (customer re-created there, numbered in
+# Copy into a DIFFERENT company you own (customer found there, or copied into it
+# if missing; numbered in
 # that company's sequence, original untouched). Company = an ID or @co handle —
 # resolve the name to an ID via `company list` / `whoami` first if needed.
 bookipi invoice duplicate @i1 --to-company @co2         # "duplicate this into my other company"
@@ -132,8 +135,9 @@ bookipi invoice send @i1 -r a@test.com,b@test.com -b bcc@test.com -s "Your invoi
 bookipi invoice send-receipt @i1 --yes
 bookipi invoice send-receipt @i1 --amount 111 --date 2026-05-04 --brand Visa --last4 4242 --yes
 
-# Delete an invoice
-bookipi invoice delete @i1
+# Delete an invoice (moves it to the trash) — needs --yes after the user approved;
+# refused for an invoice with payments recorded
+bookipi invoice delete @i1 --yes
 ```
 
 ### 🔴 "Estimate" / "quote" — an invoice-family document, NOT a proposal
@@ -198,9 +202,10 @@ Key flags:
 - `--min-days <n>` / `--max-days <n>` — overdue window (recommend `--min-days 7` so you don't nag on invoices that just became overdue yesterday)
 - `--customer <substring>` — target a single customer
 - `--invoice <id|@handle>` — remind **one specific invoice** ("remind them about INV-203"). Bypasses the overdue scan + day/customer filters, so it works even on an unpaid invoice that isn't overdue yet (it uses gentler "outstanding" wording in that case). A paid invoice is skipped ("no amount due").
+- **Drafts are never reminded**, in the scan or with `--invoice`: the customer hasn't received a draft, so it is skipped ("Draft: never sent to the customer, send it first"). Send it first with `bookipi invoice send`.
+- `--json` — programmatic output. `plan` lists only what is sent or would be; skips are counted by reason in `skippedBecause`. `partial: true` means more than 3,000 invoices are past due and the oldest were not read: say so to the user.
 - `--limit <n>` — cap sends per run (default 50)
 - `--subject` / `--message` — override defaults with placeholders
-- `--json` — programmatic output
 
 The command skips invoices with no email on file, no amount due, or that fall outside the day window — check the "Skipped" summary in the output to understand coverage.
 
@@ -415,13 +420,13 @@ above.)
 
 **Item price behavior when the item is new:**
 
-When you pass `--item "some name"` as a plain string and no matching item exists, the CLI creates it with **price $0, quantity 1** (results in a $0 invoice). To avoid this, pass JSON instead:
+A name that matches no catalogue item is never added to the catalogue. With a price it goes on the invoice as a **one-off line**; a plain string has no price, so it stops the command instead (no $0 lines). For a new line, pass JSON with the price:
 
 ```bash
 --item '{"name":"test itemx","price":100,"quantity":1}'
 ```
 
-If the user didn't specify a price for a brand-new item: either (a) ask them once, or (b) pick a sensible default (like $100), pass it as JSON, and tell the user what you defaulted to. Never read source code to "verify" this — the behavior is as documented.
+If the user didn't give a price for a new line, ask them once; don't guess one. If they want it saved for reuse, that is `item create` — ask before running it (SKILL.md rule #8). Never read source code to "verify" this — the behavior is as documented.
 
 **Minimum happy path — create + send an invoice:**
 
@@ -481,7 +486,7 @@ The CLI fetches the invoice, applies the edits, and recomputes per-line totals p
 
 ### "Delete invoice X"
 
-Use `invoice delete @handle`. Confirm with the user before deleting — this is destructive.
+Run `invoice delete @handle` without `--yes` first: it refuses, naming the invoice (number, customer, amount, status) and whether it was already sent. Ask the user with that, then re-run with `--yes`. If it has payments recorded it refuses even with `--yes` — say so; voiding the payments first is the user's call. To cancel or write off an invoice rather than erase it, deleting is the wrong tool.
 
 ### "Send reminders to everyone overdue" / "Chase up unpaid invoices"
 

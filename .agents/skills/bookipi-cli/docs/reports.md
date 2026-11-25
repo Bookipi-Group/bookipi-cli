@@ -11,8 +11,9 @@ bookipi report summary --cycle year                                          # w
 ```
 
 How to read it, and what to say to the user:
-- **Invoiced** is invoices *dated* in the period, by the date on the invoice. **Paid** is payments *received* in the period, by payment date — so it can include payments on older invoices.
-- **Unpaid / Overdue** are *as of today*, across every invoice, by balance. They are not for the period, and they match `report digest`.
+- **Invoiced** is invoices *sent* and *dated* in the period, by the date on the invoice. Drafts never sent are not invoiced: they show on their own line ("Unsent drafts"), and in the digest as "Drafts". Mention them separately, never add them in. The same goes for top customers and items, and for every collection rate and revenue share in `report insights`, `report suggest` and the dashboard. **Paid** is payments *received* in the period, by payment date — so it can include payments on older invoices.
+- **Currencies.** Every figure is in the company's currency. Invoices in another currency can't be converted (Bookipi stores no exchange rate), so they're left out and listed per currency ("In USD: …"). Relay them as their own line; never add them to the totals.
+- **Unpaid / Overdue** are *as of today*, across every invoice, by balance. They are not for the period, and they match `report digest`, `report insights`, `report suggest` and the dashboard. A draft the customer was never sent is in neither: nothing is owed on it yet.
 
 ## Top Customers
 
@@ -94,7 +95,7 @@ bookipi report digest --start 2026-03-01 --end 2026-03-31  # custom range
 bookipi report digest --json                     # structured JSON
 ```
 
-**Two kinds of figure — keep them apart when you relay it.** *Invoiced*, *Collected*, top customers and recent payments are **for the period**. *Unpaid* and *Overdue* are **as of today**: everything still owed, whenever it was invoiced, by balance (what is left to pay). Never present unpaid or overdue as "this week's".
+**Two kinds of figure — keep them apart when you relay it.** *Invoiced*, *Collected*, top customers and recent payments are **for the period**. *Unpaid* and *Overdue* are **as of today**: everything still owed, whenever it was invoiced, by balance (what is left to pay), never-sent drafts left out. Never present unpaid or overdue as "this week's".
 
 The digest is designed for both human presentation and scheduled automation (see Monday morning digest schedule).
 

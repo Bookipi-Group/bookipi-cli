@@ -17658,8 +17658,8 @@ var {
 
 // src/config.ts
 var BUILD_ENV = "prod";
-var CLI_VERSION = "0.54.0";
-var BUILD_STAMP = "d6ac0e8 2026-11-23";
+var CLI_VERSION = "0.55.0";
+var BUILD_STAMP = "276b296 2026-11-25";
 var config = {
   AUTH_SERVER: process.env["AUTH_SERVER"] ?? "https://auth.bookipi.com",
   APP_ID: process.env["APP_ID"] ?? "1dd166d9569f4f7eb0f08a22c8f0d54a",
@@ -17980,13 +17980,23 @@ function saveCompanyCurrencies(map) {
   if (!map || Object.keys(map).length === 0) return;
   writeConfigFields({ companyCurrencies: map });
 }
-function* storedConfigs({ configDirOnly = false } = {}) {
+function* storedConfigs(options = {}) {
+  for (const p of storedConfigPaths(options)) yield readConfig(p);
+}
+function* storedConfigPaths({ configDirOnly = false } = {}) {
   const resolvers = [getCredentialsPath, getLegacyCredentialsPath];
   if (!configDirOnly) resolvers.push(getSkillConfigPath, () => LEGACY_HOME_CONFIG);
   for (const resolve of resolvers) {
     const p = resolve();
-    if (p) yield readConfig(p);
+    if (p) yield p;
   }
+}
+function whereSignedIn() {
+  if (process.env.BOOKIPI_TOKEN) return "the BOOKIPI_TOKEN environment variable";
+  for (const p of storedConfigPaths()) {
+    if (readConfig(p).token) return p;
+  }
+  return null;
 }
 function readStored(pick, options) {
   for (const config2 of storedConfigs(options)) {
@@ -18000,17 +18010,21 @@ function readCompanyCurrencies() {
     (c) => c.companyCurrencies && Object.keys(c.companyCurrencies).length > 0 ? c.companyCurrencies : null
   ) ?? {};
 }
-function getCurrentCurrency() {
+function getCurrentCurrency(forCompany) {
+  return knownCurrency(forCompany) ?? "USD";
+}
+function knownCurrency(forCompany) {
   const ctx = currentRequestAuth();
   if (ctx) {
-    const companyId2 = getDefaultCompany();
-    return (companyId2 ? ctx.companyCurrencies?.[companyId2] : void 0) ?? "USD";
+    const companyId2 = forCompany ?? getDefaultCompany();
+    return (companyId2 ? ctx.companyCurrencies?.[companyId2] : void 0) ?? null;
   }
-  if (process.env.BOOKIPI_CURRENCY) return process.env.BOOKIPI_CURRENCY;
-  const companyId = getDefaultCompany();
-  if (!companyId) return "USD";
-  const map = readCompanyCurrencies();
-  return map[companyId] ?? "USD";
+  const companyId = forCompany ?? getDefaultCompany();
+  if (process.env.BOOKIPI_CURRENCY && (!forCompany || forCompany === getDefaultCompany())) {
+    return process.env.BOOKIPI_CURRENCY;
+  }
+  if (!companyId) return null;
+  return readCompanyCurrencies()[companyId] ?? null;
 }
 function getDefaultCompany() {
   const ctx = currentRequestAuth();
@@ -18107,14 +18121,26 @@ function getOidcTokens() {
   ) ?? { accessToken: null, refreshToken: null, expireAt: null };
 }
 function clearAllCredentials() {
-  const removed = [];
+  const result = { removed: [], emptied: [], failed: [] };
+  const reasonOf = (err) => err?.code ?? err?.message ?? String(err);
   const tryUnlink = (filePath) => {
+    if (!fs.existsSync(filePath)) return;
     try {
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-        removed.push(filePath);
+      fs.unlinkSync(filePath);
+      result.removed.push(filePath);
+      return;
+    } catch (err) {
+      if (err?.code === "ENOENT") return;
+      const reason = reasonOf(err);
+      try {
+        fs.writeFileSync(filePath, "{}\n");
+        result.emptied.push({ path: filePath, reason });
+      } catch (err2) {
+        result.failed.push({
+          path: filePath,
+          reason: `${reason}; could not empty it either (${reasonOf(err2)})`
+        });
       }
-    } catch {
     }
   };
   tryUnlink(LEGACY_HOME_CONFIG);
@@ -18128,7 +18154,7 @@ function clearAllCredentials() {
   if (skillPath) {
     tryUnlink(skillPath);
   }
-  return removed;
+  return result;
 }
 
 // src/core/api/attribution.ts
@@ -18468,17 +18494,21 @@ async function bookipiGraphql({
   query,
   variables,
   requireCompany = true,
-  companyId
+  companyId,
+  extraHeaders
 }) {
   try {
     return await graphqlRequest({
       url: BOOKIPI_URL,
       query,
       variables,
-      headers: buildBookipiHeaders({
-        requireCompany,
-        ...companyId ? { companyId } : {}
-      })
+      headers: {
+        ...buildBookipiHeaders({
+          requireCompany,
+          ...companyId ? { companyId } : {}
+        }),
+        ...extraHeaders
+      }
     });
   } catch (err) {
     if (!isAuthExpiredError(err)) throw err;
@@ -18488,10 +18518,13 @@ async function bookipiGraphql({
       url: BOOKIPI_URL,
       query,
       variables,
-      headers: buildBookipiHeaders({
-        requireCompany,
-        ...companyId ? { companyId } : {}
-      })
+      headers: {
+        ...buildBookipiHeaders({
+          requireCompany,
+          ...companyId ? { companyId } : {}
+        }),
+        ...extraHeaders
+      }
     });
   }
 }
@@ -18637,7 +18670,9 @@ export {
   saveToken,
   saveDefaultCompany,
   saveCompanyCurrencies,
+  whereSignedIn,
   getCurrentCurrency,
+  knownCurrency,
   getDefaultCompany,
   saveAnalyticsUserId,
   saveInternalTesterEmail,

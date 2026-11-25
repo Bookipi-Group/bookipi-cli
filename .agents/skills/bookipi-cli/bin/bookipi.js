@@ -31,6 +31,7 @@ import {
   getSignitTokenCached,
   getToken,
   graphqlRequest,
+  knownCurrency,
   nativeConfigDir,
   normaliseExpiry,
   parsePresignFields,
@@ -51,8 +52,9 @@ import {
   saveToken,
   uploadItemImage,
   useConfigDir,
-  wasBookipiTokenRejected
-} from "./chunks/chunk-JLFTMZ74.js";
+  wasBookipiTokenRejected,
+  whereSignedIn
+} from "./chunks/chunk-AXBNXLW5.js";
 import {
   __commonJS,
   __export,
@@ -37904,6 +37906,34 @@ function failWith(message, opts = {}) {
   });
 }
 
+// src/usecases/missingRecords.ts
+var RecordsNotFound = class extends Error {
+  constructor(records) {
+    super(`${records.map(describe).join("; ")}. Nothing was created.`);
+    this.records = records;
+    this.name = "RecordsNotFound";
+  }
+  records;
+};
+function describe(r) {
+  const similar = r.similar?.length ? ` (similar existing: ${r.similar.map((s) => `"${s}"`).join(", ")})` : "";
+  return r.kind === "customer" ? `No customer matches "${r.name}"${similar}` : `No catalogue item matches "${r.name}" and it has no price${similar}`;
+}
+async function gatherMissing(steps) {
+  const results = [];
+  const missing = [];
+  for (const step of steps) {
+    try {
+      results.push(await step());
+    } catch (err2) {
+      if (!(err2 instanceof RecordsNotFound)) throw err2;
+      missing.push(...err2.records);
+    }
+  }
+  if (missing.length > 0) throw new RecordsNotFound(missing);
+  return results;
+}
+
 // src/commands/shared.ts
 function withErrors(action) {
   return async (...args) => {
@@ -37930,6 +37960,36 @@ var CONFIRM_REQUIRED = {
 };
 function yesOption(what, required2 = "required") {
   return new Option("-y, --yes", `Confirm the user approved this (${what}); ${required2}`);
+}
+async function resolveExisting(opts, steps) {
+  try {
+    return await gatherMissing(steps);
+  } catch (err2) {
+    if (!(err2 instanceof RecordsNotFound)) throw err2;
+    const kinds = new Set(err2.records.map((r) => r.kind));
+    const next = [
+      kinds.has("customer") && "For a new customer, ask the user, run `bookipi customer create`, and re-run with its handle.",
+      kinds.has("item") && "For a new line, give it a price to add it as a one-off line (or, if the user wants it saved, `bookipi item create` after asking)."
+    ].filter(Boolean);
+    failWith(
+      `${err2.message} Check for it under another name, or use it by id or handle. ${next.join(" ")}`,
+      { json: opts.json === true }
+    );
+  }
+}
+function confirmDelete(opts, preview) {
+  const json3 = { json: opts.json === true };
+  if (preview.blocked) failWith(preview.blocked, json3);
+  if (opts.yes !== true) {
+    failWith(
+      [
+        `Refusing to move ${preview.what} to the trash without --yes.`,
+        ...preview.warnings,
+        "Show the user what will be deleted, get their approval, then re-run with --yes."
+      ].join(" "),
+      json3
+    );
+  }
 }
 function requireConfirmation(opts, what) {
   if (opts.yes !== true) {
@@ -38158,17 +38218,34 @@ var logoutCommand = new Command("logout").description(
   "Log out \u2014 clear cached credentials and handles from every location the CLI reads. Run 'bookipi login' afterwards to log back in (with the same or a different account)."
 ).action(
   withErrors(async () => {
-    const removed = clearAllCredentials();
-    if (removed.length === 0) {
+    const { removed, emptied, failed } = clearAllCredentials();
+    const stillFrom = whereSignedIn();
+    if (removed.length > 0 || emptied.length > 0) {
+      console.log("Cleared:");
+      removed.forEach((p) => console.log(`  - ${p}`));
+      emptied.forEach(
+        (e) => console.log(`  - ${e.path} (could not delete it: ${e.reason}; emptied it instead)`)
+      );
+    }
+    failed.forEach((f) => console.log(`\u274C Couldn't remove ${f.path}: ${f.reason}`));
+    if (stillFrom) {
+      console.log(
+        `
+\u274C Still signed in: a sign-in is still read from ${stillFrom}. ` + (stillFrom.startsWith("the BOOKIPI_TOKEN") ? "Unset that variable to sign out." : "Delete that file (or its .bookipi folder) to sign out.")
+      );
+      process.exitCode = 1;
+      return;
+    }
+    if (failed.length > 0) {
+      process.exitCode = 1;
+      return;
+    }
+    if (removed.length === 0 && emptied.length === 0) {
       console.log("Already logged out \u2014 no credentials or handles to clear.");
       return;
     }
-    console.log(`\u2705 Logged out.`);
     console.log(`
-Cleared:`);
-    removed.forEach((p) => console.log(`  - ${p}`));
-    console.log(`
-Run \`bookipi login\` to log back in.`);
+\u2705 Logged out. Run \`bookipi login\` to log back in.`);
   })
 );
 
@@ -38779,6 +38856,7 @@ var INVOICE_CORE_FIELDS = `
   isTrashed
   trashedDate
   no
+  currency
   ToS
   sent
   read
@@ -39439,6 +39517,25 @@ function writtenDay(raw) {
   if (written) return Number.isNaN(Date.parse(written)) ? null : written;
   return calendarDate(raw);
 }
+function localDay(raw) {
+  const t = raw ? Date.parse(raw) : NaN;
+  if (Number.isNaN(t)) return null;
+  const d = new Date(t);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+function periodDays(start, end) {
+  const HALF_DAY = 12 * 36e5;
+  const day = (raw, shift) => {
+    const trimmed = raw.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return writtenDay(trimmed);
+    const t = Date.parse(trimmed);
+    return Number.isNaN(t) ? null : localDay(new Date(t + shift).toISOString());
+  };
+  const startDay = day(start, HALF_DAY);
+  const endDay = day(end, -HALF_DAY);
+  return startDay && endDay ? { startDay, endDay } : null;
+}
 function calendarDayBounds(startDay, endDay) {
   const half = MS_PER_DAY / 2;
   return {
@@ -39551,6 +39648,10 @@ function invoiceLifecycleLabel(invoice) {
   if (!raw) return void 0;
   const mapped = LIFECYCLE_LABELS[raw.toLowerCase()];
   return mapped ?? raw.charAt(0).toUpperCase() + raw.slice(1);
+}
+function isUnsentDraft(invoice) {
+  const status = String(invoice?.status ?? "").toLowerCase();
+  return (status === "saved" || status === "draft") && !invoice?.sent;
 }
 
 // src/usecases/invoice/dueDate.ts
@@ -40347,7 +40448,9 @@ async function getCompanyRenderContext(companyId) {
   }
   const data = await bookipiGraphql({
     query: COMPANY_RENDER_QUERY,
-    variables: { id: cid }
+    variables: { id: cid },
+    // Read as that company too, not by id from inside the default one.
+    ...companyId ? { companyId } : {}
   });
   return data?.companiesOne ?? null;
 }
@@ -41355,41 +41458,6 @@ async function getItemById(id) {
   return data.itemsOne ?? null;
 }
 
-// src/usecases/item/createItem.ts
-var ITEMS_CREATE_ONE_MUTATION = `
-  mutation itemCreateOne($record: CompatCreateOneitemsInput!) {
-    itemsCreateOne(record: $record) {
-      recordId
-      record {
-        unitType
-        _id
-        updatedAt
-        createdAt
-        name
-        description
-        deleted
-        price
-        company
-        isTrashed
-        trashedDate
-        taxCode
-        taxRate
-        productCode
-        photos {
-          filename
-        }
-      }
-    }
-  }
-`;
-async function createItem(record2) {
-  return bookipiGraphql({
-    query: ITEMS_CREATE_ONE_MUTATION,
-    variables: { record: record2 },
-    companyId: record2.company
-  });
-}
-
 // src/commands/invoice/resolveItem.ts
 function buildLineItem(item, quantity, overrides = {}) {
   return {
@@ -41419,7 +41487,7 @@ function fromRecord(record2, fallbackPrice = 0) {
 }
 async function resolveItem(value, companyId) {
   const isMongoId2 = (s) => /^[a-f0-9]{24}$/i.test(s);
-  async function findOrCreateItem(name, price, description) {
+  async function findItem(name, price, description) {
     const searchData = await listItems({ search: name, perPage: 10, companyId });
     const matches = searchData.searchItems?.items || [];
     const normalized = name.trim().toLowerCase();
@@ -41440,25 +41508,14 @@ async function resolveItem(value, companyId) {
 ${list2}`
       );
     }
-    if (matches.length > 0) {
-      const similar = matches.slice(0, 3).map((i) => `"${i.name}"`).join(", ");
-      console.error(
-        `Note: creating new item "${name}" \u2014 similar items already exist: ${similar}`
-      );
+    if (price !== void 0) {
+      console.error(`New line "${name}" (not added to the item catalogue)`);
+      return { name, price, ...description ? { description } : {} };
     }
-    console.error(`Creating item "${name}" in item database...`);
-    const created = await createItem({
-      name,
-      price,
-      company: companyId,
-      ...description ? { description } : {}
-    });
-    const item = created.itemsCreateOne?.record;
-    if (item) {
-      console.error(`Created item: ${item.name} (${item._id})`);
-      return fromRecord(item, price);
-    }
-    return void 0;
+    const similar = matches.slice(0, 3).map((i) => String(i.name));
+    throw new RecordsNotFound([
+      { kind: "item", name, ...similar.length ? { similar } : {} }
+    ]);
   }
   const registry3 = HandleRegistry.getInstance();
   if (value.startsWith("@")) {
@@ -41491,24 +41548,22 @@ ${list2}`
         `JSON line item needs a "name" (got: ${value.slice(0, 120)})`
       );
     }
-    const price = Number(parsed.price ?? 0);
+    const price = parsed.price === void 0 ? void 0 : Number(parsed.price);
     const quantity = Number(parsed.quantity ?? 1);
-    if (Number.isNaN(price) || Number.isNaN(quantity)) {
+    if (Number.isNaN(price ?? 0) || Number.isNaN(quantity)) {
       throw new Error(
         `JSON line item "price"/"quantity" must be numbers (got: ${value.slice(0, 120)})`
       );
     }
     const description = typeof parsed.description === "string" ? parsed.description : void 0;
-    const found2 = await findOrCreateItem(parsed.name, price, description);
+    const found = await findItem(parsed.name, price, description);
     return buildLineItem(
-      { ...found2, name: parsed.name, price },
+      { ...found, name: parsed.name, price: price ?? found.price },
       quantity,
       description !== void 0 ? { description } : {}
     );
   }
-  const found = await findOrCreateItem(value, 0);
-  if (found) return buildLineItem(found, 1);
-  throw new Error(`Failed to resolve item "${value}"`);
+  return buildLineItem(await findItem(value, void 0), 1);
 }
 
 // src/usecases/customer/createCustomer.ts
@@ -41599,7 +41654,7 @@ ${list2}` : `Multiple customers match "${value}" but none exactly. Please specif
 ${list2}`
   );
 }
-async function findOrCreateCustomer(value, companyId, extraFields) {
+async function findOrCreateCustomer(value, companyId, extraFields, allowCreate = false) {
   if (/^[a-f0-9]{24}$/i.test(value)) {
     const customer2 = await getCustomerById(value);
     return { customer: customer2 ?? { _id: value }, how: "by-id" };
@@ -41614,6 +41669,7 @@ async function findOrCreateCustomer(value, companyId, extraFields) {
     if (rows.length === 1) return { customer: rows[0], how: "fuzzy" };
     throw ambiguous(value, rows, false);
   }
+  if (!allowCreate) throw new RecordsNotFound([{ kind: "customer", name: value }]);
   const parts2 = value.split(" ");
   const record2 = parts2.length >= 2 ? {
     companyName: value,
@@ -41646,7 +41702,7 @@ function narrate(how, customer) {
       break;
   }
 }
-async function resolveCustomer(value, companyId, extraFields) {
+async function resolveCustomer(value, companyId) {
   const registry3 = HandleRegistry.getInstance();
   if (value.startsWith("@")) {
     const id = registry3.resolve(value);
@@ -41656,7 +41712,7 @@ async function resolveCustomer(value, companyId, extraFields) {
     console.error(`Warning: customer ${id} not found in DB, using bare ID`);
     return { _id: id };
   }
-  const found = await findOrCreateCustomer(value, companyId, extraFields);
+  const found = await findOrCreateCustomer(value, companyId);
   narrate(found.how, found.customer);
   return found.customer;
 }
@@ -42020,7 +42076,7 @@ var createCommand2 = new Command("create").description(
     return items;
   },
   []
-).option("--email <email>", "Customer email (used when creating a new customer)").option(
+).option("--email <email>", "Email to send this document to, if not the customer's own").option(
   "--photo <path>",
   "Attach an image to the invoice at creation (png/jpg/jpeg/webp/heic). Repeatable. Shows on the invoice and the customer-facing document. This is an INVOICE-level attachment, separate from line-item --item photos.",
   (val, items) => {
@@ -42089,15 +42145,11 @@ var createCommand2 = new Command("create").description(
       failWith("No --company provided and no defaultCompany saved. Run 'bookipi whoami' or 'bookipi login' first to set your default company.", { json: opts?.json });
     }
     const companyId = registry3.resolve(rawCompany);
-    const customerObj = await resolveCustomer(opts.customer, companyId, {
-      email: opts.email
-    });
+    const [customerObj = {}, ...items] = await resolveExisting(opts, [
+      () => resolveCustomer(opts.customer, companyId),
+      ...opts.item.map((raw) => () => resolveItem(raw, companyId))
+    ]);
     const customerId = customerObj._id;
-    const items = [];
-    for (const raw of opts.item) {
-      const item = await resolveItem(raw, companyId);
-      items.push(item);
-    }
     for (const item of items) {
       if (!item.name || item.price == null || item.quantity == null) {
         failWith("Each --item must have name, price, and quantity fields", { json: opts?.json });
@@ -42355,7 +42407,10 @@ async function copyInvoice(sourceId, opts = {}) {
     const found = await findOrCreateCustomer(
       String(query),
       opts.toCompanyId,
-      srcCust["email"] ? { email: String(srcCust["email"]) } : void 0
+      srcCust["email"] ? { email: String(srcCust["email"]) } : void 0,
+      // Copies this customer into a company that lacks them: the user asked
+      // for the copy there, and it is the same person, not a new one.
+      true
     );
     const invCustomer = buildInvoiceCustomer(found.customer);
     const no = await getNextInvoiceNumber(targetType2.code, opts.toCompanyId);
@@ -42421,10 +42476,10 @@ var duplicateCommand = new Command("duplicate").description(
   "Duplicate an invoice \u2014 creates a fresh editable draft copy (new number) with the same customer, items, and totals. Use --customer to reissue it to someone else, --type to convert to another document type (e.g. an estimate), or --to-company to copy it into a different company you own."
 ).argument("<id>", "Invoice ID or handle (@i1) to duplicate").option(
   "--customer <value>",
-  "Reassign the copy to a different customer \u2014 ID, handle (@c1), or name to search/create"
+  "Reassign the copy to a different customer \u2014 ID, handle (@c1), or name of an existing customer"
 ).option(
   "--to-company <company>",
-  "Copy the invoice into a DIFFERENT company you own (ID or @co handle). The customer is re-resolved/created in that company and the copy is numbered in its sequence. The original is untouched."
+  "Copy the invoice into a DIFFERENT company you own (ID or @co handle). The customer is found in that company, or copied into it if missing, and the copy is numbered in its sequence. The original is untouched."
 ).option(
   "--type <type>",
   "Convert the copy into another document type \u2014 estimate (alias: quote), credit-note, delivery-note, or purchase-order (default: same type as the source). The copy is renumbered with that type's prefix from the company's numbering (by default estimate-1, estimate-2, \u2026)."
@@ -42435,16 +42490,16 @@ var duplicateCommand = new Command("duplicate").description(
   withErrors(async (id, opts) => {
     const registry3 = HandleRegistry.getInstance();
     const resolvedId = registry3.resolve(id);
-    const { record: record2, converted, crossCompany } = await copyInvoice(
-      resolvedId,
-      {
+    const [copied] = await resolveExisting(opts, [
+      () => copyInvoice(resolvedId, {
         ...opts.customer ? { customer: registry3.resolve(opts.customer) } : {},
         ...opts.toCompany ? { toCompanyId: registry3.resolve(opts.toCompany) } : {},
         ...opts.type ?? opts.as ? { type: opts.type ?? opts.as } : {},
         companyId: getDefaultCompany() ?? "",
         timezone: opts.timezone || systemTimezone()
-      }
-    );
+      })
+    ]);
+    const { record: record2, converted, crossCompany } = copied;
     const handle = registry3.register("i", String(record2["_id"]));
     const link = await invoiceWebUrl(record2);
     if (opts.json) {
@@ -42687,12 +42742,17 @@ var updateCommand = new Command("update").description("Update an existing invoic
     }
     if (itemOpsRequested || Array.isArray(extra.items)) {
       const companyId = current.company ?? getDefaultCompany() ?? "";
+      const resolved = await resolveExisting(
+        opts,
+        [...opts.item, ...opts.addItem].map(
+          (raw) => () => resolveItem(raw, companyId)
+        )
+      );
+      const replacing = resolved.slice(0, opts.item.length);
+      const adding = resolved.slice(opts.item.length);
       let items;
       if (opts.item.length > 0) {
-        items = [];
-        for (const raw of opts.item) {
-          items.push(await resolveItem(raw, companyId));
-        }
+        items = replacing;
       } else if (Array.isArray(extra.items)) {
         items = extra.items;
       } else {
@@ -42721,9 +42781,7 @@ var updateCommand = new Command("update").description("Update an existing invoic
         remove: opts.removeItem,
         set: patches
       });
-      for (const raw of opts.addItem) {
-        items.push(await resolveItem(raw, companyId));
-      }
+      items.push(...adding);
       if (items.length === 0) {
         failWith("An invoice needs at least one line item \u2014 removing them all isn't supported", {
           json: opts?.json
@@ -42847,28 +42905,54 @@ async function deleteInvoice(id, companyId) {
   });
 }
 
-// src/commands/invoice/delete.ts
-var deleteCommand = new Command("delete").description("Delete an invoice by ID or handle (@i1)").argument("<id>", "Invoice ID or handle (@i1) to delete").option("--json", "Output raw JSON instead of formatted").action(
-  withErrors(async (id, opts) => {
-    const registry3 = HandleRegistry.getInstance();
-    const resolvedId = registry3.resolve(id);
-    const data = await deleteInvoice(resolvedId);
-    if (opts.json) {
-      console.log(JSON.stringify(data, null, 2));
-    } else {
-      const invoiceHandle = registry3.getHandle(resolvedId) || id;
-      console.log(`\u2705 **Invoice Deleted Successfully**
-`);
-      console.log(`Invoice ${invoiceHandle} has been deleted.
-`);
-      console.log(`\u{1F4A1} **Next actions:**`);
-      console.log(`- List invoices: \`bookipi invoice list\``);
-      console.log(
-        `- Create invoice: \`bookipi invoice create --data '{...}'\``
-      );
+// src/usecases/proposal/getProposal.ts
+var PROPOSALS_ONE_QUERY = `
+  query ProposalsOne($_id: MongoID!) {
+    proposalsOne(filter: { _id: $_id }) {
+      _id
+      no
+      title
+      status
+      isDraft
+      projectPipelineId
+      effectiveDate
+      expirationDate
+      startDate
+      endDate
+      contractLength
+      customer {
+        _id
+        companyName
+        firstName
+        lastName
+        email
+        individualCompanyName
+      }
+      customerReference {
+        _id
+        email
+        companyName
+        individualCompanyName
+      }
+      serviceItems {
+        _id
+        name
+        description
+        price
+        quantity
+        totalAmount
+        billingType
+      }
     }
-  })
-);
+  }
+`;
+async function getProposalById(id) {
+  const data = await bookipiGraphql({
+    query: PROPOSALS_ONE_QUERY,
+    variables: { _id: id }
+  });
+  return data?.proposalsOne ?? null;
+}
 
 // src/core/format/customerName.ts
 function customerName(customer, opts = {}) {
@@ -42878,6 +42962,99 @@ function customerName(customer, opts = {}) {
   const company = customer.companyName || customer.individualCompanyName || "";
   return preferCompany ? company || person || fallback : person || company || fallback;
 }
+
+// src/usecases/deletePreview.ts
+var DOC_TYPES = [
+  [1, "invoice"],
+  [0, "estimate"],
+  [2, "credit note"],
+  [3, "delivery note"],
+  [4, "purchase order"]
+];
+async function previewInvoiceDelete(id, companyId) {
+  return invoiceDeletePreviewFrom(await getInvoice(id, companyId));
+}
+function invoiceDeletePreviewFrom(inv) {
+  const no = String(inv["no"] ?? inv["_id"]);
+  const status = String(inv["status"] ?? "");
+  const who = customerName(inv["customer"], { preferCompany: true, fallback: "" });
+  const what = `invoice ${no} (${[who, formatCurrency(inv["total"]), status].filter(Boolean).join(", ")})`;
+  const paid = Number(inv["paymentAmount"] ?? 0);
+  const paymentStatus = String(inv["paymentStatus"] ?? "");
+  if (paid > 0 || paymentStatus && paymentStatus !== "not_paid") {
+    return {
+      what,
+      warnings: [],
+      blocked: `${no} has payments recorded against it (${paymentStatus || "paid"}${paid > 0 ? `, ${formatCurrency(paid)} received` : ""}). Deleting it would destroy the payment history. Void the payments first if that is genuinely what the user wants.`
+    };
+  }
+  const warnings = inv["sent"] || ["sent", "read", "overdue"].includes(status) ? [`${no} was already sent to the customer, who has the email.`] : [];
+  return { what, warnings };
+}
+async function previewCustomerDelete(id) {
+  const c = await getCustomerById(id);
+  if (!c) throw new Error(`Customer not found: ${id}`);
+  return customerDeletePreviewFrom(c);
+}
+async function customerDeletePreviewFrom(c) {
+  const id = String(c["_id"]);
+  const name = customerName(c, { preferCompany: true, fallback: id });
+  const what = `customer ${name}${c["email"] ? ` <${c["email"]}>` : ""}`;
+  const counts = await Promise.all(
+    DOC_TYPES.map(async ([docType, label]) => {
+      const data = await listInvoices({ customerId: id, docType, perPage: 3 });
+      const page = data?.searchInvoices;
+      const total = Number(page?.pageInfo?.itemCount ?? page?.items?.length ?? 0);
+      const nos = (page?.items ?? []).map((i) => String(i.no));
+      return { label, total, nos };
+    })
+  );
+  const held = counts.filter((c2) => c2.total > 0);
+  const warnings = held.length ? [
+    `${name} has ${held.map((h) => `${h.total} ${h.label}${h.total === 1 ? "" : "s"} (${h.nos.join(", ")}${h.total > h.nos.length ? ", \u2026" : ""})`).join(", ")}; they stay, still addressed to this customer.`
+  ] : [];
+  return { what, warnings };
+}
+async function previewProposalDelete(id) {
+  const p = await getProposalById(id);
+  if (!p) throw new Error(`Proposal not found: ${id}`);
+  return proposalDeletePreviewFrom(p);
+}
+var UNSENT_PROPOSAL = /* @__PURE__ */ new Set(["", "draft", "saved"]);
+function proposalDeletePreviewFrom(p) {
+  const title = String(p["title"] ?? p["_id"]);
+  const status = String(p["status"] ?? "");
+  const what = `proposal "${title}"${p["no"] ? ` (${p["no"]})` : ""}`;
+  const sent = !p["isDraft"] && !UNSENT_PROPOSAL.has(status);
+  const warnings = sent ? [`"${title}" was already sent to the customer (${status}), who has the email and link.`] : [];
+  return { what, warnings };
+}
+
+// src/commands/invoice/delete.ts
+var deleteCommand = new Command("delete").description(
+  "Delete an invoice by ID or handle (@i1) \u2014 moves it to the trash. Needs --yes; refuses one with payments recorded"
+).argument("<id>", "Invoice ID or handle (@i1) to delete").addOption(yesOption("delete this invoice")).option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (id, opts) => {
+    const registry3 = HandleRegistry.getInstance();
+    const resolvedId = registry3.resolve(id);
+    confirmDelete(opts, await previewInvoiceDelete(resolvedId));
+    const data = await deleteInvoice(resolvedId);
+    if (opts.json) {
+      console.log(JSON.stringify(data, null, 2));
+    } else {
+      const invoiceHandle = registry3.getHandle(resolvedId) || id;
+      console.log(`\u2705 **Invoice moved to trash**
+`);
+      console.log(`Invoice ${invoiceHandle} has been moved to the trash.
+`);
+      console.log(`\u{1F4A1} **Next actions:**`);
+      console.log(`- List invoices: \`bookipi invoice list\``);
+      console.log(
+        `- Create invoice: \`bookipi invoice create --data '{...}'\``
+      );
+    }
+  })
+);
 
 // src/usecases/invoice/defaultSendMessage.ts
 var SEND_MESSAGE_COMPANY_QUERY = `
@@ -43226,20 +43403,289 @@ var voidCommand = new Command("void").description(
   })
 );
 
-// src/usecases/invoice/overdueInvoices.ts
-async function fetchOverdueInvoices() {
-  const data = await listInvoices({
-    status: ["overdue"],
-    page: 1,
-    perPage: 200,
-    sort: "createdAt_desc"
-  });
-  return data?.searchInvoices?.items || [];
+// src/usecases/company/companyCurrency.ts
+async function companyCurrency(companyId) {
+  const known = knownCurrency(companyId);
+  if (known) return known;
+  const id = companyId ?? getDefaultCompany();
+  if (!id) return null;
+  const key2 = `${getToken() ?? ""}|${id}`;
+  const inFlight = currencyLookups.get(key2);
+  if (inFlight) return inFlight;
+  const lookup = getCompanyRenderContext(id).then((company) => company?.currency ?? null, () => null).finally(() => currencyLookups.delete(key2));
+  currencyLookups.set(key2, lookup);
+  return lookup;
 }
+var currencyLookups = /* @__PURE__ */ new Map();
+
+// src/usecases/report/outstandingInvoices.ts
+var REPORT_INVOICES_QUERY = `
+  query ReportInvoices($filter: SearchFilterInput!, $paginate: SearchPaginateInput) {
+    searchInvoices(docType: 1, filter: $filter, paginate: $paginate, sort: "createdAt_desc") {
+      items {
+        _id
+        no
+        status
+        sent
+        currency
+        date
+        total
+        amountDue
+        dueDate
+        payments { amount date }
+        customer { _id firstName lastName companyName individualCompanyName }
+        customerReference { _id firstName lastName companyName individualCompanyName }
+      }
+      pageInfo { hasNextPage }
+    }
+  }
+`;
+var DATED_INVOICES_QUERY = `
+  query DatedInvoices($filter: SearchFilterInput!, $paginate: SearchPaginateInput) {
+    searchInvoices(docType: 1, filter: $filter, paginate: $paginate, sort: "createdAt_desc") {
+      items {
+        _id
+        date
+        total
+        status
+        sent
+        currency
+        customer { _id firstName lastName companyName individualCompanyName email }
+        customerReference { _id firstName lastName companyName individualCompanyName email }
+        items { _id name description price productCode quantity total }
+      }
+      pageInfo { hasNextPage }
+    }
+  }
+`;
+var UNPAID_STATUSES = [
+  "saved",
+  "sent",
+  "read",
+  "partialPaid",
+  "overdue",
+  "undelivered"
+];
+var OUTSTANDING_PAGE_SIZE = 1e3;
+var OUTSTANDING_MAX_PAGES = 3;
+async function scanInvoices(status, perPage, maxPages, companyId, query = REPORT_INVOICES_QUERY, entered) {
+  const byId = /* @__PURE__ */ new Map();
+  const items = () => [...byId.values()];
+  for (let page = 1; page <= maxPages; page++) {
+    const data = await bookipiGraphql({
+      query,
+      variables: {
+        filter: { search: null, status, ...entered ? { start: entered } : {} },
+        paginate: { fetchAll: false, page, perPage }
+      },
+      ...companyId ? { companyId } : {}
+    });
+    for (const inv of data?.searchInvoices?.items ?? []) byId.set(inv._id, inv);
+    if (!data?.searchInvoices?.pageInfo?.hasNextPage) {
+      return { items: items(), truncated: false };
+    }
+  }
+  return { items: items(), truncated: true };
+}
+function isPastDue(invoice) {
+  return daysOverdue(invoice?.dueDate) >= 1;
+}
+function balanceOf(rows) {
+  return round2(rows.reduce((s, inv) => s + (inv.amountDue ?? 0), 0));
+}
+function inHomeCurrency(inv, home) {
+  return !home || !inv?.currency || String(inv.currency).toUpperCase() === home.toUpperCase();
+}
+async function readOutstandingInvoices(companyId) {
+  const [{ items, truncated }, home] = await Promise.all([
+    scanInvoices(UNPAID_STATUSES, OUTSTANDING_PAGE_SIZE, OUTSTANDING_MAX_PAGES, companyId),
+    companyCurrency(companyId)
+  ]);
+  const owedAll = items.filter(
+    (inv) => (inv.amountDue ?? 0) > 0 && !isUnsentDraft(inv)
+  );
+  const owed = owedAll.filter((inv) => inHomeCurrency(inv, home));
+  const overdue = owed.filter(isPastDue);
+  const other = /* @__PURE__ */ new Map();
+  for (const inv of owedAll) {
+    if (inHomeCurrency(inv, home)) continue;
+    const currency = String(inv.currency).toUpperCase();
+    let row = other.get(currency);
+    if (!row) {
+      row = { currency, unpaid: { count: 0, amount: 0 }, overdue: { count: 0, amount: 0 } };
+      other.set(currency, row);
+    }
+    row.unpaid.count++;
+    row.unpaid.amount = round2(row.unpaid.amount + (inv.amountDue ?? 0));
+    if (isPastDue(inv)) {
+      row.overdue.count++;
+      row.overdue.amount = round2(row.overdue.amount + (inv.amountDue ?? 0));
+    }
+  }
+  return { all: items, owed, overdue, otherCurrencies: [...other.values()], truncated };
+}
+var ALL_STATUSES = [...UNPAID_STATUSES, "paid"];
+var DATED_MAX_PAGES = 10;
+var FORWARD_DATING_MARGIN_DAYS = 92;
+function enteredSince(startDay) {
+  return new Date(
+    Date.parse(startDay) - FORWARD_DATING_MARGIN_DAYS * 864e5
+  ).toISOString();
+}
+var invoicedReads = /* @__PURE__ */ new Map();
+function readInvoicedBetween(startDay, endDay, companyId) {
+  const key2 = [getToken() ?? "", companyId ?? getDefaultCompany() ?? "", startDay, endDay].join("|");
+  const inFlight = invoicedReads.get(key2);
+  if (inFlight) return inFlight;
+  const read = readInvoiced(startDay, endDay, companyId).finally(() => invoicedReads.delete(key2));
+  invoicedReads.set(key2, read);
+  return read;
+}
+async function readInvoiced(startDay, endDay, companyId) {
+  const [{ items, truncated }, home] = await Promise.all([
+    scanInvoices(
+      ALL_STATUSES,
+      OUTSTANDING_PAGE_SIZE,
+      DATED_MAX_PAGES,
+      companyId,
+      DATED_INVOICES_QUERY,
+      enteredSince(startDay)
+    ),
+    companyCurrency(companyId)
+  ]);
+  const invoices = [];
+  const drafts = { count: 0, amount: 0 };
+  const other = /* @__PURE__ */ new Map();
+  for (const inv of items) {
+    const day = calendarDate(inv.date);
+    if (day === null || day < startDay || day > endDay) continue;
+    const total = Number(inv.total) || 0;
+    if (!inHomeCurrency(inv, home)) {
+      const currency = String(inv.currency).toUpperCase();
+      let row = other.get(currency);
+      if (!row) {
+        row = { currency, count: 0, amount: 0, unsentDrafts: { count: 0, amount: 0 } };
+        other.set(currency, row);
+      }
+      if (isUnsentDraft(inv)) {
+        row.unsentDrafts.count++;
+        row.unsentDrafts.amount = round2(row.unsentDrafts.amount + total);
+      } else {
+        row.count++;
+        row.amount = round2(row.amount + total);
+      }
+    } else if (isUnsentDraft(inv)) {
+      drafts.count++;
+      drafts.amount += total;
+    } else {
+      invoices.push(inv);
+    }
+  }
+  return {
+    invoices,
+    drafts: { count: drafts.count, amount: round2(drafts.amount) },
+    otherCurrencies: [...other.values()],
+    truncated
+  };
+}
+var PAID_INVOICES_QUERY = `
+  query PaidInvoices($filter: SearchFilterInput!, $paginate: SearchPaginateInput) {
+    searchInvoices(docType: 1, filter: $filter, paginate: $paginate, sort: "createdAt_desc") {
+      items { _id currency payments { amount date } }
+      pageInfo { hasNextPage }
+    }
+  }
+`;
+var paidReads = /* @__PURE__ */ new Map();
+var PAID_STATUSES = ["paid", "partialPaid", "overdue"];
+function readPaidBetween(startDay, endDay, companyId) {
+  const key2 = [getToken() ?? "", companyId ?? getDefaultCompany() ?? "", startDay, endDay].join("|");
+  const inFlight = paidReads.get(key2);
+  if (inFlight) return inFlight;
+  const read = readPaid(startDay, endDay, companyId).finally(() => paidReads.delete(key2));
+  paidReads.set(key2, read);
+  return read;
+}
+async function readPaid(startDay, endDay, companyId) {
+  const [{ items, truncated }, home] = await Promise.all([
+    scanInvoices(PAID_STATUSES, OUTSTANDING_PAGE_SIZE, DATED_MAX_PAGES, companyId, PAID_INVOICES_QUERY),
+    companyCurrency(companyId)
+  ]);
+  const payments = [];
+  const other = /* @__PURE__ */ new Map();
+  for (const inv of items) {
+    for (const p of inv.payments ?? []) {
+      const day = localDay(p?.date);
+      if (!day || day < startDay || day > endDay) continue;
+      const amount = Number(p.amount) || 0;
+      if (inHomeCurrency(inv, home)) {
+        payments.push({ day, amount });
+        continue;
+      }
+      const currency = String(inv.currency).toUpperCase();
+      let row = other.get(currency);
+      if (!row) other.set(currency, row = { currency, count: 0, amount: 0 });
+      row.count++;
+      row.amount = round2(row.amount + amount);
+    }
+  }
+  return { payments, otherCurrencies: [...other.values()], truncated };
+}
+
+// src/usecases/invoice/overdueInvoices.ts
+var OVERDUE_INVOICES_QUERY = `
+  query OverdueInvoices($filter: SearchFilterInput!, $paginate: SearchPaginateInput) {
+    searchInvoices(docType: 1, filter: $filter, paginate: $paginate, sort: "createdAt_desc") {
+      items {
+        _id
+        no
+        status
+        sent
+        currency
+        total
+        amountDue
+        dueDate
+        recipientEmail
+        customer { firstName lastName companyName individualCompanyName email }
+        customerReference { firstName lastName companyName individualCompanyName email }
+      }
+      pageInfo { hasNextPage }
+    }
+  }
+`;
+var OVERDUE_PAGE_SIZE = 1e3;
+var OVERDUE_MAX_PAGES = 3;
+var OVERDUE_SCAN_LIMIT = OVERDUE_PAGE_SIZE * OVERDUE_MAX_PAGES;
+var OVERDUE_PARTIAL_NOTE = `More than ${OVERDUE_SCAN_LIMIT.toLocaleString("en-US")} invoices are past their due date; only the most recently created were read, so the oldest may be missing.`;
+async function fetchOverdueInvoices() {
+  return scanInvoices(
+    ["overdue"],
+    OVERDUE_PAGE_SIZE,
+    OVERDUE_MAX_PAGES,
+    void 0,
+    OVERDUE_INVOICES_QUERY
+  );
+}
+function countSkipReasons(entries) {
+  const counts = {};
+  for (const e of entries) {
+    const reason = e.skipReason || "Unknown";
+    counts[reason] = (counts[reason] ?? 0) + 1;
+  }
+  return counts;
+}
+var DRAFT_SKIP_REASON = "Draft: never sent to the customer, send it first";
 
 // src/usecases/invoice/invoiceCustomer.ts
 function customerEmailFromInvoice(invoice) {
   return invoice?.recipientEmail || invoice?.customer?.email || invoice?.customerReference?.email || null;
+}
+function invoiceMatchesCustomer(invoice, filter) {
+  const names = [invoice?.customer, invoice?.customerReference].filter(Boolean).map(
+    (c) => [c.firstName, c.lastName, c.companyName, c.individualCompanyName].filter(Boolean).join(" ")
+  );
+  const haystack = `${names.join(" ")} ${customerEmailFromInvoice(invoice) ?? ""}`;
+  return haystack.toLowerCase().includes(filter.toLowerCase());
 }
 
 // src/core/format/template.ts
@@ -43291,7 +43737,7 @@ async function remindInvoices(options = {}) {
     subject: subjectOverride,
     message: messageOverride
   } = options;
-  const rawInvoices = invoiceId ? [await getInvoice(invoiceId)] : await fetchOverdueInvoices();
+  const { items: rawInvoices, truncated } = invoiceId ? { items: [await getInvoice(invoiceId)], truncated: false } : await fetchOverdueInvoices();
   const now2 = /* @__PURE__ */ new Date();
   const dateFormat = await getCompanyDateFormat();
   const invoices = [...rawInvoices].sort((a, b) => {
@@ -43314,6 +43760,7 @@ async function remindInvoices(options = {}) {
       customerName: name,
       customerEmail,
       amountDue,
+      ...invoice.currency ? { currency: String(invoice.currency) } : {},
       dueDate: dueDateIso,
       daysOverdue: daysOverdue2,
       status: "planned"
@@ -43330,15 +43777,17 @@ async function remindInvoices(options = {}) {
       plan.push(entry);
       continue;
     }
-    if (!invoiceId && customerFilter) {
-      const needle = customerFilter.toLowerCase();
-      const haystack = `${customerName} ${customerEmail || ""}`.toLowerCase();
-      if (!haystack.includes(needle)) {
-        entry.status = "skipped";
-        entry.skipReason = `Customer filter mismatch (${customerFilter})`;
-        plan.push(entry);
-        continue;
-      }
+    if (!invoiceId && customerFilter && !invoiceMatchesCustomer(invoice, customerFilter)) {
+      entry.status = "skipped";
+      entry.skipReason = `Customer filter mismatch (${customerFilter})`;
+      plan.push(entry);
+      continue;
+    }
+    if (isUnsentDraft(invoice)) {
+      entry.status = "skipped";
+      entry.skipReason = DRAFT_SKIP_REASON;
+      plan.push(entry);
+      continue;
     }
     if (!customerEmail) {
       entry.status = "skipped";
@@ -43354,7 +43803,8 @@ async function remindInvoices(options = {}) {
     }
     const vars = {
       no: entry.invoiceNo,
-      amount: formatCurrency(amountDue),
+      // In the invoice's own currency: a USD invoice is not a peso amount.
+      amount: formatCurrency(amountDue, invoice.currency || void 0),
       days: daysOverdue2,
       // As the customer reads a date, matching the email's own "Due:" line.
       dueDate: formatCustomerDate(dueDateIso, dateFormat) ?? "on receipt"
@@ -43407,6 +43857,7 @@ async function remindInvoices(options = {}) {
   return {
     dryRun,
     totalCandidates: invoices.length,
+    ...truncated ? { partial: true } : {},
     plan,
     sent,
     skipped,
@@ -43446,7 +43897,7 @@ var remindCommand = new Command("remind").description(
   "Only remind invoices whose customer name or email contains this substring"
 ).option(
   "-i, --invoice <id>",
-  "Remind ONE specific invoice by ID or handle (@i1) \u2014 works even if it isn't overdue yet; ignores the day/customer filters"
+  "Remind ONE specific invoice by ID or handle (@i1) \u2014 works even if it isn't overdue yet; ignores the day/customer filters. A draft that was never sent is skipped"
 ).option(
   "-l, --limit <n>",
   "Maximum number of reminders to send in this run",
@@ -43486,8 +43937,12 @@ var remindCommand = new Command("remind").description(
       ...opts.subject && { subject: opts.subject },
       ...opts.message && { message: opts.message }
     });
+    const eligible = result.plan.filter((e) => e.status !== "skipped");
+    const skipped = result.plan.filter((e) => e.status === "skipped");
     if (opts.json) {
-      console.log(JSON.stringify(result, null, 2));
+      const { plan: _all, ...rest } = result;
+      const output2 = { ...rest, plan: eligible, skippedBecause: countSkipReasons(skipped) };
+      console.log(JSON.stringify(output2, null, 2));
       if (result.failed > 0) process.exit(1);
       return;
     }
@@ -43500,18 +43955,17 @@ var remindCommand = new Command("remind").description(
     console.log(banner);
     console.log("");
     console.log(
-      `Scanned ${result.totalCandidates} overdue invoice(s); ${result.plan.filter((e) => e.status !== "skipped").length} eligible for a reminder.`
+      `Scanned ${result.totalCandidates} invoice(s) past their due date; ${eligible.length} eligible for a reminder.`
     );
+    if (result.partial) console.log(`\u26A0\uFE0F ${OVERDUE_PARTIAL_NOTE}`);
     console.log("");
-    const eligible = result.plan.filter((e) => e.status !== "skipped");
-    const skipped = result.plan.filter((e) => e.status === "skipped");
     if (eligible.length > 0) {
       console.log("## Reminders");
       console.log("");
       for (const entry of eligible) {
         const handle = registry3.register("i", entry.invoiceId);
         const icon = statusIcon(entry);
-        const line = `${icon} ${entry.invoiceNo} [${handle}] \u2014 ${entry.customerName} <${entry.customerEmail}> \u2014 ${formatCurrency(entry.amountDue)} (${entry.daysOverdue}d overdue, due ${formatCalendarDate(entry.dueDate)})`;
+        const line = `${icon} ${entry.invoiceNo} [${handle}] \u2014 ${entry.customerName} <${entry.customerEmail}> \u2014 ${formatCurrency(entry.amountDue, entry.currency)} (${entry.daysOverdue}d overdue, due ${formatCalendarDate(entry.dueDate)})`;
         console.log(line);
         if (entry.status === "failed" && entry.error) {
           console.log(`     \u21B3 error: ${entry.error}`);
@@ -43534,12 +43988,7 @@ var remindCommand = new Command("remind").description(
     if (skipped.length > 0) {
       console.log(`## Skipped (${skipped.length})`);
       console.log("");
-      const reasonCounts = {};
-      for (const e of skipped) {
-        const r = e.skipReason || "Unknown";
-        reasonCounts[r] = (reasonCounts[r] || 0) + 1;
-      }
-      for (const [reason, count] of Object.entries(reasonCounts)) {
+      for (const [reason, count] of Object.entries(countSkipReasons(skipped))) {
         console.log(`- ${reason}: ${count}`);
       }
       console.log("");
@@ -43552,9 +44001,11 @@ var remindCommand = new Command("remind").description(
       );
       console.log("");
       console.log("\u{1F4A1} **Next actions:**");
-      console.log(
-        `- Send for real: \`bookipi invoice remind --send${opts.minDays !== "0" ? ` --min-days ${opts.minDays}` : ""}${opts.customer ? ` --customer "${opts.customer}"` : ""}\``
-      );
+      if (eligible.length > 0) {
+        console.log(
+          `- Send for real: \`bookipi invoice remind --send${opts.minDays !== "0" ? ` --min-days ${opts.minDays}` : ""}${opts.customer ? ` --customer "${opts.customer}"` : ""}\``
+        );
+      }
       console.log(
         `- Narrow down: \`bookipi invoice remind --min-days 30\` (only 30+ day overdue)`
       );
@@ -43611,7 +44062,7 @@ function classify(daysOverdue2) {
   }
   return null;
 }
-function buildCollectionsPlan(entries, now2 = /* @__PURE__ */ new Date(), fmt = (n) => formatCurrency(n), dateFormat = null) {
+function buildCollectionsPlan(entries, now2 = /* @__PURE__ */ new Date(), fmt = (n, currency) => formatCurrency(n, currency), dateFormat = null) {
   const drafts = [];
   const skipped = [];
   for (const e of entries) {
@@ -43636,7 +44087,7 @@ function buildCollectionsPlan(entries, now2 = /* @__PURE__ */ new Date(), fmt = 
     const vars = {
       no: e.invoiceNo,
       name: e.customerName || "there",
-      amount: fmt(e.amountDue),
+      amount: fmt(e.amountDue, e.currency),
       days: daysOverdue2,
       dueDate: formatCustomerDate(e.dueDateIso, dateFormat) ?? ""
     };
@@ -43673,8 +44124,10 @@ async function runCollections(options = {}, deps = {}) {
   const doSend = deps.send ?? sendInvoice;
   const nowDate = deps.now ?? /* @__PURE__ */ new Date();
   const excludeSet = new Set(exclude.map(normalizeNo));
-  const rawInvoices = await fetchOverdue();
-  const entries = rawInvoices.map((inv) => {
+  const { items: fetched, truncated } = await fetchOverdue();
+  const unsent = fetched.filter(isUnsentDraft);
+  const chaseable = fetched.filter((inv) => !isUnsentDraft(inv));
+  const entries = chaseable.map((inv) => {
     const amountDue = typeof inv.amountDue === "number" ? inv.amountDue : typeof inv.total === "number" ? inv.total : 0;
     return {
       invoiceId: inv._id,
@@ -43684,6 +44137,7 @@ async function runCollections(options = {}, deps = {}) {
       }),
       customerEmail: customerEmailFromInvoice(inv) ?? "",
       amountDue,
+      ...inv.currency ? { currency: String(inv.currency) } : {},
       dueDateIso: inv.dueDate || null,
       lastSentIso: typeof inv.sent === "string" ? inv.sent : null
     };
@@ -43694,6 +44148,9 @@ async function runCollections(options = {}, deps = {}) {
     void 0,
     await getCompanyDateFormat()
   );
+  const customerMatch = customerFilter ? new Set(
+    chaseable.filter((inv) => invoiceMatchesCustomer(inv, customerFilter)).map((inv) => inv._id)
+  ) : null;
   const outcomes = [];
   let acted = 0;
   for (const draft of plan.drafts) {
@@ -43704,14 +44161,11 @@ async function runCollections(options = {}, deps = {}) {
       outcomes.push(base);
       continue;
     }
-    if (customerFilter) {
-      const hay = `${draft.customerName} ${draft.customerEmail}`.toLowerCase();
-      if (!hay.includes(customerFilter.toLowerCase())) {
-        base.status = "skipped";
-        base.skipReason = `customer filter mismatch (${customerFilter})`;
-        outcomes.push(base);
-        continue;
-      }
+    if (customerMatch && !customerMatch.has(draft.invoiceId)) {
+      base.status = "skipped";
+      base.skipReason = `customer filter mismatch (${customerFilter})`;
+      outcomes.push(base);
+      continue;
     }
     if (excludeSet.has(normalizeNo(draft.invoiceNo))) {
       base.status = "skipped";
@@ -43767,10 +44221,19 @@ async function runCollections(options = {}, deps = {}) {
   for (const o of outcomes) if (o.status !== "skipped") byStage[o.stage]++;
   return {
     dryRun,
-    totalOverdue: rawInvoices.length,
+    // Everything the search returned, drafts included: they are listed under
+    // the skips, so the scanned count has to contain them.
+    totalOverdue: fetched.length,
+    ...truncated ? { partial: true } : {},
     byStage,
     outcomes,
-    planSkipped: plan.skipped,
+    planSkipped: [
+      ...unsent.map((inv) => ({
+        invoiceNo: inv.no || "N/A",
+        reason: DRAFT_SKIP_REASON
+      })),
+      ...plan.skipped
+    ],
     sent: outcomes.filter((o) => o.status === "sent").length,
     failed: outcomes.filter((o) => o.status === "failed").length,
     skipped: outcomes.filter((o) => o.status === "skipped").length
@@ -43843,8 +44306,17 @@ var collectionsCommand = new Command("collections").description(
       exclude,
       cooldownDays
     });
+    const active = result.outcomes.filter((o) => o.status !== "skipped");
+    const skipped = result.outcomes.filter((o) => o.status === "skipped");
+    const reasons = countSkipReasons([
+      ...skipped,
+      ...result.planSkipped.map((s) => ({ skipReason: s.reason }))
+    ]);
+    const skippedCount = skipped.length + result.planSkipped.length;
     if (opts.json) {
-      console.log(JSON.stringify(result, null, 2));
+      const { outcomes: _all, planSkipped: _kept, ...rest } = result;
+      const output2 = { ...rest, outcomes: active, skippedBecause: reasons };
+      console.log(JSON.stringify(output2, null, 2));
       if (result.failed > 0) process.exit(1);
       return;
     }
@@ -43857,10 +44329,10 @@ var collectionsCommand = new Command("collections").description(
       result.dryRun ? "\u{1F4CB} **Dry run \u2014 nothing is sent.** Review the staged plan, then re-run with `--send`." : "\u{1F4E8} **Sending staged reminders...**"
     );
     console.log("");
-    const active = result.outcomes.filter((o) => o.status !== "skipped");
     console.log(
-      `Scanned ${result.totalOverdue} overdue invoice(s) \u2192 ${active.length} in the ladder (\u{1F331} ${result.byStage.gentle} gentle \xB7 \u{1F4E8} ${result.byStage.firm} firm \xB7 \u26A0\uFE0F ${result.byStage.final} final).`
+      `Scanned ${result.totalOverdue} invoice(s) past their due date \u2192 ${active.length} in the ladder (\u{1F331} ${result.byStage.gentle} gentle \xB7 \u{1F4E8} ${result.byStage.firm} firm \xB7 \u26A0\uFE0F ${result.byStage.final} final).`
     );
+    if (result.partial) console.log(`\u26A0\uFE0F ${OVERDUE_PARTIAL_NOTE}`);
     console.log("");
     for (const s of STAGE_ORDER) {
       const inStage = active.filter((o) => o.stage === s);
@@ -43872,7 +44344,7 @@ var collectionsCommand = new Command("collections").description(
         const handle = o.invoiceId ? registry3.register("i", o.invoiceId) : "\u2014";
         const icon = outcomeIcon(o);
         console.log(
-          `${icon} ${o.invoiceNo} [${handle}] \u2014 ${o.customerName || "Unknown"} <${o.customerEmail}> \u2014 ${formatCurrency(o.amountDue)} (${o.daysOverdue}d overdue)`
+          `${icon} ${o.invoiceNo} [${handle}] \u2014 ${o.customerName || "Unknown"} <${o.customerEmail}> \u2014 ${formatCurrency(o.amountDue, o.currency)} (${o.daysOverdue}d overdue)`
         );
         if (o.error) console.log(`     \u21B3 ${o.error}`);
       }
@@ -43892,18 +44364,9 @@ var collectionsCommand = new Command("collections").description(
         console.log("");
       }
     }
-    const skipped = result.outcomes.filter((o) => o.status === "skipped");
-    if (skipped.length > 0 || result.planSkipped.length > 0) {
-      console.log(`## Skipped (${skipped.length + result.planSkipped.length})`);
+    if (skippedCount > 0) {
+      console.log(`## Skipped (${skippedCount})`);
       console.log("");
-      const reasons = {};
-      for (const o of skipped) {
-        const r = o.skipReason || "unknown";
-        reasons[r] = (reasons[r] || 0) + 1;
-      }
-      for (const s of result.planSkipped) {
-        reasons[s.reason] = (reasons[s.reason] || 0) + 1;
-      }
       for (const [reason, count] of Object.entries(reasons)) {
         console.log(`- ${reason}: ${count}`);
       }
@@ -43913,7 +44376,7 @@ var collectionsCommand = new Command("collections").description(
     console.log("");
     if (result.dryRun) {
       console.log(
-        `**Summary:** ${active.length} would be sent across the ladder, ${skipped.length} skipped.`
+        `**Summary:** ${active.length} would be sent across the ladder, ${skippedCount} skipped.`
       );
       console.log("");
       console.log("\u{1F4A1} **Next actions:**");
@@ -43926,7 +44389,7 @@ var collectionsCommand = new Command("collections").description(
       );
     } else {
       console.log(
-        `**Summary:** ${result.sent} sent, ${result.failed} failed, ${result.skipped} skipped.`
+        `**Summary:** ${result.sent} sent, ${result.failed} failed, ${skippedCount} skipped.`
       );
       if (result.failed > 0) {
         console.log("");
@@ -44492,8 +44955,27 @@ var updateCommand2 = new Command("update").description("Update an existing custo
   })
 );
 
+// src/usecases/customer/customerKind.ts
+var CUSTOMER_KINDS = ["person", "company"];
+function customerKindFields(input2) {
+  const named = Boolean(input2.firstName || input2.lastName);
+  if (input2.type !== void 0 && !CUSTOMER_KINDS.includes(input2.type)) {
+    throw new Error(`--type must be one of: ${CUSTOMER_KINDS.join(", ")}.`);
+  }
+  const kind = input2.type ?? (input2.worksAt || named && !input2.companyName ? "person" : "company");
+  if (kind === "company") {
+    if (input2.worksAt) throw new Error("--works-at is for a person. A company's own name goes in --company-name.");
+    if (!input2.companyName) throw new Error("A company needs --company-name.");
+    return { type: "company", companyName: input2.companyName };
+  }
+  if (input2.companyName) throw new Error("A person's company goes in --works-at; --company-name makes the customer a company.");
+  if (!named) throw new Error("A person needs --first-name or --last-name.");
+  const fullName = [input2.firstName, input2.lastName].filter(Boolean).join(" ");
+  return { type: "people", companyName: fullName, ...input2.worksAt ? { individualCompanyName: input2.worksAt } : {} };
+}
+
 // src/commands/customer/create.ts
-var createCommand3 = new Command("create").description("Create a new customer").option("--first-name <name>", "Customer first name").option("--last-name <name>", "Customer last name").option("--company-name <name>", "Company name").option("--email <email>", "Email address").option("--phone <phone>", "Phone number").option("--mobile <mobile>", "Mobile number").option("--job-title <title>", "Job title").option("--notes <text>", "Notes about the customer").option("--business-number <number>", "Business/tax number").option(
+var createCommand3 = new Command("create").description("Create a new customer").option("--first-name <name>", "Customer first name").option("--last-name <name>", "Customer last name").option("--type <type>", "person (listed under People) or company (under Companies); without it, a name with no --company-name is a person").option("--company-name <name>", "The company's own name; makes the customer a company").option("--works-at <company>", "The company a person works at; makes the customer a person").option("--email <email>", "Email address").option("--phone <phone>", "Phone number").option("--mobile <mobile>", "Mobile number").option("--job-title <title>", "Job title").option("--notes <text>", "Notes about the customer").option("--business-number <number>", "Business/tax number").option(
   "-d, --data <json>",
   "Additional fields as JSON (merged with other options)"
 ).option("--json", "Output raw JSON instead of formatted").action(
@@ -44518,6 +45000,17 @@ var createCommand3 = new Command("create").description("Create a new customer").
     if (opts.businessNumber) record2.businessNumber = opts.businessNumber;
     if (!record2.firstName && !record2.lastName && !record2.companyName) {
       failWith("At least one of --first-name, --last-name, or --company-name is required.", { json: opts?.json });
+    }
+    try {
+      Object.assign(record2, customerKindFields({
+        type: opts.type,
+        firstName: record2.firstName,
+        lastName: record2.lastName,
+        companyName: record2.companyName,
+        worksAt: opts.worksAt ?? record2.individualCompanyName
+      }));
+    } catch (error62) {
+      failWith(error62.message, { json: opts?.json });
     }
     const data = await createCustomer(record2);
     const customer = data.customersCreateOne?.record;
@@ -44574,10 +45067,11 @@ async function deleteCustomer(id) {
 }
 
 // src/commands/customer/delete.ts
-var deleteCommand2 = new Command("delete").description("Delete a customer by ID or handle (@c1) \u2014 moves to trash (soft delete)").argument("<id>", "Customer ID or handle (@c1) to delete").option("--json", "Output raw JSON instead of formatted").action(
+var deleteCommand2 = new Command("delete").description("Delete a customer by ID or handle (@c1) \u2014 moves to trash (soft delete). Needs --yes").argument("<id>", "Customer ID or handle (@c1) to delete").addOption(yesOption("delete this customer")).option("--json", "Output raw JSON instead of formatted").action(
   withErrors(async (id, opts) => {
     const registry3 = HandleRegistry.getInstance();
     const resolvedId = registry3.resolve(id);
+    confirmDelete(opts, await previewCustomerDelete(resolvedId));
     const record2 = await deleteCustomer(resolvedId);
     if (opts.json) {
       console.log(JSON.stringify(record2, null, 2));
@@ -45094,6 +45588,41 @@ var listCommand3 = new Command("list").description("List items/products").option
   })
 );
 
+// src/usecases/item/createItem.ts
+var ITEMS_CREATE_ONE_MUTATION = `
+  mutation itemCreateOne($record: CompatCreateOneitemsInput!) {
+    itemsCreateOne(record: $record) {
+      recordId
+      record {
+        unitType
+        _id
+        updatedAt
+        createdAt
+        name
+        description
+        deleted
+        price
+        company
+        isTrashed
+        trashedDate
+        taxCode
+        taxRate
+        productCode
+        photos {
+          filename
+        }
+      }
+    }
+  }
+`;
+async function createItem(record2) {
+  return bookipiGraphql({
+    query: ITEMS_CREATE_ONE_MUTATION,
+    variables: { record: record2 },
+    companyId: record2.company
+  });
+}
+
 // src/commands/item/create.ts
 var createCommand4 = new Command("create").description("Create a new item/product").requiredOption("--name <name>", "Item name").requiredOption("--price <number>", "Item price").option("--company <id>", "Company ID (or handle like @co1) \u2014 defaults to your primary company").option("--code <code>", "Product code").option("--unit <type>", "Unit type (e.g. none, hour, kg)").option("--description <text>", "Item description").option("--tax-code <code>", "Tax code").option("--tax-rate <number>", "Tax rate percentage").option(
   "--photo <file>",
@@ -45135,7 +45664,7 @@ var createCommand4 = new Command("create").description("Create a new item/produc
     if (opts.photo) {
       process.stderr.write(`  \u2022 Uploading ${opts.photo}...
 `);
-      const { uploadItemImage: uploadItemImage2 } = await import("./chunks/uploadItemImage-VGCNT5ST.js");
+      const { uploadItemImage: uploadItemImage2 } = await import("./chunks/uploadItemImage-D7ECRTSV.js");
       const { filename } = await uploadItemImage2(opts.photo);
       record2.photos = [{ filename }];
     }
@@ -45364,8 +45893,13 @@ async function uploadReceiptFile(opts) {
       `File ${filePath} has no extension; cannot determine upload type`
     );
   }
+  const contentType3 = EXT_TO_CONTENT_TYPE2[extRaw];
+  if (!contentType3) {
+    throw new Error(
+      `Only receipt images and PDFs can be uploaded (${Object.keys(EXT_TO_CONTENT_TYPE2).join(", ")}); got ".${extRaw}".`
+    );
+  }
   const ext = extRaw;
-  const contentType3 = EXT_TO_CONTENT_TYPE2[extRaw] ?? "application/octet-stream";
   const presigned = await getImageOcrUploadUrl({ ext, isThumbnail });
   await postToS3(filePath, presigned, contentType3);
   const fullKey = presigned.fields["key"] ?? "";
@@ -45488,7 +46022,7 @@ var scanCommand = new Command("scan").description(
     console.log(`# Scanned Receipt \u2014 ${upload.filename}
 `);
     console.log(`- Merchant:    ${scanned.merchantName ?? scanned.vendorName ?? "\u2014"}`);
-    console.log(`- Amount:      ${scanned.amount ?? "\u2014"} ${scanned.amount != null ? "(raw \u2014 see docs for cents vs dollars)" : ""}`);
+    console.log(`- Amount:      ${scanned.amount ?? "\u2014"} ${scanned.amount != null ? "(in the currency, e.g. 42.5 = 42.50: pass it to --amount)" : ""}`);
     console.log(`- Date:        ${scanned.purchaseDate ?? "\u2014"}`);
     console.log(`- Category:    ${scanned.categoryName ?? "\u2014"}${scanned.categoryId ? ` (id: ${scanned.categoryId})` : ""}`);
     console.log(`- Invoice #:   ${scanned.invoiceNumber ?? "\u2014"}`);
@@ -45865,16 +46399,12 @@ async function removeExpense(id) {
 }
 
 // src/commands/expense/delete.ts
-var deleteCommand3 = new Command("delete").description("Delete an expense by ID (destructive \u2014 use with care)").argument("<ids...>", "One or more expense _id values").option(
-  "-y, --yes",
-  "Skip the safety check when deleting more than one expense at a time"
-).option("--json", "Output raw JSON instead of a status line per delete").action(
+var deleteCommand3 = new Command("delete").description("Delete expenses by ID \u2014 moves them to the trash. Needs --yes").argument("<ids...>", "One or more expense _id values").addOption(yesOption("delete these expenses")).option("--json", "Output raw JSON instead of a status line per delete").action(
   withErrors(async (ids, opts) => {
-    if (ids.length > 1 && !opts.yes) {
-      throw new Error(
-        `Refusing to bulk-delete ${ids.length} expenses without --yes. Re-run with -y if you're sure.`
-      );
-    }
+    confirmDelete(opts, {
+      what: ids.length === 1 ? `expense ${ids[0]}` : `${ids.length} expenses`,
+      warnings: []
+    });
     const results = [];
     for (const id of ids) {
       try {
@@ -45895,7 +46425,7 @@ var deleteCommand3 = new Command("delete").description("Delete an expense by ID 
     for (const r of results) {
       if (r.ok) {
         console.log(
-          `\u2705 Deleted ${r.id}${r.statusCode != null ? ` (status ${r.statusCode})` : ""}`
+          `\u2705 Moved to trash: ${r.id}${r.statusCode != null ? ` (status ${r.statusCode})` : ""}`
         );
       } else {
         console.log(`\u274C ${r.id} \u2014 ${r.error}`);
@@ -46225,8 +46755,16 @@ var createCommand6 = new Command("create").description(
       description: opts.description ?? "",
       allowCustomerToInputAmount: allowCustom,
       price,
-      currency: opts.currency ?? getCurrentCurrency()
+      // The company's actual currency, never a USD guess: a link in the
+      // wrong currency charges the payer the wrong money.
+      currency: (opts.currency ?? await companyCurrency() ?? "").toUpperCase()
     };
+    if (!payload.currency) {
+      failWith(
+        "Could not tell which currency this company uses. Pass --currency (an ISO code such as AUD).",
+        { json: opts.json === true }
+      );
+    }
     await assertPaymentReady();
     const link = await createPaymentLink(payload);
     if (opts.json) {
@@ -46413,7 +46951,7 @@ var statusCommand = new Command("status").description(
     }
     if (!summary) {
       console.log(
-        `- Collected:   unknown \u2014 Bookipay no longer reports payments per link; check the Bookipay dashboard`
+        `- Collected:   unknown \u2014 Bookipay no longer reports payments per payment link, and the web app's Payment Links page doesn't show them either. Confirm with the payer, or look for the payout.`
       );
     } else if (summary.successfulCount > 0) {
       console.log(
@@ -46507,194 +47045,8 @@ var sendCommand2 = new Command("send").description(
 // src/commands/paylink/index.ts
 var paylinkCommand = new Command("paylink").description("Create and manage BPay payment links").addCommand(createCommand6).addCommand(listCommand5).addCommand(getCommand3).addCommand(statusCommand).addCommand(sendCommand2);
 
-// src/usecases/report/outstandingInvoices.ts
-var REPORT_INVOICES_QUERY = `
-  query ReportInvoices($filter: SearchFilterInput!, $paginate: SearchPaginateInput) {
-    searchInvoices(docType: 1, filter: $filter, paginate: $paginate, sort: "createdAt_desc") {
-      items {
-        _id
-        no
-        date
-        total
-        amountDue
-        dueDate
-        payments { amount date }
-        customer { _id firstName lastName companyName individualCompanyName }
-        customerReference { _id firstName lastName companyName individualCompanyName }
-      }
-      pageInfo { hasNextPage }
-    }
-  }
-`;
-var DATED_INVOICES_QUERY = `
-  query DatedInvoices($filter: SearchFilterInput!, $paginate: SearchPaginateInput) {
-    searchInvoices(docType: 1, filter: $filter, paginate: $paginate, sort: "createdAt_desc") {
-      items { _id date total }
-      pageInfo { hasNextPage }
-    }
-  }
-`;
-var UNPAID_STATUSES = [
-  "saved",
-  "sent",
-  "read",
-  "partialPaid",
-  "overdue",
-  "undelivered"
-];
-var OUTSTANDING_PAGE_SIZE = 1e3;
-var OUTSTANDING_MAX_PAGES = 3;
-async function scanInvoices(status, perPage, maxPages, companyId, query = REPORT_INVOICES_QUERY, entered) {
-  const byId = /* @__PURE__ */ new Map();
-  const items = () => [...byId.values()];
-  for (let page = 1; page <= maxPages; page++) {
-    const data = await bookipiGraphql({
-      query,
-      variables: {
-        filter: { search: null, status, ...entered ? { start: entered } : {} },
-        paginate: { fetchAll: false, page, perPage }
-      },
-      ...companyId ? { companyId } : {}
-    });
-    for (const inv of data?.searchInvoices?.items ?? []) byId.set(inv._id, inv);
-    if (!data?.searchInvoices?.pageInfo?.hasNextPage) {
-      return { items: items(), truncated: false };
-    }
-  }
-  return { items: items(), truncated: true };
-}
-async function readOutstandingInvoices(companyId) {
-  const { items, truncated } = await scanInvoices(
-    UNPAID_STATUSES,
-    OUTSTANDING_PAGE_SIZE,
-    OUTSTANDING_MAX_PAGES,
-    companyId
-  );
-  const owed = items.filter((inv) => (inv.amountDue ?? 0) > 0);
-  const overdue = owed.filter((inv) => daysOverdue(inv.dueDate) >= 1);
-  return { all: items, owed, overdue, truncated };
-}
-var ALL_STATUSES = [...UNPAID_STATUSES, "paid"];
-var DATED_MAX_PAGES = 10;
-var FORWARD_DATING_MARGIN_DAYS = 92;
-function enteredSince(startDay) {
-  return new Date(
-    Date.parse(startDay) - FORWARD_DATING_MARGIN_DAYS * 864e5
-  ).toISOString();
-}
-async function readInvoicesDatedBetween(startDay, endDay, companyId) {
-  const { items, truncated } = await scanInvoices(
-    ALL_STATUSES,
-    OUTSTANDING_PAGE_SIZE,
-    DATED_MAX_PAGES,
-    companyId,
-    DATED_INVOICES_QUERY,
-    enteredSince(startDay)
-  );
-  const inRange = items.filter((inv) => {
-    const day = calendarDate(inv.date);
-    return day !== null && day >= startDay && day <= endDay;
-  });
-  return { items: inRange, truncated };
-}
-
 // src/usecases/report/getReportSummary.ts
 var REPORT_CYCLES = ["week", "month", "quarter", "year"];
-var GET_INVOICE_REPORTS_QUERY = `
-  query GetInvoiceReports($start: Date!, $end: Date!, $cycle: String!) {
-    overviewCreated: GetInvoicesCreatedStats(
-      start: $start
-      end: $end
-      cycle: "year"
-      type: 1
-    ) {
-      year
-      total {
-        amount
-      }
-    }
-    overviewPaid: GetInvoicesPaidStats(
-      start: $start
-      end: $end
-      cycle: "year"
-    ) {
-      year
-      total {
-        amount
-      }
-    }
-    overviewOverdue: GetInvoicesOverdueStats(
-      start: $start
-      end: $end
-      cycle: "year"
-      type: 1
-    ) {
-      year
-      total {
-        count
-        amount
-      }
-      saved {
-        count
-        amount
-      }
-    }
-    overviewUnpaid: GetInvoicesPendingStats(
-      start: $start
-      end: $end
-      cycle: "year"
-      type: 1
-    ) {
-      year
-      unpaidRead {
-        amount
-        count
-      }
-      unpaidSent {
-        amount
-        count
-      }
-      partialPaid {
-        amount
-        count
-        remainingAmount
-      }
-      total {
-        amount
-        count
-      }
-    }
-    totalCreatedMetrics: GetInvoicesCreatedStats(
-      start: $start
-      end: $end
-      cycle: $cycle
-      type: 1
-    ) {
-      week
-      month
-      year
-      total {
-        tax
-        shipping
-        amount
-      }
-    }
-    totalPaidMetrics: GetInvoicesPaidStats(
-      start: $start
-      end: $end
-      cycle: $cycle
-    ) {
-      week
-      month
-      year
-      total {
-        tax
-        shipping
-        amount
-      }
-    }
-  }
-`;
 async function getReportSummary(options) {
   const { start, end, cycle = "month" } = options;
   if (!REPORT_CYCLES.includes(cycle)) {
@@ -46702,37 +47054,39 @@ async function getReportSummary(options) {
       `Unknown cycle "${cycle}" \u2014 use one of: ${REPORT_CYCLES.join(", ")}.`
     );
   }
-  const data = await bookipiGraphql({
-    query: GET_INVOICE_REPORTS_QUERY,
-    variables: { start, end, cycle: cycle === "quarter" ? "month" : cycle },
-    ...options.companyId ? { companyId: options.companyId } : {}
-  });
-  if (cycle !== "quarter" || !data) return data;
+  const days3 = periodDays(start, end);
+  if (!days3) throw new ValidationError("Use YYYY-MM-DD for the start and end dates.");
+  const { startDay, endDay } = days3;
+  const [invoiced, paid] = await Promise.all([
+    readInvoicedBetween(startDay, endDay, options.companyId),
+    readPaidBetween(startDay, endDay, options.companyId)
+  ]);
+  const amount = round2(invoiced.invoices.reduce((s, inv) => s + (Number(inv.total) || 0), 0));
+  const paidAmount = round2(paid.payments.reduce((s, p) => s + p.amount, 0));
   return {
-    ...data,
-    totalCreatedMetrics: monthsToQuarters(data.totalCreatedMetrics),
-    totalPaidMetrics: monthsToQuarters(data.totalPaidMetrics)
+    overviewPaid: [{ total: { amount: paidAmount, count: paid.payments.length } }],
+    totalPaidMetrics: cycleRows(paid.payments.map((p) => [p.day, p.amount]), cycle),
+    paidOtherCurrencies: paid.otherCurrencies,
+    overviewCreated: [{ total: { amount, count: invoiced.invoices.length } }],
+    totalCreatedMetrics: cycleRows(
+      invoiced.invoices.map((inv) => [calendarDate(inv.date), Number(inv.total) || 0]),
+      cycle
+    ),
+    unsentDrafts: invoiced.drafts,
+    otherCurrencies: invoiced.otherCurrencies,
+    ...invoiced.truncated ? { invoicedPartial: true } : {},
+    ...paid.truncated ? { paidPartial: true } : {}
   };
 }
-function monthsToQuarters(rows) {
-  const quarters = /* @__PURE__ */ new Map();
-  for (const row of rows ?? []) {
-    const [year, month] = String(row.month ?? "").split("-");
-    const m = Number(month);
-    if (!year || !(m >= 1 && m <= 12)) continue;
-    const key2 = `${year}-Q${Math.ceil(m / 3)}`;
-    const sum = quarters.get(key2) ?? { tax: 0, shipping: 0, amount: 0 };
-    sum.tax += row.total?.tax ?? 0;
-    sum.shipping += row.total?.shipping ?? 0;
-    sum.amount += row.total?.amount ?? 0;
-    quarters.set(key2, sum);
+function cycleRows(entries, cycle) {
+  const sums = /* @__PURE__ */ new Map();
+  for (const [day, value] of entries) {
+    if (!day) continue;
+    const k = bucketOf(day, cycle);
+    sums.set(k, (sums.get(k) ?? 0) + value);
   }
-  return [...quarters.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([quarter, t]) => ({
-    month: null,
-    year: null,
-    quarter,
-    total: { tax: round2(t.tax), shipping: round2(t.shipping), amount: round2(t.amount) }
-  }));
+  const field = cycle === "quarter" || cycle === "week" || cycle === "year" ? cycle : "month";
+  return [...sums.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([k, sum]) => ({ [field]: k, total: { amount: round2(sum) } }));
 }
 function bucketOf(day, cycle) {
   const [y, mm, dd] = day.split("-");
@@ -46754,11 +47108,9 @@ function bucketOf(day, cycle) {
 }
 async function getRevenueSummary(options) {
   const cycle = options.cycle ?? "month";
-  const startDay = writtenDay(options.start);
-  const endDay = writtenDay(options.end);
-  if (!startDay || !endDay) {
-    throw new ValidationError("Use YYYY-MM-DD for the start and end dates.");
-  }
+  const days3 = periodDays(options.start, options.end);
+  if (!days3) throw new ValidationError("Use YYYY-MM-DD for the start and end dates.");
+  const { startDay, endDay } = days3;
   if (startDay > endDay) {
     throw new ValidationError(
       `The start date (${startDay}) is after the end date (${endDay}).`
@@ -46767,7 +47119,7 @@ async function getRevenueSummary(options) {
   const [data, outstanding, dated] = await Promise.all([
     getReportSummary({ ...options, cycle }),
     readOutstandingInvoices(options.companyId),
-    readInvoicesDatedBetween(startDay, endDay, options.companyId)
+    readInvoicedBetween(startDay, endDay, options.companyId)
   ]);
   const sum = (rows) => round2(
     (Array.isArray(rows) ? rows : []).reduce(
@@ -46783,31 +47135,38 @@ async function getRevenueSummary(options) {
     return b;
   };
   let invoicedAmount = 0;
-  for (const inv of dated.items) {
+  for (const inv of dated.invoices) {
     const amount = Number(inv.total) || 0;
     invoicedAmount += amount;
     bucket(bucketOf(calendarDate(inv.date), cycle)).invoiced += amount;
   }
   for (const r of data?.totalPaidMetrics ?? []) bucket(key2(r)).paid = r?.total?.amount || 0;
-  const balance = (rows) => round2(rows.reduce((s, inv) => s + inv.amountDue, 0));
   return {
     period: { start: options.start, end: options.end, cycle },
     invoiced: {
-      count: dated.items.length,
+      count: dated.invoices.length,
       amount: round2(invoicedAmount),
       ...dated.truncated ? { partial: true } : {}
     },
-    paid: { amount: sum(data?.overviewPaid) },
+    unsentDrafts: dated.drafts,
+    ...dated.otherCurrencies.length ? { invoicedOtherCurrencies: dated.otherCurrencies } : {},
+    paid: { amount: sum(data?.overviewPaid), ...data?.paidPartial ? { partial: true } : {} },
+    ...data?.paidOtherCurrencies?.length ? { paidOtherCurrencies: data.paidOtherCurrencies } : {},
     buckets: [...buckets.values()].map((b) => ({ ...b, invoiced: round2(b.invoiced) })).sort((a, b) => a.period.localeCompare(b.period)),
     owedNow: {
-      unpaid: { count: outstanding.owed.length, amount: balance(outstanding.owed) },
-      overdue: { count: outstanding.overdue.length, amount: balance(outstanding.overdue) },
+      unpaid: { count: outstanding.owed.length, amount: balanceOf(outstanding.owed) },
+      overdue: { count: outstanding.overdue.length, amount: balanceOf(outstanding.overdue) },
+      ...outstanding.otherCurrencies.length ? { otherCurrencies: outstanding.otherCurrencies } : {},
       ...outstanding.truncated ? { partial: true } : {}
     }
   };
 }
 
 // src/core/formatters/ReportFormatter.ts
+var DRAFTS_NOTE = "(drafts there show as Draft and are not counted here)";
+var OVERDUE_LIST_HINT = `\`bookipi invoice list --status overdue\` ${DRAFTS_NOTE}`;
+var UNPAID_LIST_HINT = `\`bookipi invoice list --status sent,read,partialPaid,overdue,undelivered\` ${DRAFTS_NOTE}`;
+var otherAmount = (currency, amount) => `${currency} ${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 var MONTH_NAMES = [
   "",
   "Jan",
@@ -46854,12 +47213,30 @@ var ReportFormatter = class extends BaseFormatter {
     output2 += this.section("In this period");
     output2 += this.listItem(
       "Total Invoiced",
-      `${data.invoiced?.partial ? "at least " : ""}${this.formatCurrency(data.invoiced?.amount || 0)} (${invoices(data.invoiced?.count || 0)}, by invoice date)`
+      `${data.invoiced?.partial ? "at least " : ""}${this.formatCurrency(data.invoiced?.amount || 0)} (${invoices(data.invoiced?.count || 0)} sent, by invoice date)`
     );
+    if (data.unsentDrafts?.count > 0) {
+      output2 += this.listItem(
+        "Unsent drafts",
+        `${this.formatCurrency(data.unsentDrafts.amount)} (${invoices(data.unsentDrafts.count)}, not counted above: never sent to the customer)`
+      );
+    }
+    for (const o of data.invoicedOtherCurrencies ?? []) {
+      output2 += this.listItem(
+        `In ${o.currency}`,
+        `${otherAmount(o.currency, o.amount)} (${invoices(o.count)} sent${o.unsentDrafts.count ? `, plus ${otherAmount(o.currency, o.unsentDrafts.amount)} in ${invoices(o.unsentDrafts.count)} unsent` : ""}) \u2014 another currency, not converted or included above`
+      );
+    }
     output2 += this.listItem(
       "Total Paid",
-      `${this.formatCurrency(data.paid?.amount || 0)} (by payment date)`
+      `${data.paid?.partial ? "at least " : ""}${this.formatCurrency(data.paid?.amount || 0)} (by payment date)`
     );
+    for (const o of data.paidOtherCurrencies ?? []) {
+      output2 += this.listItem(
+        `Paid in ${o.currency}`,
+        `${otherAmount(o.currency, o.amount)} (${o.count} payment${o.count === 1 ? "" : "s"}) \u2014 another currency, not converted or included above`
+      );
+    }
     const owed = data.owedNow;
     if (owed) {
       const atLeast = owed.partial ? "at least " : "";
@@ -46872,6 +47249,12 @@ var ReportFormatter = class extends BaseFormatter {
         "Overdue",
         `${atLeast}${this.formatCurrency(owed.overdue.amount)} (${invoices(owed.overdue.count)})`
       );
+      for (const o of owed.otherCurrencies ?? []) {
+        output2 += this.listItem(
+          `In ${o.currency}`,
+          `unpaid ${otherAmount(o.currency, o.unpaid.amount)} (${invoices(o.unpaid.count)}), overdue ${otherAmount(o.currency, o.overdue.amount)} (${invoices(o.overdue.count)}) \u2014 not converted or included above`
+        );
+      }
     }
     const buckets = data.buckets || [];
     if (buckets.length > 0) {
@@ -46907,8 +47290,8 @@ var ReportFormatter = class extends BaseFormatter {
     output2 += this.nextActions("Next actions", [
       "Top customers: `bookipi report customers`",
       "Top items: `bookipi report items`",
-      "View overdue: `bookipi invoice list --status overdue`",
-      "View unpaid: `bookipi invoice list --status sent,read,partialPaid`"
+      `View overdue: ${OVERDUE_LIST_HINT}`,
+      `View unpaid: ${UNPAID_LIST_HINT}`
     ]);
     return output2;
   }
@@ -46921,8 +47304,11 @@ var ReportFormatter = class extends BaseFormatter {
     if (rank.totalDocs) {
       output2 += this.listItem(
         "Total",
-        `${this.formatCurrency(rank.totalDocs.amount)} across ${rank.totalDocs.count} invoice${rank.totalDocs.count !== 1 ? "s" : ""}`
+        `${rank.partial ? "at least " : ""}${this.formatCurrency(rank.totalDocs.amount)} across ${rank.totalDocs.count} sent invoice${rank.totalDocs.count !== 1 ? "s" : ""}`
       );
+    }
+    if (rank.otherCurrencies?.length) {
+      output2 += this.listItem("Not included", `invoices in ${rank.otherCurrencies.join(", ")} (another currency, not converted)`);
     }
     const items = rank.items || [];
     if (items.length === 0) {
@@ -46968,8 +47354,11 @@ Page ${pi.currentPage} of ${pi.pageCount} (${pi.itemCount} total)
     if (rank.totalDocs) {
       output2 += this.listItem(
         "Total",
-        `${this.formatCurrency(rank.totalDocs.amount)} across ${rank.totalDocs.count} line item${rank.totalDocs.count !== 1 ? "s" : ""}`
+        `${rank.partial ? "at least " : ""}${this.formatCurrency(rank.totalDocs.amount)} across ${rank.totalDocs.count} line item${rank.totalDocs.count !== 1 ? "s" : ""} on sent invoices`
       );
+    }
+    if (rank.otherCurrencies?.length) {
+      output2 += this.listItem("Not included", `invoices in ${rank.otherCurrencies.join(", ")} (another currency, not converted)`);
     }
     const items = rank.items || [];
     if (items.length === 0) {
@@ -47058,61 +47447,62 @@ var summaryCommand = new Command("summary").description(
   })
 );
 
-// src/usecases/report/fragments.ts
-var TOTAL_FIELDS = `
-        count
-        amount
-      `;
+// src/usecases/report/invoicedRank.ts
+async function rankInvoiced(options, rowsOf, amountOf, totalOf, countOf = (invoices) => invoices.length) {
+  const days3 = periodDays(options.start, options.end);
+  if (!days3) throw new ValidationError("Use YYYY-MM-DD for the start and end dates.");
+  const { startDay, endDay } = days3;
+  const { invoices, otherCurrencies, truncated } = await readInvoicedBetween(
+    startDay,
+    endDay,
+    options.companyId
+  );
+  const rows = rowsOf(invoices).sort((a, b) => amountOf(b) - amountOf(a));
+  const page = Math.max(1, options.page ?? 1);
+  const perPage = Math.max(1, options.perPage ?? 10);
+  const pageCount = Math.max(1, Math.ceil(rows.length / perPage));
+  return {
+    totalDocs: { count: countOf(invoices), amount: round2(totalOf(invoices)) },
+    pageInfo: {
+      currentPage: page,
+      perPage,
+      pageCount,
+      itemCount: rows.length,
+      hasNextPage: page < pageCount,
+      hasPreviousPage: page > 1
+    },
+    items: rows.slice((page - 1) * perPage, page * perPage),
+    ...otherCurrencies.length ? { otherCurrencies: otherCurrencies.map((c) => c.currency) } : {},
+    ...truncated ? { partial: true } : {}
+  };
+}
+function tally(map2, key2, init, add) {
+  let v = map2.get(key2);
+  if (!v) map2.set(key2, v = init());
+  add(v);
+}
 
 // src/usecases/report/getCustomersRank.ts
-var GET_INVOICE_CUSTOMERS_RANK_QUERY = `
-  query GetInvoiceCustomersRank(
-    $docType: Int!
-    $start: Date!
-    $end: Date!
-    $paginate: SearchPaginateInput
-    $sort: String
-  ) {
-    GetInvoiceCustomersRank(
-      docType: $docType
-      filter: { start: $start, end: $end }
-      paginate: $paginate
-      sort: $sort
-    ) {
-      totalDocs {${TOTAL_FIELDS}}
-      pageInfo {${PAGE_INFO_FIELDS}      }
-      items {
-        customer {
-          _id
-          companyName
-          individualCompanyName
-          firstName
-          lastName
-          email
-        }
-        total {${TOTAL_FIELDS}}
-      }
-    }
-  }
-`;
 async function getCustomersRank(options) {
-  const { start, end, page = 1, perPage = 10, sort } = options;
-  const variables = {
-    docType: 1,
-    start,
-    end,
-    paginate: {
-      fetchAll: false,
-      page,
-      perPage
-    }
-  };
-  if (sort) variables.sort = sort;
-  return bookipiGraphql({
-    query: GET_INVOICE_CUSTOMERS_RANK_QUERY,
-    variables,
-    ...options.companyId ? { companyId: options.companyId } : {}
-  });
+  const rank = await rankInvoiced(
+    options,
+    (invoices) => {
+      const byCustomer = /* @__PURE__ */ new Map();
+      for (const inv of invoices) {
+        const customer = inv.customer ?? inv.customerReference ?? {};
+        const key2 = String(customer["_id"] ?? customerName(customer, { fallback: "" }));
+        const amount = Number(inv.total) || 0;
+        tally(byCustomer, key2, () => ({ customer, total: { count: 0, amount: 0 } }), (row) => {
+          row.total.count++;
+          row.total.amount = round2(row.total.amount + amount);
+        });
+      }
+      return [...byCustomer.values()];
+    },
+    (row) => row.total.amount,
+    (invoices) => invoices.reduce((s, inv) => s + (Number(inv.total) || 0), 0)
+  );
+  return { GetInvoiceCustomersRank: rank };
 }
 
 // src/commands/report/customers.ts
@@ -47138,53 +47528,48 @@ var customersCommand = new Command("customers").description("Top customers ranke
 );
 
 // src/usecases/report/getItemsRank.ts
-var GET_INVOICE_ITEMS_RANK_QUERY = `
-  query GetInvoiceItemsRank(
-    $docType: Int!
-    $start: Date!
-    $end: Date!
-    $paginate: SearchPaginateInput
-    $sort: String
-  ) {
-    GetInvoiceItemsRank(
-      docType: $docType
-      filter: { start: $start, end: $end }
-      paginate: $paginate
-      sort: $sort
-    ) {
-      totalDocs {${TOTAL_FIELDS}}
-      pageInfo {${PAGE_INFO_FIELDS}      }
-      items {
-        item {
-          _id
-          name
-          description
-          price
-          productCode
-        }
-        total {${TOTAL_FIELDS}}
-      }
-    }
-  }
-`;
+var lineTotal = (line) => Number(line?.total ?? (Number(line?.price) || 0) * (Number(line?.quantity) || 0)) || 0;
 async function getItemsRank(options) {
-  const { start, end, page = 1, perPage = 10, sort } = options;
-  const variables = {
-    docType: 1,
-    start,
-    end,
-    paginate: {
-      fetchAll: false,
-      page,
-      perPage
-    }
-  };
-  if (sort) variables.sort = sort;
-  return bookipiGraphql({
-    query: GET_INVOICE_ITEMS_RANK_QUERY,
-    variables,
-    ...options.companyId ? { companyId: options.companyId } : {}
-  });
+  const rank = await rankInvoiced(
+    options,
+    (invoices) => {
+      const byItem = /* @__PURE__ */ new Map();
+      for (const inv of invoices) {
+        for (const line of inv.items ?? []) {
+          const name = String(line?.name ?? "").trim();
+          if (!name) continue;
+          const key2 = line._id ? `id:${line._id}` : `name:${name.toLowerCase()}`;
+          tally(
+            byItem,
+            key2,
+            () => ({
+              item: {
+                _id: line._id ?? null,
+                name,
+                description: line.description ?? null,
+                price: line.price ?? null,
+                productCode: line.productCode ?? null
+              },
+              total: { count: 0, amount: 0 }
+            }),
+            (row) => {
+              row.total.count += Number(line.quantity) || 0;
+              row.total.amount = round2(row.total.amount + lineTotal(line));
+            }
+          );
+        }
+      }
+      return [...byItem.values()];
+    },
+    (row) => row.total.amount,
+    (invoices) => invoices.reduce(
+      (s, inv) => s + (inv.items ?? []).reduce((t, l) => t + lineTotal(l), 0),
+      0
+    ),
+    // Line items, as the items report says.
+    (invoices) => invoices.reduce((n, inv) => n + (inv.items?.length ?? 0), 0)
+  );
+  return { GetInvoiceItemsRank: rank };
 }
 
 // src/commands/report/items.ts
@@ -47537,6 +47922,35 @@ function switchTab(id) {
 }
 
 // \u2500\u2500\u2500 FILTERING HELPERS \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+// Under Total Invoiced: what is left out of it \u2014 unsent drafts, and invoices
+// in other currencies (never converted).
+function invoicedSub(s, months) {
+  const parts = [];
+  if (s.unsentDrafts && s.unsentDrafts.count) {
+    parts.push('plus ' + fmt(s.unsentDrafts.amount) + ' in ' + s.unsentDrafts.count + ' unsent draft' + (s.unsentDrafts.count === 1 ? '' : 's'));
+  }
+  for (const o of s.otherCurrencies || []) {
+    if (o.count) parts.push(o.currency + ' ' + o.amount.toLocaleString('en-US', { minimumFractionDigits: 2 }) + ' not included');
+  }
+  return parts.length ? parts.join(' \xB7 ') : months + ' months';
+}
+
+// Owed in other currencies, never converted, after a tile's own count.
+function otherOwed(owed, key) {
+  const parts = (owed.otherCurrencies || [])
+    .filter((o) => o[key] && o[key].count)
+    .map((o) => o.currency + ' ' + o[key].amount.toLocaleString('en-US', { minimumFractionDigits: 2 }));
+  return parts.length ? ' \xB7 plus ' + parts.join(', ') + ' not included' : '';
+}
+
+// Under Total Paid: payments received in other currencies, never converted.
+function paidSub(s) {
+  const other = (s.paidOtherCurrencies || []).map(
+    (o) => o.currency + ' ' + o.amount.toLocaleString('en-US', { minimumFractionDigits: 2 }) + ' not included',
+  );
+  return other.length ? other.join(' \xB7 ') : 'Collected in period';
+}
+
 function filterMonthly(metrics) {
   if (!metrics || !filterStart || !filterEnd) return metrics || [];
   const startYM = toYM(filterStart);
@@ -47562,17 +47976,19 @@ function renderOverview() {
   paid.forEach(p => { paidMap[p.month] = p.total?.amount || 0; });
   const totalPaid = paid.reduce((a,b) => a + (b.total?.amount||0), 0);
 
-  // For overdue/unpaid, we use the full dataset (these are snapshots, not monthly)
-  const overdueAmt = (s.overviewOverdue||[]).reduce((a,b) => a + (b.total?.amount||0), 0);
-  const overdueCount = (s.overviewOverdue||[]).reduce((a,b) => a + (b.total?.count||0), 0);
-  const unpaidAmt = (s.overviewUnpaid||[]).reduce((a,b) => a + (b.total?.amount||0), 0);
-  const unpaidCount = (s.overviewUnpaid||[]).reduce((a,b) => a + (b.total?.count||0), 0);
+  // Overdue and unpaid are as of now, not for the period.
+  const owed = DATA.owedNow || {};
+  const atLeast = owed.partial ? 'at least ' : '';
+  const overdueAmt = owed.overdue?.amount || 0;
+  const overdueCount = owed.overdue?.count || 0;
+  const unpaidAmt = owed.unpaid?.amount || 0;
+  const unpaidCount = owed.unpaid?.count || 0;
 
   const kpis = [
-    { label: 'Total Invoiced', value: fmt(totalInvoiced), sub: created.length + ' months', cls: 'purple' },
-    { label: 'Total Paid', value: fmt(totalPaid), sub: 'Collected in period', cls: 'green' },
-    { label: 'Overdue', value: fmt(overdueAmt), sub: overdueCount + ' invoices', cls: 'orange' },
-    { label: 'Unpaid', value: fmt(unpaidAmt), sub: unpaidCount + ' outstanding', cls: 'yellow' },
+    { label: 'Total Invoiced', value: fmt(totalInvoiced), sub: invoicedSub(s, created.length), cls: 'purple' },
+    { label: 'Total Paid', value: fmt(totalPaid), sub: paidSub(s), cls: 'green' },
+    { label: 'Overdue', value: fmt(overdueAmt), sub: atLeast + overdueCount + ' invoices' + otherOwed(owed, 'overdue'), cls: 'orange' },
+    { label: 'Unpaid', value: fmt(unpaidAmt), sub: atLeast + unpaidCount + ' outstanding' + otherOwed(owed, 'unpaid'), cls: 'yellow' },
   ];
   document.getElementById('overview-kpis').innerHTML = kpis.map(k => '<div class="kpi-card '+k.cls+'"><div class="kpi-label">'+k.label+'</div><div class="kpi-value">'+k.value+'</div><div class="kpi-sub">'+k.sub+'</div></div>').join('');
 
@@ -47708,28 +48124,42 @@ var FY_START_BY_COUNTRY = {
   ZA: 2
   // Mar–Feb
 };
-async function resolveFyStartMonth(companyId) {
+async function resolveCompanyFacts(companyId) {
+  const fallback = getCurrentCurrency(companyId);
   try {
     const id = companyId ?? getDefaultCompany();
-    if (!id) return 0;
+    if (!id) return { fyStart: 0, currency: fallback };
     const company = await getCompanyRenderContext(id);
     const code = (company?.country ?? "").trim().toUpperCase();
-    return FY_START_BY_COUNTRY[code] ?? 0;
+    return {
+      fyStart: FY_START_BY_COUNTRY[code] ?? 0,
+      currency: company?.currency || fallback
+    };
   } catch {
-    return 0;
+    return { fyStart: 0, currency: fallback };
   }
 }
 async function renderDashboard(input2) {
   const { start, end } = input2;
   const periodStart = start.split("T")[0] ?? start;
   const periodEnd = end.split("T")[0] ?? end;
-  const [summary, customers, items] = await Promise.all([
-    getReportSummary({ start, end, cycle: "month" }),
-    getCustomersRank({ start, end, page: 1, perPage: 50 }),
-    getItemsRank({ start, end, page: 1, perPage: 50 })
+  const company = input2.companyId ? { companyId: input2.companyId } : {};
+  const [summary, customers, items, outstanding] = await Promise.all([
+    getReportSummary({ start, end, cycle: "month", ...company }),
+    getCustomersRank({ start, end, page: 1, perPage: 50, ...company }),
+    getItemsRank({ start, end, page: 1, perPage: 50, ...company }),
+    readOutstandingInvoices(input2.companyId)
   ]);
-  const currency = getCurrentCurrency();
-  const fyStart = String(await resolveFyStartMonth(input2.companyId));
+  const figure = (rows) => ({ count: rows.length, amount: balanceOf(rows) });
+  const owedNow = {
+    unpaid: figure(outstanding.owed),
+    overdue: figure(outstanding.overdue),
+    otherCurrencies: outstanding.otherCurrencies,
+    partial: outstanding.truncated
+  };
+  const facts = await resolveCompanyFacts(input2.companyId);
+  const currency = facts.currency;
+  const fyStart = String(facts.fyStart);
   let html = DASHBOARD_TEMPLATE;
   html = html.replace(/\{\{COMPANY_NAME\}\}/g, input2.companyName ?? "Your Company");
   html = html.replace(/\{\{PERIOD_START\}\}/g, periodStart);
@@ -47746,7 +48176,7 @@ async function renderDashboard(input2) {
   );
   html = html.replace(
     "{{DATA_JSON}}",
-    JSON.stringify({ summary, customers, items }, null, 2)
+    JSON.stringify({ summary, owedNow, customers, items }, null, 2)
   );
   html = html.replace(/\{\{CURRENCY_CODE\}\}/g, currency);
   html = html.replace(/\{\{FY_START_MONTH\}\}/g, fyStart);
@@ -47805,7 +48235,14 @@ function groupOverdueByCustomer(overdueInvoices, now2 = /* @__PURE__ */ new Date
     const days3 = daysOverdue(inv.dueDate, now2);
     let row = byCustomer[id];
     if (!row) {
-      row = { name: customerName(c, { preferCompany: true }), count: 0, total: 0, maxDays: 0 };
+      const named = customerName(c, { preferCompany: true, fallback: "" });
+      row = {
+        name: named || "Unknown",
+        count: 0,
+        total: 0,
+        maxDays: 0,
+        identified: id !== "unknown" && named !== ""
+      };
       byCustomer[id] = row;
     }
     row.count++;
@@ -47898,7 +48335,7 @@ function analyzeRevenueTrends(months) {
   }
   return insights;
 }
-function analyzeCollectionRate(months, overviewData) {
+function analyzeCollectionRate(months, overdueInvoices) {
   const insights = [];
   const totalCreated = months.reduce((s, m) => s + m.created, 0);
   const totalPaid = months.reduce((s, m) => s + m.paid, 0);
@@ -47941,21 +48378,18 @@ function analyzeCollectionRate(months, overviewData) {
       severity: "positive"
     });
   }
-  const overdueData = overviewData?.overviewOverdue;
-  if (overdueData) {
-    const overdueAmount = overdueData[0]?.total?.amount || 0;
-    const overdueCount = overdueData[0]?.total?.count || 0;
-    if (overdueAmount > 0 && totalCreated > 0) {
-      const overdueRatio = overdueAmount / totalCreated;
-      if (overdueRatio > 0.2) {
-        insights.push({
-          emoji: "\u{1F534}",
-          category: "Collections",
-          title: `${formatCurrency(overdueAmount)} is overdue (${pct(overdueRatio)} of total invoiced)`,
-          detail: `${overdueCount} invoice${overdueCount !== 1 ? "s" : ""} are past due. This is a significant portion of your revenue. Preview bulk reminders with \`bookipi invoice remind\` (dry-run by default), then add \`--send\` to email them.`,
-          severity: "critical"
-        });
-      }
+  const overdueAmount = balanceOf(overdueInvoices);
+  const overdueCount = overdueInvoices.length;
+  if (overdueAmount > 0 && totalCreated > 0) {
+    const overdueRatio = overdueAmount / totalCreated;
+    if (overdueRatio > 0.2) {
+      insights.push({
+        emoji: "\u{1F534}",
+        category: "Collections",
+        title: `${formatCurrency(overdueAmount)} is overdue`,
+        detail: `${overdueCount} invoice${overdueCount !== 1 ? "s" : ""} are past due today, ${pct(overdueRatio)} of the ${formatCurrency(totalCreated)} you invoiced in this period. Preview bulk reminders with \`bookipi invoice remind\` (dry-run by default), then add \`--send\` to email them.`,
+        severity: "critical"
+      });
     }
   }
   return insights;
@@ -48066,7 +48500,7 @@ function analyzeOverdueInvoices(overdueInvoices) {
   const insights = [];
   if (!overdueInvoices || overdueInvoices.length === 0) return insights;
   const byCustomer = groupOverdueByCustomer(overdueInvoices);
-  const repeatOffenders = Object.values(byCustomer).filter((c) => c.count >= 3).sort((a, b) => b.total - a.total);
+  const repeatOffenders = Object.values(byCustomer).filter((c) => c.count >= 3 && c.identified).sort((a, b) => b.total - a.total);
   for (const offender of repeatOffenders.slice(0, 2)) {
     insights.push({
       emoji: "\u{1F534}",
@@ -48430,12 +48864,14 @@ async function fetchInvoiceAnalysisData(start, end, company) {
   const itemRev = /* @__PURE__ */ new Map();
   const paymentRecords = [];
   const MAX_PAGES = 20;
+  const home = await companyCurrency(company.companyId);
   let page = 1;
   let pageCount = 1;
   do {
     const resp = await listInvoices({ start, end, page, perPage: 100, ...company });
     const items = resp?.searchInvoices?.items ?? [];
     for (const inv of items) {
+      if (!inHomeCurrency(inv, home)) continue;
       const c = inv.customer || inv.customerReference || {};
       const id = c._id || c.email || identifiedCustomerName(c);
       const displayName2 = identifiedCustomerName(c);
@@ -48453,10 +48889,10 @@ async function fetchInvoiceAnalysisData(start, end, company) {
       const paidStatus = String(inv.paymentStatus || "").toLowerCase();
       const isPaidish = paidStatus !== "" && paidStatus !== "not_paid";
       if (!isPaidish && amount > 0) {
-        if (status === "saved" && !inv.sent) {
+        if (isUnsentDraft(inv)) {
           leakage.neverSent.count++;
           leakage.neverSent.amount += amount;
-        } else if (status === "read") {
+        } else if (status === "read" && !isPastDue(inv)) {
           leakage.viewedUnpaid.count++;
           leakage.viewedUnpaid.amount += amount;
         }
@@ -48809,11 +49245,30 @@ function metricPeriod(m) {
 }
 async function getInsights(opts) {
   const company = opts.companyId ? { companyId: opts.companyId } : {};
-  const [summaryData, customersData, itemsData, overdueData] = await Promise.all([
+  const [
+    summaryData,
+    customersData,
+    itemsData,
+    outstanding,
+    {
+      orders: ordersByCustomer,
+      baskets,
+      leakage,
+      customerRevenue,
+      itemRevenue,
+      paymentRecords
+    },
+    expenses,
+    customerTags
+  ] = await Promise.all([
     getReportSummary({ start: opts.start, end: opts.end, cycle: "month", ...company }),
     getCustomersRank({ start: opts.start, end: opts.end, page: 1, perPage: 50, ...company }),
     getItemsRank({ start: opts.start, end: opts.end, page: 1, perPage: 50, ...company }),
-    listInvoices({ status: ["overdue"], page: 1, perPage: 100, ...company })
+    // What is owed, read the way every other report reads it.
+    readOutstandingInvoices(opts.companyId),
+    fetchInvoiceAnalysisData(opts.start, opts.end, company),
+    fetchExpenses(opts.start, opts.end, company),
+    fetchCustomerTags(company)
   ]);
   const createdMetrics = summaryData?.totalCreatedMetrics || [];
   const paidMetrics = summaryData?.totalPaidMetrics || [];
@@ -48842,23 +49297,7 @@ async function getInsights(opts) {
     invoiceCount: i.total?.count || 0,
     totalRevenue: i.total?.amount || 0
   }));
-  const overdueInvoices = overdueData?.searchInvoices?.items || [];
-  const [
-    {
-      orders: ordersByCustomer,
-      baskets,
-      leakage,
-      customerRevenue,
-      itemRevenue,
-      paymentRecords
-    },
-    expenses,
-    customerTags
-  ] = await Promise.all([
-    fetchInvoiceAnalysisData(opts.start, opts.end, company),
-    fetchExpenses(opts.start, opts.end, company),
-    fetchCustomerTags(company)
-  ]);
+  const overdueInvoices = outstanding.overdue;
   const insights = [
     ...analyzeRevenueTrends(months),
     ...analyzeForecast(months),
@@ -48866,7 +49305,7 @@ async function getInsights(opts) {
     ...analyzeRevenueDrivers(customerRevenue, itemRevenue),
     ...analyzeRevenueBySegment(customerRevenue, customerTags),
     ...analyzeSeasonalOutlook(months),
-    ...analyzeCollectionRate(months, summaryData),
+    ...analyzeCollectionRate(months, overdueInvoices),
     ...analyzeCustomerConcentration(customers, totalCustomerRevenue),
     ...analyzeCustomerCadence(ordersByCustomer),
     ...analyzeContactList(ordersByCustomer, overdueInvoices),
@@ -48934,7 +49373,7 @@ ${parts2.join("  \u2022  ")}`);
   if (criticalCount > 0) {
     lines.push(`- Preview bulk reminders: \`bookipi invoice remind\` (dry-run by default; add \`--send\` to email)`);
   }
-  lines.push(`- View overdue: \`bookipi invoice list --status overdue\``);
+  lines.push(`- View overdue: ${OVERDUE_LIST_HINT}`);
   lines.push(`- Full dashboard: \`bookipi report dashboard\``);
   lines.push(`- Top customers: \`bookipi report customers\``);
   return lines.join("\n");
@@ -49277,47 +49716,22 @@ function getPeriodDates(period, now2 = /* @__PURE__ */ new Date()) {
       );
   }
 }
-var DIGEST_PERIOD_STATS_QUERY = `
-  query DigestPeriodStats($start: Date!, $end: Date!) {
-    created: GetInvoicesCreatedStats(start: $start, end: $end, cycle: "year", type: 1) {
-      total {
-        amount
-        count
-      }
-    }
-    paid: GetInvoicesPaidStats(start: $start, end: $end, cycle: "year") {
-      total {
-        amount
-        count
-      }
-    }
-  }
-`;
 var RECENT_PAID_SCAN = 200;
-function sumTotals(rows) {
-  let count = 0;
-  let amount = 0;
-  for (const row of Array.isArray(rows) ? rows : []) {
-    count += row?.total?.count || 0;
-    amount += row?.total?.amount || 0;
-  }
-  return { count, amount: round2(amount) };
-}
 async function getDigest(opts) {
   const { period } = opts;
   const periodStart = new Date(period.start).getTime();
   const periodEnd = new Date(period.end).getTime();
-  const [stats, customersData, outstanding, recentlyPaid, dealsData] = await Promise.all([
-    bookipiGraphql({
-      query: DIGEST_PERIOD_STATS_QUERY,
-      variables: { start: period.start, end: period.end }
-    }),
-    getCustomersRank({
-      start: period.start,
-      end: period.end,
-      page: 1,
-      perPage: 5
-    }),
+  const days3 = periodDays(period.start, period.end);
+  if (!days3) throw new ValidationError(`Cannot read the period ${period.start} \u2013 ${period.end}.`);
+  const { startDay: firstDay, endDay: lastDay } = days3;
+  const [paid, invoiced, customersData, outstanding, recentlyPaid, dealsData] = await Promise.all([
+    // Payments received in the period, by payment date, split by currency.
+    // The API's paid stats added every currency together.
+    readPaidBetween(firstDay, lastDay),
+    // Invoiced = invoices SENT and dated in the period; never-sent drafts
+    // are counted apart. The API's created stats counted them as invoiced.
+    readInvoicedBetween(firstDay, lastDay),
+    getCustomersRank({ start: firstDay, end: lastDay, page: 1, perPage: 5 }),
     readOutstandingInvoices(),
     scanInvoices(["paid"], RECENT_PAID_SCAN, 1),
     // Pull all deals (no status filter → fans out to all 7 statuses internally).
@@ -49331,7 +49745,6 @@ async function getDigest(opts) {
     listDeals({ perStatus: 25 })
   ]);
   const { owed, overdue: overdueInvoices } = outstanding;
-  const balance = (rows) => round2(rows.reduce((sum, inv) => sum + inv.amountDue, 0));
   const overdueItems = overdueInvoices.map((inv) => ({
     // The invoice number verbatim — no invented "INV-" prefix. Real data
     // stores these inconsistently ("invoice-687", "INV-686", bare digits),
@@ -49362,21 +49775,35 @@ async function getDigest(opts) {
       const no = inv.no ? String(inv.no).trim() : "an invoice";
       payments.push({
         at,
-        line: `${no} from ${getCustomerName2(inv)} \u2014 ${formatCurrency(p.amount)} paid`
+        // In the invoice's own currency: a USD payment is not a peso one.
+        line: `${no} from ${getCustomerName2(inv)} \u2014 ${formatCurrency(p.amount, inv.currency || void 0)} paid`
       });
     }
   }
   const recentActivity = payments.sort((a, b) => b.at - a.at).slice(0, 5).map((p) => p.line);
   return {
     period,
-    created: sumTotals(stats?.created),
-    paid: sumTotals(stats?.paid),
+    created: {
+      count: invoiced.invoices.length,
+      amount: round2(invoiced.invoices.reduce((s, inv) => s + (Number(inv.total) || 0), 0))
+    },
+    unsentDrafts: invoiced.drafts,
+    otherCurrencies: {
+      invoiced: invoiced.otherCurrencies,
+      paid: paid.otherCurrencies,
+      owed: outstanding.otherCurrencies
+    },
+    paid: {
+      count: paid.payments.length,
+      amount: round2(paid.payments.reduce((s, p) => s + p.amount, 0)),
+      ...paid.truncated ? { partial: true } : {}
+    },
     overdue: {
       count: overdueInvoices.length,
-      amount: balance(overdueInvoices),
+      amount: balanceOf(overdueInvoices),
       items: overdueItems
     },
-    unpaid: { count: owed.length, amount: balance(owed) },
+    unpaid: { count: owed.length, amount: balanceOf(owed) },
     outstandingArePartial: outstanding.truncated,
     topCustomers,
     recentActivity,
@@ -49397,11 +49824,30 @@ function formatTextDigest(data) {
   const atLeast = data.outstandingArePartial ? "at least " : "";
   lines.push("  In this period");
   lines.push(`  Invoiced:   ${formatCurrency(data.created.amount)}${invoices(data.created.count)}`);
-  lines.push(`  Collected:  ${formatCurrency(data.paid.amount)}${invoices(data.paid.count)}`);
+  if (data.unsentDrafts.count > 0) {
+    lines.push(
+      `  Drafts:     ${formatCurrency(data.unsentDrafts.amount)}${invoices(data.unsentDrafts.count)} not sent yet, not counted as invoiced`
+    );
+  }
+  const payments = data.paid.count > 0 ? ` (${data.paid.count} payment${data.paid.count === 1 ? "" : "s"})` : "";
+  lines.push(`  Collected:  ${data.paid.partial ? "at least " : ""}${formatCurrency(data.paid.amount)}${payments}`);
+  for (const o of data.otherCurrencies.paid) {
+    lines.push(`  In ${o.currency}:     ${otherAmount(o.currency, o.amount)} collected (${o.count} payment${o.count === 1 ? "" : "s"}), not converted or included above`);
+  }
+  for (const o of data.otherCurrencies.invoiced) {
+    const drafts = o.unsentDrafts.count ? `${o.count ? ", plus " : ""}${otherAmount(o.currency, o.unsentDrafts.amount)} in ${o.unsentDrafts.count} unsent draft${o.unsentDrafts.count === 1 ? "" : "s"}` : "";
+    const sent = o.count ? `${otherAmount(o.currency, o.amount)}${invoices(o.count)} invoiced` : "";
+    lines.push(`  In ${o.currency}:     ${sent}${drafts}, not converted or included above`);
+  }
   lines.push("");
   lines.push("  Owed as of today (all invoices)");
   lines.push(`  Unpaid:     ${atLeast}${formatCurrency(data.unpaid.amount)}${invoices(data.unpaid.count)}`);
   lines.push(`  Overdue:    ${atLeast}${formatCurrency(data.overdue.amount)}${invoices(data.overdue.count)}`);
+  for (const o of data.otherCurrencies.owed) {
+    lines.push(
+      `  In ${o.currency}:     unpaid ${otherAmount(o.currency, o.unpaid.amount)}${invoices(o.unpaid.count)}, overdue ${otherAmount(o.currency, o.overdue.amount)}${invoices(o.overdue.count)}, not converted or included above`
+    );
+  }
   if (data.created.amount > 0) {
     const collectionRate = data.paid.amount / data.created.amount;
     const filled = Math.min(20, Math.max(0, Math.round(collectionRate * 20)));
@@ -49517,7 +49963,7 @@ function formatTextDigest(data) {
   lines.push("\u{1F4A1} **Suggested actions:**");
   if (data.overdue.items.length > 0) {
     lines.push(`- Preview bulk reminders: \`bookipi invoice remind\` (dry-run by default; add \`--send\` to actually email)`);
-    lines.push(`- View all overdue: \`bookipi invoice list --status overdue\``);
+    lines.push(`- View all overdue: ${OVERDUE_LIST_HINT}`);
   }
   if (data.pipeline.stalled.length > 0) {
     lines.push(`- Chase stalled deals: \`bookipi deal list --status proposal\` and \`bookipi deal list --status contract\``);
@@ -49533,8 +49979,10 @@ function formatJsonDigest(data) {
       // For the period.
       invoiced: data.created.amount,
       invoicedCount: data.created.count,
+      unsentDrafts: data.unsentDrafts,
+      otherCurrencies: data.otherCurrencies,
       collected: data.paid.amount,
-      collectedCount: data.paid.count,
+      collectedPayments: data.paid.count,
       // As of now, every invoice, by balance.
       unpaid: { amount: data.unpaid.amount, count: data.unpaid.count },
       overdue: { amount: data.overdue.amount, count: data.overdue.count },
@@ -49601,11 +50049,14 @@ var digestCommand = new Command("digest").description(
 
 // src/usecases/report/getSuggestions.ts
 var plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+function shellQuote(value) {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+}
 function suggestOverdueActions(overdueInvoices) {
   const actions = [];
   if (!overdueInvoices || overdueInvoices.length === 0) return actions;
   const byCustomer = groupOverdueByCustomer(overdueInvoices);
-  const customers = Object.values(byCustomer).sort((a, b) => b.total - a.total);
+  const customers = Object.values(byCustomer).filter((c) => c.identified).sort((a, b) => b.total - a.total);
   const severe = overdueInvoices.filter((inv) => daysOverdue(inv.dueDate) >= 90);
   if (severe.length > 0) {
     const severeTotal = severe.reduce((s, inv) => s + (inv.amountDue || inv.total || 0), 0);
@@ -49615,7 +50066,9 @@ function suggestOverdueActions(overdueInvoices) {
       title: `Escalate ${plural(severe.length, "severely overdue invoice")}`,
       why: `${formatCurrency(severeTotal)} has been outstanding for 90+ days \u2014 these are at risk of becoming uncollectable.`,
       impact: `Recovering even half would add ${formatCurrency(severeTotal * 0.5)} to your cash flow.`,
-      command: `bookipi invoice list --status overdue`,
+      // A dry run lists exactly these: Bookipi's own overdue list also
+      // returns drafts the customer was never sent.
+      command: `bookipi invoice remind --min-days 90 --limit ${severe.length}`,
       userPrompt: "Show me the invoices that are 90+ days overdue"
     });
   }
@@ -49649,7 +50102,7 @@ function suggestOverdueActions(overdueInvoices) {
         title: `Follow up with ${top.name} (${top.count} overdue invoices)`,
         why: `They owe ${formatCurrency(top.total)}, with the oldest ${top.maxDays} days past due.`,
         impact: `This is your single biggest outstanding balance.`,
-        command: `bookipi invoice list --status overdue`,
+        command: `bookipi invoice remind --customer ${shellQuote(top.name)}`,
         userPrompt: `Show me all overdue invoices for ${top.name}`
       });
     }
@@ -49781,9 +50234,7 @@ async function getSuggestions(opts) {
   ]);
   const totalCreated = (summaryData?.overviewCreated || []).reduce((s, y) => s + (y.total?.amount || 0), 0);
   const totalPaid = (summaryData?.overviewPaid || []).reduce((s, y) => s + (y.total?.amount || 0), 0);
-  const unpaidAmount = round2(
-    outstanding.owed.reduce((s, inv) => s + inv.amountDue, 0)
-  );
+  const unpaidAmount = balanceOf(outstanding.owed);
   const customerItems = customersData?.GetInvoiceCustomersRank?.items || [];
   const totalCustomerRevenue = customersData?.GetInvoiceCustomersRank?.totalDocs?.amount || 0;
   const itemItems = itemsData?.GetInvoiceItemsRank?.items || [];
@@ -53193,10 +53644,11 @@ async function deleteProposal(id) {
 }
 
 // src/commands/proposal/delete.ts
-var deleteCommand4 = new Command("delete").description("Delete a proposal by ID or handle (@p1) \u2014 moves to trash (soft delete)").argument("<id>", "Proposal ID or handle (@p1) to delete").option("--json", "Output raw JSON instead of formatted").action(
+var deleteCommand4 = new Command("delete").description("Delete a proposal by ID or handle (@p1) \u2014 moves to trash (soft delete). Needs --yes").argument("<id>", "Proposal ID or handle (@p1) to delete").addOption(yesOption("delete this proposal")).option("--json", "Output raw JSON instead of formatted").action(
   withErrors(async (id, opts) => {
     const registry3 = HandleRegistry.getInstance();
     const resolvedId = registry3.resolve(id);
+    confirmDelete(opts, await previewProposalDelete(resolvedId));
     const record2 = await deleteProposal(resolvedId);
     if (opts.json) {
       console.log(JSON.stringify(record2, null, 2));
@@ -53272,55 +53724,6 @@ async function sendProposal(opts) {
     query: PROPOSAL_SEND_MUTATION,
     variables
   });
-}
-
-// src/usecases/proposal/getProposal.ts
-var PROPOSALS_ONE_QUERY = `
-  query ProposalsOne($_id: MongoID!) {
-    proposalsOne(filter: { _id: $_id }) {
-      _id
-      no
-      title
-      status
-      isDraft
-      projectPipelineId
-      effectiveDate
-      expirationDate
-      startDate
-      endDate
-      contractLength
-      customer {
-        _id
-        companyName
-        firstName
-        lastName
-        email
-        individualCompanyName
-      }
-      customerReference {
-        _id
-        email
-        companyName
-        individualCompanyName
-      }
-      serviceItems {
-        _id
-        name
-        description
-        price
-        quantity
-        totalAmount
-        billingType
-      }
-    }
-  }
-`;
-async function getProposalById(id) {
-  const data = await bookipiGraphql({
-    query: PROPOSALS_ONE_QUERY,
-    variables: { _id: id }
-  });
-  return data?.proposalsOne ?? null;
 }
 
 // src/usecases/deal/getDeal.ts
@@ -54944,8 +55347,10 @@ async function getWebsiteManageLink() {
   return link;
 }
 async function createWebsiteLink() {
+  const auth = await getWebAuthParams();
   const data = await bookipiGraphql({
-    query: "mutation { createWebsite { websiteLink } }"
+    query: "mutation { createWebsite { websiteLink } }",
+    ...auth ? { extraHeaders: { "x-auth-token": auth.authToken } } : {}
   });
   const link = data?.createWebsite?.websiteLink;
   if (!link) throw new Error("Website creation returned no link.");
@@ -54999,7 +55404,7 @@ async function classifyBuilderDenial(res) {
     summary: `${res.status}${message || text2 ? ` \u2014 ${(message || text2).slice(0, 200)}` : ""}`
   };
 }
-var NO_WEBSITE_YET = "This company doesn't have a website yet, so there is nothing to build or edit. Create it first \u2014 create_website on the connector, `bookipi website create` in the CLI \u2014 then try again.";
+var NO_WEBSITE_YET = `This company doesn't have a website yet, so there is nothing to build or edit. Create it first \u2014 open the Website Builder in the Bookipi web app (${config.BOOKIPI_WEB_URL}/web-builder), or \`bookipi website create\` in the CLI \u2014 then try again.`;
 async function mintBuilderSession() {
   let data;
   try {
@@ -61711,7 +62116,7 @@ __export(core_exports2, {
   createToJSONSchemaMethod: () => createToJSONSchemaMethod,
   decode: () => decode,
   decodeAsync: () => decodeAsync,
-  describe: () => describe,
+  describe: () => describe2,
   encode: () => encode,
   encodeAsync: () => encodeAsync,
   extractDefs: () => extractDefs,
@@ -76701,7 +77106,7 @@ function _check(fn, params) {
   return ch;
 }
 // @__NO_SIDE_EFFECTS__
-function describe(description) {
+function describe2(description) {
   const ch = new $ZodCheck({ check: "describe" });
   ch._zod.onattach = [
     (inst) => {
@@ -78656,7 +79061,7 @@ __export(external_exports, {
   decode: () => decode2,
   decodeAsync: () => decodeAsync2,
   deepPartial: () => deepPartial,
-  describe: () => describe2,
+  describe: () => describe3,
   discriminatedUnion: () => discriminatedUnion,
   e164: () => e1642,
   email: () => email2,
@@ -78899,7 +79304,7 @@ __export(schemas_exports2, {
   currencyCode: () => currencyCode2,
   custom: () => custom,
   date: () => date2,
-  describe: () => describe2,
+  describe: () => describe3,
   discriminatedUnion: () => discriminatedUnion,
   e164: () => e1642,
   email: () => email2,
@@ -80491,7 +80896,7 @@ function refine(fn, _params = {}) {
 function superRefine(fn, params) {
   return _superRefine(fn, params);
 }
-var describe2 = describe;
+var describe3 = describe2;
 var meta2 = meta;
 var ZodInstanceOf = /* @__PURE__ */ $constructor("ZodInstanceOf", (inst, def) => {
   ZodCustom.init(inst, def);
@@ -87317,7 +87722,9 @@ function projectExpenseList(raw) {
   return {
     expenses: asRows(result?.items).map((e) => ({
       id: e._id ?? null,
-      amount: e.amount ?? null,
+      // Stored in cents; returned in the company's currency, as create_expense
+      // takes it and as the user thinks of it.
+      amount: typeof e.amount === "number" ? Math.round(e.amount) / 100 : null,
       merchant: e.merchantName ?? null,
       date: calendarDate(e.purchaseDate),
       categoryId: e.categoryId ?? null,
@@ -87561,7 +87968,10 @@ function projectCustomersRank(raw) {
     // The window's totals, so a caller can say "top 3 of 30 customers,
     // ₱762,056 invoiced" without a second call.
     totalCustomers: block?.["pageInfo"]?.["itemCount"] ?? null,
-    totalInvoiced: totals["amount"] ?? null
+    totalInvoiced: totals["amount"] ?? null,
+    ...block?.["otherCurrencies"] ? { notIncludedCurrencies: block["otherCurrencies"] } : {},
+    // More invoices than one read covers: the figures are floors.
+    ...block?.["partial"] === true ? { partial: true } : {}
   };
 }
 function projectItemsRank(raw) {
@@ -87579,7 +87989,9 @@ function projectItemsRank(raw) {
       };
     }),
     totalItems: block?.["pageInfo"]?.["itemCount"] ?? null,
-    totalRevenue: totals["amount"] ?? null
+    totalRevenue: totals["amount"] ?? null,
+    ...block?.["otherCurrencies"] ? { notIncludedCurrencies: block["otherCurrencies"] } : {},
+    ...block?.["partial"] === true ? { partial: true } : {}
   };
 }
 function projectWebsiteStatus(raw) {
@@ -87688,6 +88100,9 @@ function projectDigest(raw, overdueLimit = 10) {
   return {
     period: d["period"] ?? null,
     created: d["created"] ?? null,
+    unsentDrafts: d["unsentDrafts"] ?? null,
+    // Per currency, not converted and in none of the figures here.
+    otherCurrencies: d["otherCurrencies"] ?? null,
     paid: d["paid"] ?? null,
     unpaid: d["unpaid"] ?? null,
     ...d["outstandingArePartial"] === true ? { outstandingArePartial: true } : {},
@@ -87724,7 +88139,9 @@ function projectPaylinkStatus(link, payments) {
       status: p["status"] ?? null,
       paidAt: p["createdAt"] ?? p["paidAt"] ?? null
     })),
-    ...summary ? {} : { note: "Payment history for this link is unavailable from Bookipay right now." }
+    ...summary ? {} : {
+      note: "Bookipay no longer reports payments per payment link, and the web app's Payment Links page does not show them either, so whether this link was paid cannot be checked here. Say it is unknown, not unpaid; suggest confirming with the payer or looking for the payout."
+    }
   };
 }
 
@@ -88050,15 +88467,6 @@ Returns per meeting: id, title, start, end, status, location, customerId and cus
   }
 ];
 
-// src/mcp/uploadPath.ts
-import { existsSync } from "node:fs";
-function assertServerCanRead(path11) {
-  if (existsSync(path11)) return;
-  throw new Error(
-    `This server cannot see ${path11}. \`file_path\` is read by the SERVER, not by you, so it only works when both are on the same machine \u2014 a stdio server, or one you started locally. If you are on a hosted connector the path is probably correct and simply not reachable from there; sending the file's bytes is not supported yet, so upload it from the web app or run a local server instead. Do not retry with a different path \u2014 the path is not the problem.`
-  );
-}
-
 // src/mcp/reads/catalog.ts
 var catalogReads = [
   {
@@ -88090,7 +88498,7 @@ var catalogReads = [
     name: "list_expenses",
     group: "expenses",
     title: "List expenses and receipts",
-    description: "List the active company's recorded expenses, newest first, optionally within a date range or matching a merchant name. Use for 'what did I spend', 'my expenses last month', or finding a specific receipt.\nReturns one row per expense with exactly these fields: id, amount, merchant, date, categoryId, category, notes \u2014 plus pageInfo. The receipt IMAGE is not returned: only S3 keys exist for it and an agent cannot render them. No currency field: it belongs to the company, see whoami.",
+    description: "List the active company's recorded expenses, newest first, optionally within a date range or matching a merchant name. Use for 'what did I spend', 'my expenses last month', or finding a specific receipt.\nReturns one row per expense with exactly these fields: id, amount, merchant, date, categoryId, category, notes \u2014 plus pageInfo. The receipt IMAGE is not returned: only S3 keys exist for it and an agent cannot render them. `amount` is in the company's currency (42.5 is A$42.50), not cents. No currency field: it belongs to the company, see whoami.",
     readOnly: true,
     inputSchema: external_exports.object({
       ...companyScope,
@@ -88127,39 +88535,6 @@ var catalogReads = [
       return projectPaymentLinkList(
         await listPaymentLinks(compact({ page: a.page, perPage: a.per_page }))
       );
-    }
-  },
-  {
-    name: "scan_receipt",
-    group: "expenses",
-    title: "Read a receipt photo and extract its fields",
-    description: "Run Bookipi's OCR over a receipt image or PDF and return what it read: amount, merchant, date, suggested category, invoice number.\nSAVES NOTHING. Show the extracted fields to the user, let them correct anything wrong, then call create_expense. Never log an expense straight from a scan without showing it first \u2014 OCR misreads amounts, and a wrong figure in the books is worse than no figure.\n`file_path` must be a path THIS SERVER can read: png, jpg, jpeg, pdf, heic or webp. That works when the server and your files are on the same machine (a local server, or stdio). A hosted connector cannot see your disk, and there is no way to send it the bytes yet \u2014 say so plainly rather than guessing at a path.\nThe file is uploaded to Bookipi's storage for the OCR to run. No business record is created.",
-    readOnly: true,
-    inputSchema: external_exports.object({
-      file_path: external_exports.string().describe("Absolute path to the receipt, readable by this server.")
-    }),
-    run: async (args) => {
-      const a = args;
-      assertServerCanRead(a.file_path);
-      const upload = await uploadReceiptFile({
-        filePath: a.file_path,
-        isThumbnail: false
-      });
-      const scanned = await scanInvoiceImage([upload.fullKey]);
-      return {
-        file: upload.filename,
-        read: {
-          merchant: scanned.merchantName ?? scanned.vendorName ?? null,
-          amount: scanned.amount ?? null,
-          date: scanned.purchaseDate ?? null,
-          category: scanned.categoryName ?? null,
-          categoryId: scanned.categoryId ?? null,
-          invoiceNumber: scanned.invoiceNumber ?? null,
-          ...scanned.notes ? { notes: scanned.notes } : {}
-        },
-        ...scanned.errorMessage ? { ocrError: scanned.errorMessage } : {},
-        action: "NOTHING WAS SAVED. Show these fields to the user and ask them to confirm the AMOUNT especially, then call create_expense with what they agree to."
-      };
     }
   },
   {
@@ -88229,7 +88604,7 @@ var reportReads = [
     name: "report_summary",
     group: "reports",
     title: "Revenue totals over a date range",
-    description: "What was invoiced and paid in a date range, broken down by week, month, quarter or year. This is the operation for 'show me revenue' and 'how did last quarter go'.\nReturns `invoiced` and `paid` for the range, `buckets` (one per cycle, e.g. 2026-08 or 2026-Q3), and `owedNow`. WHAT EACH MEANS: `invoiced` is invoices DATED in the range, by the date on the invoice; `paid` is payments RECEIVED in the range, by payment date, so it can include payments on older invoices; `owedNow` (unpaid, overdue) is everything owed AS OF NOW by balance, not for the range \u2014 the same figures report_digest gives. `partial: true` on a figure means it is a floor. Amounts are in the company's currency \u2014 see whoami. For a written interpretation, use report_insights.",
+    description: "What was invoiced and paid in a date range, broken down by week, month, quarter or year. This is the operation for 'show me revenue' and 'how did last quarter go'.\nReturns `invoiced` and `paid` for the range, `buckets` (one per cycle, e.g. 2026-08 or 2026-Q3), and `owedNow`. WHAT EACH MEANS: `invoiced` is invoices SENT and DATED in the range, by the date on the invoice; `unsentDrafts` is drafts dated in the range that were never sent, kept out of `invoiced` \u2014 mention them on their own. Every figure is in the company's currency; invoices in other currencies cannot be converted, so they are left out and listed per currency in `invoicedOtherCurrencies`, `paidOtherCurrencies` and `owedNow.otherCurrencies` \u2014 say so rather than adding them in. `paid` is payments RECEIVED in the range, by payment date, so it can include payments on older invoices; `owedNow` (unpaid, overdue) is everything owed AS OF NOW by balance, not for the range, drafts never sent to the customer left out \u2014 the same figures report_digest gives. `partial: true` on a figure means it is a floor. Amounts are in the company's currency \u2014 see whoami. For a written interpretation, use report_insights.",
     readOnly: true,
     inputSchema: external_exports.object({
       ...companyScope,
@@ -88406,7 +88781,12 @@ var websiteReads = [
       const site = info.website ? await getV4Site().catch(() => null) : null;
       const slug = typeof site?.siteUrl === "string" && site.siteUrl ? site.siteUrl : null;
       const url2 = slug && info.website?.isPublished ? `${await getBuilderOrigin()}/v4/pages/${slug}` : null;
-      return projectWebsiteStatus({ ...info, slug, url: url2 });
+      const status = projectWebsiteStatus({ ...info, slug, url: url2 });
+      if (info.website) return status;
+      return {
+        ...status,
+        next: `No website yet, and it can't be created from here. Send the user to the Website Builder in the Bookipi web app (${config.BOOKIPI_WEB_URL}/web-builder): opening it creates the site. Then generate_website can build it.`
+      };
     }
   },
   {
@@ -88761,7 +89141,7 @@ function registerInvoiceWrites(server) {
     "create_invoice",
     {
       title: "Create an invoice, estimate or other document",
-      description: "Create a new invoice for an existing customer \u2014 or, with `document_type`, an estimate, credit note, delivery note or purchase order.\nREQUIRES IDS, NOT NAMES. Call list_customers to get `customer_id` first, and whoami to get `company_id`. This operation will not create a customer, and will not guess which company \u2014 an invoice in the wrong business, or addressed to a customer record that did not exist a moment ago, is not recoverable by deleting it.\nThe invoice number is assigned from the company's own sequence unless you pass `number`. Report the number that comes back rather than the one you expected.\nThis makes a one-off. When the user says monthly, weekly, every quarter or ongoing billing, create it, then call start_recurring_invoice \u2014 the invoice is not recurring until you do.\nCreating a document consumes the account's subscription quota. If a call fails without a clear answer, call list_invoices to check whether it landed before trying again.\nPREVIEW FIRST. Call with `plan: true` to get back exactly what would be created \u2014 the assigned number, the computed total, the deposit \u2014 writing nothing. Show that to the user, get a yes, then call again without `plan`. Do this whenever the user has not already approved these specific amounts, and always when you inferred any of them.",
+      description: "Create a new invoice for an existing customer \u2014 or, with `document_type`, an estimate, credit note, delivery note or purchase order.\nREQUIRES IDS, NOT NAMES. Call list_customers to get `customer_id` first, and whoami to get `company_id`. This operation will not create a customer, and will not guess which company \u2014 an invoice in the wrong business, or addressed to a customer record that did not exist a moment ago, is not recoverable by deleting it. When no customer matches, ask the user before create_customer.\nThe invoice number is assigned from the company's own sequence unless you pass `number`. Report the number that comes back rather than the one you expected.\nThis makes a one-off. When the user says monthly, weekly, every quarter or ongoing billing, create it, then call start_recurring_invoice \u2014 the invoice is not recurring until you do.\nCreating a document consumes the account's subscription quota. If a call fails without a clear answer, call list_invoices to check whether it landed before trying again.\nPREVIEW FIRST. Call with `plan: true` to get back exactly what would be created \u2014 the assigned number, the computed total, the deposit \u2014 writing nothing. Show that to the user, get a yes, then call again without `plan`. Do this whenever the user has not already approved these specific amounts, and always when you inferred any of them.",
       inputSchema: {
         company_id: external_exports.string().describe(
           "Company to invoice from, as returned by whoami. Required \u2014 unlike read operations, this does not fall back to the default company."
@@ -88997,16 +89377,11 @@ If this is genuinely a second invoice, pass an explicit \`number\` to say so \u2
         status: invoice["status"] ?? null,
         paymentStatus: invoice["paymentStatus"] ?? null
       };
-      const paid = Number(invoice["paymentAmount"] ?? 0);
-      const paymentStatus = String(invoice["paymentStatus"] ?? "");
-      if (paid > 0 || paymentStatus && paymentStatus !== "not_paid") {
-        return fail(
-          `${target.invoiceNumber} has payments recorded against it (${paymentStatus || "paid"}${paid > 0 ? `, ${paid} received` : ""}). Deleting it would destroy the payment history. Void the payments first if that is genuinely what the user wants.`
-        );
-      }
+      const preview = invoiceDeletePreviewFrom(invoice);
+      if (preview.blocked) return fail(preview.blocked);
       if (args.plan === true) {
         return ok({
-          plan: { wouldDelete: target },
+          plan: { wouldDelete: target, ...preview.warnings.length ? { warnings: preview.warnings } : {} },
           note: "Nothing was deleted. Confirm this is the right invoice with the user, then call again without `plan`. This cannot be undone."
         });
       }
@@ -89176,7 +89551,7 @@ If this is genuinely a second invoice, pass an explicit \`number\` to say so \u2
     "remind_invoice",
     {
       title: "Email a payment reminder",
-      description: "Chase money owed. THIS EMAILS CUSTOMERS and cannot be unsent.\nTarget one invoice with `invoice_id`, or leave it out to sweep every overdue invoice \u2014 which emails MANY customers in one call, so use `plan` first and show the user the list.\nFilters for the sweep: `min_days_overdue` skips the recently-late, `max_days_overdue` avoids reopening ancient accounts, `customer` matches a name or email. An invoice that is unpaid but not yet overdue gets gentler wording automatically.\nThe result reports sent, skipped and failed separately \u2014 report those numbers rather than saying 'done'.",
+      description: "Chase money owed. THIS EMAILS CUSTOMERS and cannot be unsent.\nTarget one invoice with `invoice_id`, or leave it out to sweep every overdue invoice \u2014 which emails MANY customers in one call, so use `plan` first and show the user the list.\nFilters for the sweep: `min_days_overdue` skips the recently-late, `max_days_overdue` avoids reopening ancient accounts, `customer` matches a name or email. An invoice that is unpaid but not yet overdue gets gentler wording automatically.\nA draft the customer was never sent is skipped, in a sweep and by `invoice_id`: send it with send_invoice first.\nThe result reports sent, skipped and failed separately \u2014 report those numbers rather than saying 'done'.",
       inputSchema: {
         invoice_id: external_exports.string().optional().describe("Remind just this invoice. Omit to sweep all overdue."),
         min_days_overdue: external_exports.number().int().optional().describe("Only invoices at least this many days overdue. Defaults to 0."),
@@ -89225,12 +89600,15 @@ If this is genuinely a second invoice, pass an explicit \`number\` to say so \u2
             recipients: willSend.slice(0, 25),
             ...skipped.length > 0 ? {
               skipped: skipped.length,
-              // One reason is enough — they share it.
-              skippedBecause: skipped[0]?.skipReason ?? null
+              // Counted per reason: a sweep skips for several at once
+              // (drafts, the limit, nothing owed), and naming only the
+              // first would put every skip down to it.
+              skippedBecause: countSkipReasons(skipped)
             } : {}
           },
           totalCandidates: result.totalCandidates,
-          note: willSend.length === 0 ? "Nothing would be sent \u2014 every candidate was skipped." : "Nothing was sent. Show the user this list, then call again without `plan`."
+          ...result.partial ? { partial: true } : {},
+          note: (willSend.length === 0 ? "Nothing would be sent \u2014 every candidate was skipped." : "Nothing was sent. Show the user this list, then call again without `plan`.") + (result.partial ? ` ${OVERDUE_PARTIAL_NOTE}` : "")
         });
       }
       return ok({
@@ -89238,7 +89616,13 @@ If this is genuinely a second invoice, pass an explicit \`number\` to say so \u2
         skipped: result.skipped,
         failed: result.failed,
         totalCandidates: result.totalCandidates,
-        reminded: who.slice(0, 25)
+        ...result.partial ? { partial: true, note: OVERDUE_PARTIAL_NOTE } : {},
+        // Acted-on first: a sweep can skip far more than it sends (drafts
+        // past their due date), and the cap must not hide what was emailed.
+        reminded: [
+          ...who.filter((e) => e.status !== "skipped"),
+          ...who.filter((e) => e.status === "skipped")
+        ].slice(0, 25)
       });
     }
   );
@@ -89330,7 +89714,7 @@ If this is genuinely a second invoice, pass an explicit \`number\` to say so \u2
       inputSchema: {
         invoice_id: external_exports.string().describe("Invoice to copy, as returned by list_invoices."),
         customer_id: external_exports.string().optional().describe(
-          "Reassign the copy to this customer, from list_customers. A NAME is also accepted and will be created if no customer matches \u2014 prefer the id."
+          "Reassign the copy to this customer, from list_customers. A NAME of an existing customer is also accepted; one that matches nobody copies nothing. Prefer the id."
         ),
         document_type: external_exports.enum(["estimate", "credit-note", "delivery-note", "purchase-order"]).optional().describe("Convert the copy to this document type."),
         to_company_id: external_exports.string().optional().describe("Copy into a different company you own, from whoami."),
@@ -89358,15 +89742,21 @@ If this is genuinely a second invoice, pass an explicit \`number\` to say so \u2
           note: "Nothing was created. Call again without `plan`. The copy is a DRAFT \u2014 it is not sent to anyone."
         });
       }
-      const { record: record2, converted, crossCompany } = await copyInvoice(
-        args.invoice_id,
-        {
+      let copied;
+      try {
+        copied = await copyInvoice(args.invoice_id, {
           ...args.customer_id ? { customer: args.customer_id } : {},
           ...args.to_company_id ? { toCompanyId: args.to_company_id } : {},
           ...args.document_type ? { type: args.document_type } : {},
           ...args.company_id ? { companyId: args.company_id } : {}
-        }
-      );
+        });
+      } catch (err2) {
+        if (!(err2 instanceof RecordsNotFound)) throw err2;
+        return fail(
+          `${err2.message} Check list_customers for the same person under another name. If they are new, ask the user, create them with create_customer, and call again with the new id.`
+        );
+      }
+      const { record: record2, converted, crossCompany } = copied;
       return ok({
         copy: {
           id: record2["_id"] ?? null,
@@ -89513,7 +89903,7 @@ function registerCustomerWrites(server) {
     "create_customer",
     {
       title: "Create a customer",
-      description: "Add a customer. Needs a name or an email. `email` is where invoices go; without it, send_invoice on their invoices has no recipient.\nSearch list_customers first: create_invoice will not make a customer, but a second record for someone who already exists splits their history and nothing merges them afterwards.",
+      description: 'Add a customer. Needs a name or an email. `email` is where invoices go; without it, send_invoice on their invoices has no recipient.\nSearch list_customers first: create_invoice will not make a customer, but a second record for someone who already exists splits their history and nothing merges them afterwards.\nASK BEFORE CREATING. A customer is a lasting record, not a draft: show the user the name and email you will create (and any close match you found) and wait for their yes, even inside a larger request such as "make an estimate for a new customer".',
       inputSchema: {
         company_id: external_exports.string().optional().describe("Company to create under, from whoami."),
         ...customerFields,
@@ -89693,8 +90083,9 @@ function registerCustomerWrites(server) {
         email: who["email"] ?? null
       };
       if (args.plan === true) {
+        const { warnings } = await customerDeletePreviewFrom(who);
         return ok({
-          plan: { wouldDelete: target },
+          plan: { wouldDelete: target, ...warnings.length ? { warnings } : {} },
           note: "Nothing was deleted. Their invoices will remain, pointing at a customer that no longer exists. Confirm this is the right customer with the user, then call again without `plan`. This cannot be undone."
         });
       }
@@ -90033,8 +90424,9 @@ function registerSalesWrites(server) {
         status: prop["status"] ?? null
       };
       if (args.plan === true) {
+        const { warnings } = proposalDeletePreviewFrom(prop);
         return ok({
-          plan: { wouldDelete: target },
+          plan: { wouldDelete: target, ...warnings.length ? { warnings } : {} },
           note: "Nothing was deleted. Confirm this is the right proposal with the user, then call again without `plan`. This cannot be undone."
         });
       }
@@ -90085,6 +90477,15 @@ function registerSalesWrites(server) {
   );
 }
 
+// src/mcp/uploadPath.ts
+import { existsSync } from "node:fs";
+function assertServerCanRead(path11) {
+  if (existsSync(path11)) return;
+  throw new Error(
+    `This server cannot see ${path11}. \`file_path\` is read by the SERVER, not by you, so it only works when both are on the same machine \u2014 a stdio server, or one you started locally. If you are on a hosted connector the path is probably correct and simply not reachable from there; sending the file's bytes is not supported yet, so upload it from the web app or run a local server instead. Do not retry with a different path \u2014 the path is not the problem.`
+  );
+}
+
 // src/mcp/writes/catalog.ts
 function registerCatalogWrites(server) {
   const itemEdit = {
@@ -90099,7 +90500,7 @@ function registerCatalogWrites(server) {
     "create_item",
     {
       title: "Create a product or service",
-      description: "Add a product or service to the catalogue an invoice draws line items from. " + CATALOGUE_NOTE + "\ncreate_invoice takes free-text line items, so a catalogue entry is only needed when the item should be reusable \u2014 do not create one just to invoice something once.",
+      description: "Add a product or service to the catalogue an invoice draws line items from. " + CATALOGUE_NOTE + "\ncreate_invoice takes free-text line items, so a catalogue entry is only needed when the item should be reusable \u2014 do not create one just to invoice something once.\nASK BEFORE CREATING. An item is a lasting catalogue record: search list_items for it first, show the user the name and price you will add, and wait for their yes.",
       inputSchema: {
         company_id: external_exports.string().describe("Company the item belongs to, as returned by whoami."),
         name: external_exports.string().describe("The item's name."),
@@ -90200,11 +90601,18 @@ function registerCatalogWrites(server) {
         );
       }
       await assertPaymentReady();
+      const currency = (args.currency ?? await companyCurrency() ?? "").toUpperCase();
+      if (!currency) {
+        return fail(
+          "Could not tell which currency this company uses. Pass `currency` (an ISO code such as AUD) \u2014 ask the user if it is not clear."
+        );
+      }
       if (args.plan === true) {
         return ok({
           plan: {
             title: args.title,
-            amount: open3 ? "payer decides" : args.amount
+            amount: open3 ? "payer decides" : args.amount,
+            currency
           },
           note: "Nothing was created. Call again without `plan`."
         });
@@ -90214,13 +90622,14 @@ function registerCatalogWrites(server) {
         description: args.description ?? "",
         allowCustomerToInputAmount: open3,
         price: open3 ? 0 : Math.round((args.amount ?? 0) * 100),
-        currency: args.currency ?? ""
+        currency
       });
       return ok({
         created: {
           id: link?._id ?? null,
           title: link?.title ?? args.title,
           amount: open3 ? null : args.amount,
+          currency,
           shortCode: link?.shortCode ?? null,
           url: paymentLinkUrl(link?.shortCode)
         },
@@ -90301,7 +90710,7 @@ function registerCatalogWrites(server) {
       title: "Log an expense",
       description: "Record money spent \u2014 'log this receipt', 'I spent 500 on fuel'.\n`category` is the KEY from expense_categories, not a display name: a name is rejected. Call that first when the category is not already known.\nThis records the figures only. Attaching a receipt image is a CLI flow (upload then scan) and is not available here.",
       inputSchema: {
-        amount: external_exports.number().describe("Amount spent, in the company's currency."),
+        amount: external_exports.number().describe("Amount spent, in the company's currency (42.50 for A$42.50), not cents."),
         merchant: external_exports.string().optional().describe("Who was paid."),
         category: external_exports.string().optional().describe("Category KEY from expense_categories, e.g. Office_Supplies."),
         date: external_exports.string().optional().describe("Purchase date, YYYY-MM-DD."),
@@ -90327,7 +90736,9 @@ function registerCatalogWrites(server) {
         });
       }
       const data = await createExpense({
-        amount: args.amount,
+        // Bookipi stores expense amounts in cents. Passing the currency amount
+        // through stored A$42.50 as 42.5 cents, and every list showed A$0.43.
+        amount: Math.round(args.amount * 100),
         ...args.merchant ? { merchantName: args.merchant } : {},
         ...args.category ? { categoryName: args.category } : {},
         ...args.date ? { purchaseDate: args.date } : {},
@@ -90375,6 +90786,46 @@ function registerCatalogWrites(server) {
       }
       const gone = await removeExpense(args.expense_id);
       return ok({ deleted: { id: args.expense_id, record: gone } });
+    }
+  );
+  server.registerTool(
+    "scan_receipt",
+    {
+      title: "Read a receipt photo and extract its fields",
+      description: "Run Bookipi's OCR over a receipt image or PDF and return what it read: amount, merchant, date, suggested category, invoice number.\nUPLOADS THE FILE to Bookipi's receipt storage for the OCR to read. It creates no expense or other record, but the file leaves this machine: only pass a receipt the user asked you to read.\nShow the extracted fields to the user, let them correct anything wrong, then call create_expense. Never log an expense straight from a scan without showing it first \u2014 OCR misreads amounts, and a wrong figure in the books is worse than no figure.\n`file_path` must be a path THIS SERVER can read, and a png, jpg, jpeg, pdf, heic or webp file; anything else is refused. That works when the server and your files are on the same machine (a local server, or stdio). A hosted connector cannot see your disk, and there is no way to send it the bytes yet \u2014 say so plainly rather than guessing at a path.",
+      inputSchema: {
+        file_path: external_exports.string().describe("Absolute path to the receipt, readable by this server.")
+      },
+      // Not read-only: it sends a file from this machine to Bookipi's storage,
+      // so a host should ask before it runs. Nothing in the account changes.
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false
+      }
+    },
+    async (args) => {
+      assertServerCanRead(args.file_path);
+      const upload = await uploadReceiptFile({
+        filePath: args.file_path,
+        isThumbnail: false
+      });
+      const scanned = await scanInvoiceImage([upload.fullKey]);
+      return ok({
+        file: upload.filename,
+        read: {
+          merchant: scanned.merchantName ?? scanned.vendorName ?? null,
+          amount: scanned.amount ?? null,
+          date: scanned.purchaseDate ?? null,
+          category: scanned.categoryName ?? null,
+          categoryId: scanned.categoryId ?? null,
+          invoiceNumber: scanned.invoiceNumber ?? null,
+          ...scanned.notes ? { notes: scanned.notes } : {}
+        },
+        ...scanned.errorMessage ? { ocrError: scanned.errorMessage } : {},
+        action: "No expense was saved. Show these fields to the user and ask them to confirm the AMOUNT especially, then call create_expense with what they agree to."
+      });
     }
   );
   server.registerTool(
@@ -90469,23 +90920,6 @@ function registerWebsiteWrites(server) {
     idempotentHint: false,
     openWorldHint: false
   };
-  server.registerTool(
-    "create_website",
-    {
-      title: "Create an empty website",
-      description: "Set up an EMPTY website record for this company and return a builder link. Do this once, before generate_website. Fast. Nothing is public until publish_website.",
-      inputSchema: {},
-      annotations: draftOnly
-    },
-    async () => {
-      const builderUrl = await createWebsiteLink();
-      return ok({
-        created: true,
-        builderUrl,
-        action: "The website exists but is EMPTY. Either run generate_website to have it built from the business name, or give the user this link to set it up by hand. The link is a short-lived credential \u2014 hand it over once and do not repeat it."
-      });
-    }
-  );
   server.registerTool(
     "generate_website",
     {

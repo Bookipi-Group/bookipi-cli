@@ -9,7 +9,158 @@ under a version you already have will not reach you. `claude plugin update`
 reports "already at the latest version" and keeps serving the cached copy —
 refresh the marketplace first (`/plugin marketplace update bookipi-cli`).
 
-## Unreleased
+## 0.55.0 — 2026-11-25
+
+### Added
+- `bookipi customer create --works-at <company>` names the company a person
+  works at, and `--type person|company` says which a new customer is.
+
+### Changed
+These can affect scripts and saved prompts; each is explained under Fixed.
+- `invoice create`, `invoice update` and `invoice duplicate --customer` no
+  longer create customers or catalogue items. An unknown customer stops the
+  command; a new line with a price is a one-off line.
+- `invoice delete`, `customer delete`, `proposal delete` and `expense delete`
+  need `--yes`.
+- `invoice remind --json` and `invoice collections --json` count skipped
+  invoices in `skippedBecause` instead of listing them (collections no longer
+  has `planSkipped`). `report digest --json`: `collectedCount` is now
+  `collectedPayments`.
+- Reports count only sent invoices in the company's currency, so figures can
+  differ from the web app's Reports page.
+- Connector: `create_website` is removed for now; `scan_receipt` is a write.
+
+### Fixed
+- `bookipi website create` no longer fails with "Token is invalid or has
+  expired". Bookipi's website creation looks up the business profile with a
+  sign-in token the CLI didn't send; it now does, as the web app does.
+- The connector no longer offers `create_website`, which failed the same way
+  every time and can't be fixed from the connector yet. `website_status` tells
+  a company with no website to open the Website Builder in the web app, which
+  creates it; the builder message says the same.
+- When a payment link's payments can't be read, `paylink status` and the
+  connector's `paylink_status` now say why and what to do instead. Bookipay no
+  longer reports payments per link (staging, then production), and the web
+  app doesn't show them either; the old message said the history was
+  unavailable "right now" or pointed to a dashboard that doesn't have it.
+- `create_paylink` on the connector uses the company's currency when none is
+  given, as it says. It sent an empty currency, so the link failed with
+  "currency is required" (INTERNAL_SERVER_ERROR) after the preview had passed.
+  The preview now shows the currency, and both refuse with a clear message if
+  the company's currency cannot be found. `bookipi paylink create` no longer
+  falls back to USD when the currency isn't cached; it reads the company's.
+- Expenses logged through the connector are no longer saved 100 times too
+  small. `create_expense` takes the amount in the company's currency (42.50)
+  but passed it on unconverted, and Bookipi stores cents, so A$42.50 was
+  saved as A$0.43 and showed that way in `expense list`, the web app and the
+  connector. It now converts. `list_expenses` returns amounts in the currency
+  instead of raw cents, and the skill's scan-to-expense recipe passes the
+  scanned amount (which is in the currency) to `--amount`, not
+  `--amount-cents`. Expenses already saved wrong stay wrong: fix the amount in
+  the web app.
+- Reports no longer count drafts never sent as invoiced revenue. "Invoiced",
+  the monthly breakdowns, the collection rate, top customers and items, and
+  advice such as "X accounts for 58% of your revenue" all counted drafts, so
+  a customer whose every invoice was an unsent draft could top the list.
+  `report summary`, `report digest`, `report suggest`, `report insights`,
+  `report customers`, `report items`, the dashboard and the connector's
+  report tools now count only invoices that were sent, by the date on the
+  invoice, and show unsent drafts on their own line. These figures no longer
+  match the web app's Reports page, which counts drafts.
+- Reports no longer add invoices in other currencies into the company's
+  totals as if they were the same money (on the staging account, USD
+  payments were counted as pesos). Invoiced, paid, unpaid, overdue,
+  collection rates, top customers and items, and the insights analysis count
+  only the company's currency (and invoices with none set); other currencies
+  are listed on their own line per currency, not converted, since Bookipi
+  stores no exchange rate. Payments are now read off the invoices, by payment
+  date, instead of the report API's totals. The digest's "Collected" counts
+  payments, and its JSON field is now `collectedPayments`.
+- Reminder and collections emails show the amount in the invoice's own
+  currency. A USD invoice's reminder from a peso company said "₱20.00" to the
+  customer instead of "$20.00".
+- `bookipi logout` no longer says "Already logged out" while you are still
+  signed in. A delete that failed (seen in a Cowork project folder) was
+  dropped silently. Logout now empties a sign-in file it cannot delete, names
+  any file it could not clear, and checks afterwards: if a sign-in is still
+  found (a leftover file, or the `BOOKIPI_TOKEN` variable) it says where and
+  exits with an error.
+- `scan_receipt` on a local connector is no longer labelled read-only. It
+  uploads the file to Bookipi's receipt storage, but said it saved nothing, so
+  a host could run it without asking. It is now a write (hosts ask first), and
+  it says it uploads the file. Uploads for receipts (`scan_receipt`, and
+  `expense scan`, `upload` and `create -f` in the CLI) accept only png, jpg,
+  jpeg, pdf, heic and webp; any other file used to be sent too.
+- Deletes need `--yes`, like sends and payments. `invoice delete`,
+  `customer delete`, `proposal delete` and `expense delete` ran straight away
+  (only deleting several expenses asked), so a customer who still had an
+  estimate, or a proposal already sent to the customer, went to the trash with
+  no warning. Without `--yes` they now refuse and say what would go and what
+  to know first: the documents the customer still has, or that the invoice or
+  proposal was already sent. `invoice delete` refuses an invoice with payments
+  recorded, as the connector already did. The connector's delete previews
+  carry the same warnings. All four move the record to the trash.
+- Making an invoice no longer creates a customer or catalogue item on the side.
+  Asked for an estimate for someone not in Bookipi yet, the skill created the
+  customer and the items with no question; they are lasting records, and a
+  duplicate customer splits their history. `invoice create`, `invoice update`
+  and `invoice duplicate --customer` now stop when the customer matches nobody,
+  write nothing, and name any similar customers: create them with
+  `customer create` (after asking) and re-run with the handle. A new line with
+  a price goes on the invoice as a one-off line and adds nothing to the item
+  catalogue; a new name with no price stops the command instead of becoming a
+  $0 line. Copying into another company you own still brings the customer
+  across. On the connector, `copy_invoice` no longer creates a customer from a
+  name, and `create_customer` and `create_item` tell the assistant to check for
+  a match and ask first.
+- Reminders leave drafts alone (`invoice remind` and `invoice collections` in
+  the CLI, `remind_invoice` on the connector). A draft past its due date was listed as overdue and
+  reminded, so the customer received the invoice for the first time as an
+  "overdue" notice and the draft became a sent invoice. Drafts are now skipped
+  in the overdue scan, in the collections ladder and with `--invoice` /
+  `invoice_id`, with the reason shown; send the invoice first.
+- `invoice remind --customer` (and `customer` on `remind_invoice`) matches the
+  customer's name, as it says. It only ever matched the email address, so
+  "remind Acme" skipped every Acme invoice unless "acme" was in the email.
+- Reminders and collections no longer miss overdue invoices on an account with
+  many drafts past their due date. They read only the newest 200 "overdue" results, which
+  include drafts, so an account whose newest 200 were drafts chased nobody.
+  They now read every overdue invoice, up to 3,000, and say so when there are
+  more (`partial` in `--json` and on `remind_invoice`).
+- `invoice remind --json` and `invoice collections --json` list only the
+  invoices that are sent or would be, and count the skipped ones by reason in
+  `skippedBecause`. On an account with many overdue drafts the output listed
+  every skip, about 250 KB.
+- The dashboard's `company_id` on the connector reaches every figure on it, and
+  its currency. It used to build the page from the default company.
+- Reports no longer count drafts the customer was never sent as unpaid or
+  overdue. `report insights` read Bookipi's overdue list, drafts included, and
+  told you to chase them; it also counted a draft twice in "revenue sitting
+  uncollected", once as overdue and once as an unsent draft. `report summary`,
+  `report digest`, `report suggest`, `report insights` and the dashboard
+  now read unpaid and overdue the same way, by balance, without those drafts.
+  An invoice that was sent and later edited still counts.
+- `report insights` and `report suggest` no longer name invoices with no
+  customer as one customer ("Unknown has 174 overdue invoices").
+- `report insights` no longer counts an invoice twice in "revenue sitting
+  uncollected" and the next-month cash estimate when the customer has viewed
+  it and it is past due. It counts once, as overdue.
+- Report hints no longer point at a list that disagrees with the figure. The
+  "view overdue" and "view unpaid" hints say that drafts in the list show as
+  Draft and are not counted, and "view unpaid" now includes overdue invoices.
+  `report suggest` points at an `invoice remind` dry run that lists exactly the
+  invoices it names. The customer name in that command is single-quoted, so a
+  name with `$`, a backtick or a quote pastes into a shell as written.
+- `invoice remind --customer` and `invoice collections --customer` match a
+  customer's company name as well as the person's name, for a customer that
+  has both. Both commands now match the same way.
+- `bookipi customer create` makes a person a person: one created with a name and
+  no `--company-name` is listed under People in Bookipi, not Companies. Bookipi
+  took every customer the CLI created as a company. `--company-name` with a
+  person's name beside it still makes a company with a contact name; for the
+  company a person works at, use `--works-at`.
+
+## 0.54.0 — 2026-11-24
 
 ### Added
 - `bookipi company update` changes the active company's details as its documents

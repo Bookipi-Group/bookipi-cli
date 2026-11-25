@@ -35,7 +35,8 @@ into another document type; send
 reminders on overdue invoices; add customers and catalogue items; log expenses
 from a photographed receipt; move deals through the pipeline; draft and send
 proposals; send eSign contracts for signature; and edit and publish the
-website.
+website. A company with no website yet creates one in the Bookipi web app
+(**Website Builder**) first.
 
 **Payments:** Bookipi can issue a payment link and record that an invoice has
 been paid. Money moves only on Bookipay's own hosted checkout, in the

@@ -32,7 +32,9 @@ to "paid." We deliberately do **not** mint a separate standalone payment link
 
 Invoices **under 3 days overdue are skipped** — don't nag on something that
 lapsed yesterday. Invoices with no due date, no email, or nothing owing are also
-skipped (shown in the "Skipped" summary). The firm and final stages tell the
+skipped (shown in the "Skipped" summary). So is a **draft that was never sent**:
+the customer hasn't received it, so it is not chased — send it first with
+`bookipi invoice send`. The firm and final stages tell the
 customer to pay directly from the invoice in the email — no extra link is created.
 
 ## Draft-and-Hold — the safety model
@@ -88,7 +90,7 @@ bookipi invoice collections --stage firm           # dry-run just the firm stage
 bookipi invoice collections --customer "Delta"     # dry-run one customer
 bookipi invoice collections --send                 # ACTUALLY send the whole ladder
 bookipi invoice collections --send --stage gentle  # send only the gentle nudges
-bookipi invoice collections --json                 # programmatic plan (byStage, outcomes, skipped)
+bookipi invoice collections --json                 # programmatic plan (byStage, outcomes, skippedBecause)
 ```
 
 Key flags:
@@ -99,7 +101,7 @@ Key flags:
 - `--exclude <numbers>` — comma-separated invoice numbers to skip (the "let me pick / skip these" case; matches `33`, `INV-33`, or `invoice-33`).
 - `--cooldown-days <n>` — don't re-chase an invoice emailed within N days (default **7**, so the escalation is spaced weekly; `0` disables). Cross-device — see Idempotency below.
 - `--limit <n>` — cap reminders acted on per run (default 50).
-- `--json` — machine-readable output (`byStage`, per-invoice `outcomes`, `planSkipped`).
+- `--json` — machine-readable output (`byStage`, per-invoice `outcomes` for the ladder, skips counted by reason in `skippedBecause`, and `partial: true` if more than 3,000 invoices are past due and the oldest were not read).
 
 ## Scheduled daily check (the recurring cadence)
 

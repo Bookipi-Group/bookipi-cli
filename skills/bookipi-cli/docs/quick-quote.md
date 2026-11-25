@@ -454,7 +454,7 @@ Half 1 can end with the user dropping out (no send). Half 2 has more branches:
 | **Declined** | `bookipi deal update <dealId> --key closed_lose` after USER CONFIRM. Optionally `--data '{"closeReason":"..."}'` if available. The proposal stays at `declined` — no need to delete it. |
 | **Asked for changes** | Loop back to half 1 step 4 — `proposal update`, then re-confirm send. The proposal stays at the same `_id`, status flips back to `saved` when re-sent. |
 | **No response after N days** | Stalled. The morning brief surfaces this in Pipeline Highlights. The agent can suggest a nudge, but **don't auto-send a follow-up** without explicit user request. |
-| **User says "cancel that"** | `proposal update <id> --data '{"isDraft":true}'` to revert to draft, or `bookipi proposal delete <id>` to trash it outright (soft-delete — confirm first, it's destructive). Optionally move the deal back to `qualified` or `closed_lose`. |
+| **User says "cancel that"** | `proposal update <id> --data '{"isDraft":true}'` to revert to draft, or `bookipi proposal delete <id> --yes` to trash it outright (soft-delete; it refuses without `--yes` and says if it was already sent — confirm first). Optionally move the deal back to `qualified` or `closed_lose`. |
 
 ## Customer / Deal Doesn't Exist
 
@@ -464,7 +464,7 @@ These two edge cases handle the "starting from scratch" scenarios:
 
 1. `customer list --search "John Smith"` → 0 results.
 2. **Ask the user**: "I don't have John Smith on file. What's the company name and email? I'll create him before drafting."
-3. On reply: `customer create --first-name "John" --last-name "Smith" --email "..." --company "..."`
+3. On reply: `customer create --first-name "John" --last-name "Smith" --email "..." --works-at "..."`
 4. Then proceed with `proposal generate --customer @c<n>`.
 
 Don't auto-create the customer with empty fields — the proposal will look weird without an email at minimum.
@@ -537,7 +537,7 @@ Typical follow-ups after duplicating:
 - *"change the price / items"* → edit via the link, or `bookipi proposal update <new-handle> --data '{…}'`.
 - *"send it"* → `bookipi proposal send <new-handle> -r <email> --advance-deal --yes`.
 
-Don't want the copy after all? `bookipi proposal delete <handle-or-id>` soft-deletes it (moves to trash). It's destructive — **confirm with the user via `AskUserQuestion` before deleting** (see `common.md` § Confirmation Style). Or just leave the draft; it won't be sent on its own.
+Don't want the copy after all? `bookipi proposal delete <handle-or-id> --yes` soft-deletes it (moves to trash). It needs `--yes` — **confirm with the user via `AskUserQuestion` before adding it** (see `common.md` § Confirmation Style). Or just leave the draft; it won't be sent on its own.
 
 ## Cross-References
 
