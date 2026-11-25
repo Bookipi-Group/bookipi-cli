@@ -54,7 +54,7 @@ import {
   useConfigDir,
   wasBookipiTokenRejected,
   whereSignedIn
-} from "./chunks/chunk-AXBNXLW5.js";
+} from "./chunks/chunk-CXKYWNVK.js";
 import {
   __commonJS,
   __export,
@@ -45664,7 +45664,7 @@ var createCommand4 = new Command("create").description("Create a new item/produc
     if (opts.photo) {
       process.stderr.write(`  \u2022 Uploading ${opts.photo}...
 `);
-      const { uploadItemImage: uploadItemImage2 } = await import("./chunks/uploadItemImage-D7ECRTSV.js");
+      const { uploadItemImage: uploadItemImage2 } = await import("./chunks/uploadItemImage-I6FVG54C.js");
       const { filename } = await uploadItemImage2(opts.photo);
       record2.photos = [{ filename }];
     }

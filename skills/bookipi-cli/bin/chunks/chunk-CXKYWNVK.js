@@ -17658,8 +17658,8 @@ var {
 
 // src/config.ts
 var BUILD_ENV = "prod";
-var CLI_VERSION = "0.55.0";
-var BUILD_STAMP = "276b296 2026-11-25";
+var CLI_VERSION = "0.55.1";
+var BUILD_STAMP = "ef0086c 2026-11-25";
 var config = {
   AUTH_SERVER: process.env["AUTH_SERVER"] ?? "https://auth.bookipi.com",
   APP_ID: process.env["APP_ID"] ?? "1dd166d9569f4f7eb0f08a22c8f0d54a",
@@ -17677,6 +17677,7 @@ var config = {
 };
 
 // src/core/auth/tokenStore.ts
+import { createHash } from "crypto";
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -17807,8 +17808,11 @@ function getSkillWritePath() {
   if (fs.existsSync(LEGACY_HOME_CONFIG)) return null;
   return skillPath;
 }
+function explicitConfigDir() {
+  return process.env.BOOKIPI_CONFIG_DIR || process.env.BOOKIPI_AUTH_DIR;
+}
 function findBookipiConfigDir() {
-  const override = process.env.BOOKIPI_CONFIG_DIR || process.env.BOOKIPI_AUTH_DIR;
+  const override = explicitConfigDir();
   if (override) return override;
   let dir = process.cwd();
   const root = path.parse(dir).root;
@@ -18110,7 +18114,7 @@ function saveOidcTokens(tokens) {
 function getOidcTokens() {
   const ctx = currentRequestAuth();
   if (ctx) return { accessToken: null, refreshToken: null, expireAt: null };
-  const configDirOnly = !!(process.env.BOOKIPI_CONFIG_DIR || process.env.BOOKIPI_AUTH_DIR);
+  const configDirOnly = !!explicitConfigDir();
   return readStored(
     (c) => c.oidcAccessToken ? {
       accessToken: c.oidcAccessToken,
@@ -18119,6 +18123,14 @@ function getOidcTokens() {
     } : null,
     { configDirOnly }
   ) ?? { accessToken: null, refreshToken: null, expireAt: null };
+}
+var refreshFingerprint = (refreshToken) => createHash("sha256").update(refreshToken).digest("hex").slice(0, 16);
+function markOidcRefreshRejected(refreshToken) {
+  writeConfigFields({ oidcRefreshRejected: refreshFingerprint(refreshToken) });
+}
+function isOidcRefreshRejected(refreshToken) {
+  const configDirOnly = !!explicitConfigDir();
+  return readStored((c) => c.oidcRefreshRejected, { configDirOnly }) === refreshFingerprint(refreshToken);
 }
 function clearAllCredentials() {
   const result = { removed: [], emptied: [], failed: [] };
@@ -18337,31 +18349,18 @@ function normaliseExpiry(value) {
 
 // src/core/auth/oidcRefresh.ts
 var REFRESH_TIMEOUT_MS = 3e4;
-var REFUSAL_MEMO_MS = 60 * 6e4;
-var standardGrantRefusedAt = 0;
 async function refreshOidcTokenWith(refreshToken) {
   const appId = config.APP_ID;
   if (!appId) {
     throw new Error("Missing required config value: APP_ID");
   }
-  if (Date.now() - standardGrantRefusedAt < REFUSAL_MEMO_MS) {
-    return refreshLegacy(refreshToken, appId);
-  }
-  let data;
-  try {
-    data = await post(
-      "/api/oauth/token",
-      new URLSearchParams({
-        grant_type: "refresh_token",
-        refresh_token: refreshToken,
-        client_id: appId
-      })
-    );
-  } catch (err) {
-    if (err.oauthError !== "invalid_client") throw err;
-    standardGrantRefusedAt = Date.now();
-    return refreshLegacy(refreshToken, appId);
-  }
+  const data = await post(
+    new URLSearchParams({
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+      client_id: appId
+    })
+  );
   if (!data?.access_token) {
     throw new Error(
       `OIDC refresh response missing access_token: ${JSON.stringify(data)}`
@@ -18375,29 +18374,10 @@ async function refreshOidcTokenWith(refreshToken) {
     expireAt: Date.now() + (Number(data.expires_in) || 3600) * 1e3
   };
 }
-async function refreshLegacy(refreshToken, appId) {
-  const data = await post(
-    "/api/auth/token/refresh",
-    { refreshToken },
-    { "x-app-id": appId }
-  );
-  if (!data?.accessToken || typeof data.expireAt !== "number") {
-    throw new Error(
-      `OIDC refresh response missing accessToken/expireAt: ${JSON.stringify(data)}`
-    );
-  }
-  return {
-    accessToken: data.accessToken,
-    refreshToken: data.refreshToken ?? refreshToken,
-    expireAt: data.expireAt * 1e3
-    // Unix seconds → ms
-  };
-}
-async function post(path4, body, headers = {}) {
+async function post(body) {
   try {
-    const res = await axios_default.post(`${config.AUTH_SERVER}${path4}`, body, {
-      timeout: REFRESH_TIMEOUT_MS,
-      headers
+    const res = await axios_default.post(`${config.AUTH_SERVER}/api/oauth/token`, body, {
+      timeout: REFRESH_TIMEOUT_MS
     });
     return res.data;
   } catch (err) {
@@ -18412,11 +18392,24 @@ async function post(path4, body, headers = {}) {
   }
 }
 async function refreshOidcToken() {
-  const stored = getOidcTokens();
-  if (!stored.refreshToken) {
+  const { refreshToken } = getOidcTokens();
+  if (!refreshToken) {
     throw new Error("No OIDC refresh token stored. Re-run `bookipi login`.");
   }
-  const refreshed = await refreshOidcTokenWith(stored.refreshToken);
+  if (isOidcRefreshRejected(refreshToken)) {
+    throw new Error(
+      "The auth server already rejected this sign-in. Re-run `bookipi login`."
+    );
+  }
+  let refreshed;
+  try {
+    refreshed = await refreshOidcTokenWith(refreshToken);
+  } catch (err) {
+    if (err.oauthError === "invalid_grant") {
+      markOidcRefreshRejected(refreshToken);
+    }
+    throw err;
+  }
   saveOidcTokens(refreshed);
   return refreshed;
 }

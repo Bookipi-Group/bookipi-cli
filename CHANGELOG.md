@@ -9,6 +9,18 @@ under a version you already have will not reach you. `claude plugin update`
 reports "already at the latest version" and keeps serving the cached copy —
 refresh the marketplace first (`/plugin marketplace update bookipi-cli`).
 
+## 0.55.1 — 2026-11-25
+
+### Fixed
+- A sign-in the auth server has rejected is no longer retried. Scheduled jobs
+  with an expired session retried it on every run until the auth server
+  rate-limited them; now each later run skips the retry and asks for
+  `bookipi login`.
+
+### Removed
+- The fallback to the old `/api/auth/token/refresh` endpoint. Renewals use
+  the standard OAuth refresh grant, which production now accepts.
+
 ## 0.55.0 — 2026-11-25
 
 ### Added
