@@ -132,7 +132,7 @@ has a connector tool.
 
 | You ask for… | CLI | Connector |
 | --- | --- | --- |
-| Filtering the list by customer or date, or sorting it | `invoice list --customer`, `--from`, `--to`, `--sort` | `list_invoices` filters by status, document type and a text search. |
+| Sorting the invoice list | `invoice list --sort` | `list_invoices` returns newest first. It filters by status, customer, date range, document type and a text search. |
 | Changing an invoice's status or number, or editing one line item | `invoice update --status`, `--number`, `--add-item`, `--set-item`, `--remove-item`, `--reset-status` | `update_invoice` replaces the whole `items` list; it can't set the status or number. |
 | Scanning a receipt or attaching a photo from your computer | `expense scan`, `expense upload`, `item set-photo`, `invoice create --photo` | The hosted connector can't read your disk, and there is no way to send it the file yet. It works only when the MCP server runs locally (`bookipi mcp`). |
 | Uploading a PDF as an eSign contract | `contract upload` | The connector can't receive the file. It is uploaded in the eSign web app, by Claude in a browser or by you. |

@@ -54,7 +54,7 @@ import {
   useConfigDir,
   wasBookipiTokenRejected,
   whereSignedIn
-} from "./chunks/chunk-CXKYWNVK.js";
+} from "./chunks/chunk-6L6RSFU6.js";
 import {
   __commonJS,
   __export,
@@ -34415,17 +34415,17 @@ var require_core = __commonJS({
         metaSchema = JSON.parse(JSON.stringify(metaSchema));
         for (const jsonPointer of keywordsJsonPointers) {
           const segments = jsonPointer.split("/").slice(1);
-          let keywords = metaSchema;
+          let keywords2 = metaSchema;
           for (const seg of segments)
-            keywords = keywords[seg];
+            keywords2 = keywords2[seg];
           for (const key2 in rules) {
             const rule = rules[key2];
             if (typeof rule != "object")
               continue;
             const { $data } = rule.definition;
-            const schema = keywords[key2];
+            const schema = keywords2[key2];
             if ($data && schema)
-              keywords[key2] = schemaOrData(schema);
+              keywords2[key2] = schemaOrData(schema);
           }
         }
         return metaSchema;
@@ -37651,6 +37651,9 @@ async function track(event, properties = {}) {
           // stdio and on the CLI, where there is no request context at all.
           ...currentRequestAuth()?.authMode ? { auth_mode: currentRequestAuth()?.authMode } : {},
           ...properties,
+          // The Node running this code: the user's on the CLI and local MCP,
+          // the server's on the hosted one. Crashes have been version-specific.
+          node_version: process.versions.node,
           ...referral ? { referral_code: referral } : {},
           ...internal,
           // Ambient, and last so a call site cannot accidentally shadow them.
@@ -37682,6 +37685,56 @@ async function track(event, properties = {}) {
   }
 }
 var inFlightCommand;
+var SAFE_NUMBERS = {
+  page: ["page"],
+  limit: ["limit", "per-page", "per_page"]
+};
+var SAFE_KEYWORDS = {
+  type: ["type", "document_type"],
+  status: ["status", "statuses"],
+  sort: ["sort"],
+  period: ["period"],
+  cycle: ["cycle"],
+  // Which extra detail a list was asked for (`items`, `payments`).
+  include: ["include"]
+};
+var WHOLE_NUMBER = /^\d{1,6}$/;
+var KEYWORD = /^[a-z_][a-z_-]{0,29}$/;
+function wholeNumber(value) {
+  const text2 = typeof value === "number" ? String(value) : value;
+  return typeof text2 === "string" && WHOLE_NUMBER.test(text2.trim()) ? Number(text2) : void 0;
+}
+function keywords(value) {
+  const parts2 = Array.isArray(value) ? value : typeof value === "string" ? value.split(",") : [];
+  const words = parts2.map(
+    (part) => typeof part === "string" ? part.trim().toLowerCase() : ""
+  );
+  return words.length > 0 && words.length <= 10 && words.every((word) => KEYWORD.test(word)) ? words.join(",") : void 0;
+}
+function safeOptionValues(passed) {
+  const first = (names) => passed[names.find((name) => passed[name] !== void 0) ?? ""];
+  const out = {};
+  for (const [prop, names] of Object.entries(SAFE_NUMBERS)) {
+    const value = wholeNumber(first(names));
+    if (value !== void 0) out[prop] = value;
+  }
+  for (const [prop, names] of Object.entries(SAFE_KEYWORDS)) {
+    const value = keywords(first(names));
+    if (value) out[prop] = value;
+  }
+  return out;
+}
+function toolCallShape(input2) {
+  if (!input2 || typeof input2 !== "object" || "requestId" in input2) return {};
+  const passed = Object.fromEntries(
+    Object.entries(input2).filter(([, value]) => value !== void 0 && value !== null)
+  );
+  const args = Object.keys(passed).sort().join(",");
+  return {
+    ...args ? { args: args.slice(0, 200) } : {},
+    ...safeOptionValues(passed)
+  };
+}
 var HANDLE = /^@[a-z]+\d+$/i;
 function commandShape(flagNames, values) {
   const flags = [...new Set(flagNames)].sort().join(",");
@@ -37694,26 +37747,55 @@ function commandShape(flagNames, values) {
   };
 }
 function invocationShape(cmd) {
-  const flagNames = [];
-  const values = [...cmd.args];
+  const passed = {};
   for (let c = cmd; c; c = c.parent) {
     for (const opt of c.options) {
       const key2 = opt.attributeName();
       if (c.getOptionValueSource(key2) !== "cli") continue;
-      flagNames.push(opt.long ? opt.long.replace(/^--/, "") : key2);
-      values.push(c.getOptionValue(key2));
+      const name = opt.long ? opt.long.replace(/^--/, "") : key2;
+      if (!(name in passed)) passed[name] = c.getOptionValue(key2);
     }
   }
-  return commandShape(flagNames, values);
+  return {
+    ...commandShape(Object.keys(passed), [...cmd.args, ...Object.values(passed)]),
+    ...safeOptionValues(passed)
+  };
+}
+function estTokens(bytes) {
+  return Math.round(bytes / 4);
+}
+var stdoutBytes = 0;
+var countingStdout = false;
+function countStdout() {
+  if (countingStdout) return;
+  countingStdout = true;
+  const write = process.stdout.write.bind(process.stdout);
+  process.stdout.write = ((chunk, ...rest) => {
+    stdoutBytes += typeof chunk === "string" ? Buffer.byteLength(chunk, typeof rest[0] === "string" ? rest[0] : void 0) : chunk.byteLength;
+    return write(chunk, ...rest);
+  });
 }
 function beginCommand(command, shape = {}) {
   inFlightCommand = { command, startedAt: Date.now(), shape };
+  if (command === "mcp") return;
+  stdoutBytes = 0;
+  countStdout();
 }
 function endCommand() {
   if (!inFlightCommand) return void 0;
   const { command, startedAt, shape } = inFlightCommand;
   inFlightCommand = void 0;
-  return { command, duration_ms: Date.now() - startedAt, ...shape };
+  return {
+    command,
+    duration_ms: Date.now() - startedAt,
+    output_bytes: stdoutBytes,
+    est_tokens: estTokens(stdoutBytes),
+    // A person at a terminal, as opposed to an agent or a script reading the
+    // output; and a pipeline, where a burst of calls is a job and not a person.
+    ...process.stdout.isTTY ? { interactive: true } : {},
+    ...envFlagOn("CI") ? { ci: true } : {},
+    ...shape
+  };
 }
 function commandCompleted() {
   const run = endCommand();
@@ -37785,6 +37867,19 @@ async function persistLoginProfile(prefetched) {
 }
 
 // src/core/errors/formatError.ts
+var ERROR_CODES = [
+  "auth",
+  "no-company",
+  "network",
+  "timeout",
+  "handle-not-found",
+  "not-found",
+  "graphql",
+  "validation",
+  "upload",
+  "rate-limit",
+  "unknown"
+];
 var ValidationError = class extends Error {
 };
 function formatError(err2, opts = {}) {
@@ -37794,9 +37889,11 @@ function formatError(err2, opts = {}) {
   let friendly = raw;
   let hint;
   const isValidation = err2 instanceof ValidationError;
-  let code = opts.code ?? (isValidation ? "validation" : "unknown");
+  const named = err2?.errorCode;
+  const ownCode = isValidation ? "validation" : ERROR_CODES.find((c) => c === named);
+  let code = opts.code ?? ownCode ?? "unknown";
   let exitCode = opts.exitCode ?? (isValidation ? 3 : 1);
-  const autoDetect = !opts.code && !isValidation;
+  const autoDetect = !opts.code && !ownCode;
   if (autoDetect) {
     if (lower.includes("not logged in") || lower.includes("invalid token") || lower.includes("token expired") || lower.includes("unauthorized") || /\b401\b/.test(lower)) {
       friendly = "Your Bookipi session expired (or you're not logged in).";
@@ -37825,7 +37922,8 @@ function formatError(err2, opts = {}) {
         friendly = raw;
       } else {
         friendly = "Hit Bookipi's rate limit.";
-        hint = "Wait ~30s and retry.";
+        const seconds2 = Number(/retry after (\d+)s/.exec(lower)?.[1]);
+        hint = seconds2 ? `Wait ${seconds2 >= 90 ? `about ${Math.round(seconds2 / 60)} minutes` : `${seconds2} seconds`} and retry. Do not retry sooner.` : "Wait ~30s and retry.";
       }
       code = "rate-limit";
     } else if (lower.startsWith("file not found")) {
@@ -37906,6 +38004,13 @@ function failWith(message, opts = {}) {
   });
 }
 
+// src/core/pagingHint.ts
+var DEEP_PAGE = 3;
+function pagingHint(opts) {
+  if (opts.filtered || !opts.page || opts.page < DEEP_PAGE) return void 0;
+  return `Page ${opts.page} with no filter. To find a record, use ${opts.narrowWith} instead of paging: it is one call. To copy the whole list, a larger ${opts.pageSize} means fewer calls.`;
+}
+
 // src/usecases/missingRecords.ts
 var RecordsNotFound = class extends Error {
   constructor(records) {
@@ -37914,6 +38019,8 @@ var RecordsNotFound = class extends Error {
     this.name = "RecordsNotFound";
   }
   records;
+  /** Read by formatError, so analytics and the failure log say "not-found". */
+  errorCode = "not-found";
 };
 function describe(r) {
   const similar = r.similar?.length ? ` (similar existing: ${r.similar.map((s) => `"${s}"`).join(", ")})` : "";
@@ -38012,6 +38119,11 @@ function checked(check2, json3) {
   } catch (err2) {
     return failWith(err2 instanceof Error ? err2.message : String(err2), { json: json3 === true });
   }
+}
+function noteDeepPaging(page, filtered, flags) {
+  const hint = pagingHint({ page, filtered, narrowWith: flags, pageSize: "--limit" });
+  if (hint) process.stderr.write(`\u2139\uFE0F ${hint}
+`);
 }
 function parsePaging(opts) {
   const page = parseInt(opts.page, 10);
@@ -38993,6 +39105,45 @@ var INVOICE_CORE_FIELDS = `
   }
   proposalId
 `;
+var INVOICE_SUMMARY_CUSTOMER_FIELDS = `
+    _id
+    firstName
+    lastName
+    companyName
+    individualCompanyName
+    email
+`;
+var INVOICE_SUMMARY_FIELDS = `
+  _id
+  no
+  status
+  computedStatus
+  paymentStatus
+  recipientEmail
+  date
+  dueDate
+  total
+  amountDue
+  schedule {
+    interval
+    nextRunDateUtc
+    endDate
+  }
+  customer {${INVOICE_SUMMARY_CUSTOMER_FIELDS}  }
+  customerReference {${INVOICE_SUMMARY_CUSTOMER_FIELDS}  }
+  items {
+    name
+    productCode
+    quantity
+    price
+    total
+  }
+  payments {
+    amount
+    date
+    method
+  }
+`;
 
 // src/usecases/invoice/listInvoices.ts
 var VALID_STATUSES = [
@@ -39020,6 +39171,21 @@ var SEARCH_INVOICES_QUERY = `
     }
   }
 `;
+var SEARCH_INVOICE_SUMMARIES_QUERY = `
+  query SearchInvoices($docType: Int, $filter: SearchFilterInput!, $paginate: SearchPaginateInput, $sort: String) {
+    searchInvoices(
+      docType: $docType
+      filter: $filter
+      paginate: $paginate
+      sort: $sort
+    ) {
+      items {
+        ${INVOICE_SUMMARY_FIELDS}
+      }
+      pageInfo {${PAGE_INFO_FIELDS}      }
+    }
+  }
+`;
 async function listInvoices(options = {}) {
   const {
     status = [...VALID_STATUSES],
@@ -39031,7 +39197,8 @@ async function listInvoices(options = {}) {
     page = 1,
     perPage = 15,
     sort = "createdAt_desc",
-    companyId
+    companyId,
+    summary
   } = options;
   const variables = {
     docType,
@@ -39050,7 +39217,7 @@ async function listInvoices(options = {}) {
     sort
   };
   return bookipiGraphql({
-    query: SEARCH_INVOICES_QUERY,
+    query: summary ? SEARCH_INVOICE_SUMMARIES_QUERY : SEARCH_INVOICES_QUERY,
     variables,
     ...companyId ? { companyId } : {}
   });
@@ -39542,6 +39709,14 @@ function calendarDayBounds(startDay, endDay) {
     start: new Date(Date.parse(startDay) - half).toISOString(),
     end: new Date(Date.parse(endDay) + half - 1).toISOString()
   };
+}
+function dayBound(input2, end) {
+  if (!input2) return void 0;
+  const v = input2.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+    return end ? `${v}T23:59:59.999Z` : `${v}T00:00:00.000Z`;
+  }
+  return v;
 }
 
 // src/core/formatters/BaseFormatter.ts
@@ -40147,14 +40322,6 @@ var InvoiceFormatter = class extends BaseFormatter {
 };
 
 // src/commands/invoice/list.ts
-function toBound(input2, end) {
-  if (!input2) return void 0;
-  const v = input2.trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
-    return end ? `${v}T23:59:59.999Z` : `${v}T00:00:00.000Z`;
-  }
-  return v;
-}
 var VALID_STATUSES2 = [
   "saved",
   "sent",
@@ -40186,8 +40353,8 @@ var listCommand = new Command("list").description("List invoices").option(
     }
     const docType = resolveDocumentType(opts.type ?? "invoice").code;
     const customerId = opts.customer ? await resolveCustomerId(opts.customer) : void 0;
-    const start = toBound(opts.from, false);
-    const end = toBound(opts.to, true);
+    const start = dayBound(opts.from, false);
+    const end = dayBound(opts.to, true);
     const invoiceOptions = {
       page,
       perPage,
@@ -40200,6 +40367,11 @@ var listCommand = new Command("list").description("List invoices").option(
       ...opts.search ? { search: opts.search } : {}
     };
     const data = await listInvoices(invoiceOptions);
+    noteDeepPaging(
+      page,
+      Boolean(status || customerId || start || end || opts.search),
+      "--search, --customer, --status or --from/--to"
+    );
     const formatter = new InvoiceFormatter();
     const output2 = formatter.format(data.searchInvoices?.items || [], opts);
     console.log(output2);
@@ -42299,6 +42471,32 @@ var createFromProposalCommand = new Command("create-from-proposal").description(
   })
 );
 
+// src/usecases/company/isCompanySubscribed.ts
+var COMPANY_SUBSCRIPTION_QUERY = `
+  query CompanySubscription($id: MongoID!) {
+    companiesOne(filter: { _id: $id }) {
+      subscriptionInfo {
+        quota
+        status
+      }
+    }
+  }
+`;
+async function isCompanySubscribed() {
+  const id = getDefaultCompany();
+  if (!id) return false;
+  try {
+    const data = await bookipiGraphql({
+      query: COMPANY_SUBSCRIPTION_QUERY,
+      variables: { id }
+    });
+    const info = data?.companiesOne?.subscriptionInfo;
+    return info?.quota === null && info.status !== "terminated";
+  } catch {
+    return false;
+  }
+}
+
 // src/usecases/invoice/duplicateInvoice.ts
 var INVOICES_DUPLICATE_ONE_MUTATION = `
   mutation InvoicesDuplicateOne(
@@ -42346,15 +42544,19 @@ var INVOICES_DUPLICATE_ONE_MUTATION = `
 `;
 async function duplicateInvoice(id, options = {}) {
   const { creationTimezone = "UTC" } = options;
+  const subscribed = await isCompanySubscribed();
   const data = await bookipiGraphql({
     query: INVOICES_DUPLICATE_ONE_MUTATION,
-    // Stamp CLI provenance on the copy. The duplicate would otherwise inherit
-    // the SOURCE invoice's `sourceApp` (often a web value or empty), so a
-    // duplicate of a web-created invoice wouldn't get the paywall bypass. See
-    // RECORD_SOURCE_APP — this value must match the backend's bypass set.
+    // Stamp CLI provenance on the copy, never the SOURCE invoice's
+    // `sourceApp`: the server reads it to let the copy past the document
+    // paywall. See RECORD_SOURCE_APP.
     variables: {
       filter: { _id: id },
-      record: { creationTimezone, sourceApp: RECORD_SOURCE_APP }
+      record: {
+        creationTimezone,
+        sourceApp: RECORD_SOURCE_APP,
+        ...subscribed ? {} : { schedule: null }
+      }
     }
   });
   const record2 = data?.invoicesDuplicateOne?.record;
@@ -44868,6 +45070,7 @@ var listCommand2 = new Command("list").description("List customers").option("--s
     const formatter = new CustomerFormatter();
     const output2 = formatter.format(data, opts);
     console.log(output2);
+    noteDeepPaging(page, Boolean(opts.search), "--search");
   })
 );
 
@@ -45585,6 +45788,7 @@ var listCommand3 = new Command("list").description("List items/products").option
     const formatter = new ItemFormatter();
     const output2 = formatter.format(data, opts);
     console.log(output2);
+    noteDeepPaging(page, Boolean(opts.search), "--search");
   })
 );
 
@@ -45664,7 +45868,7 @@ var createCommand4 = new Command("create").description("Create a new item/produc
     if (opts.photo) {
       process.stderr.write(`  \u2022 Uploading ${opts.photo}...
 `);
-      const { uploadItemImage: uploadItemImage2 } = await import("./chunks/uploadItemImage-I6FVG54C.js");
+      const { uploadItemImage: uploadItemImage2 } = await import("./chunks/uploadItemImage-62ENROXE.js");
       const { filename } = await uploadItemImage2(opts.photo);
       record2.photos = [{ filename }];
     }
@@ -52975,7 +53179,10 @@ async function listProposals(options = {}) {
   const variables = {
     filter: {
       search: search ?? null,
-      status
+      status,
+      ...options.customerId ? { customerId: options.customerId } : {},
+      ...options.start ? { start: options.start } : {},
+      ...options.end ? { end: options.end } : {}
     },
     paginate: { fetchAll: false, page, perPage },
     sort,
@@ -87364,6 +87571,24 @@ var companyScope = {
     "Company id to read from, as returned by whoami. Omit for the active default company."
   )
 };
+var listFilters = {
+  customer_id: external_exports.string().regex(/^[a-f0-9]{24}$/i, "Use the customer's id, not a name.").optional().describe("Only this customer's. The id from list_customers or an earlier result."),
+  created_from: external_exports.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD.").optional().describe(
+    "Only those entered in Bookipi on or after this day (YYYY-MM-DD). The entry day, not the date printed on the document: they differ on a backdated one."
+  ),
+  created_to: external_exports.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD.").optional().describe("Only those entered on or before this day (YYYY-MM-DD). Days are cut at UTC midnight.")
+};
+function listFilterOptions(a) {
+  return {
+    customerId: a.customer_id,
+    start: dayBound(a.created_from, false),
+    end: dayBound(a.created_to, true)
+  };
+}
+function withPagingHint(result, page, filtered, narrowWith) {
+  const hint = pagingHint({ page, filtered, narrowWith, pageSize: "`per_page` (up to 200)" });
+  return hint ? { ...result, hint } : result;
+}
 var paging = {
   page: external_exports.number().int().positive().optional().describe("1-based page number."),
   per_page: external_exports.number().int().positive().max(200).optional().describe("Results per page.")
@@ -87575,8 +87800,11 @@ function planLimitField(doc) {
 function asRows(value) {
   return Array.isArray(value) ? value : [];
 }
-function projectInvoiceList(raw) {
+var INVOICE_LIST_EXTRAS = ["items", "payments"];
+function projectInvoiceList(raw, include = []) {
   const result = raw?.searchInvoices;
+  const withItems = include.includes("items");
+  const withPayments = include.includes("payments");
   return {
     invoices: asRows(result?.items).map((invoice) => {
       const customer = invoice.customer ?? invoice.customerReference;
@@ -87604,7 +87832,24 @@ function projectInvoiceList(raw) {
         computedStatus: invoice.computedStatus ?? null,
         paymentStatus: invoice.paymentStatus ?? null,
         // Null for a one-off; the cadence for a repeating invoice.
-        repeats: repeatsOf(invoice)
+        repeats: repeatsOf(invoice),
+        // Opt-in, and trimmed: a page of full line items is large.
+        ...withItems ? {
+          items: asRows(invoice.items).map((item) => ({
+            name: item.name ?? null,
+            productCode: item.productCode ?? null,
+            quantity: item.quantity ?? null,
+            price: item.price ?? null,
+            total: item.total ?? null
+          }))
+        } : {},
+        ...withPayments ? {
+          payments: asRows(invoice.payments).map((payment) => ({
+            amount: payment.amount ?? null,
+            date: calendarDate(payment.date),
+            method: payment.method ?? null
+          }))
+        } : {}
       };
     }),
     // Kept whole. An agent that cannot tell there are 46 more pages will report
@@ -88151,28 +88396,38 @@ var invoiceReads = [
     name: "list_invoices",
     group: "invoices",
     title: "List invoices, newest first",
-    description: "List the active company's invoices, most recent first \u2014 or, with `document_type`, its estimates, credit notes, delivery notes or purchase orders. Filter by status and free-text search, and page through results. For 'who owes me money', filter to overdue plus sent/read/partialPaid and read `amountDue`.\nReturns one row per invoice with exactly these fields: id, invoiceNumber, customerId, customerName, customerEmail, date, dueDate, total, amountDue, status, computedStatus, paymentStatus, repeats (null for a one-off) \u2014 plus pageInfo. `computedStatus` is the one to trust for overdue; `status` can still read 'sent' past the due date. Line items, tax breakdown and payment history are NOT returned here \u2014 fetch a single invoice for those. No currency field: it belongs to the company, see whoami.",
+    description: "List the active company's invoices, most recent first \u2014 or, with `document_type`, its estimates, credit notes, delivery notes or purchase orders. Filter by status, customer, entry date and free-text search rather than paging through everything. Totals and rankings over a period are report_items and report_customers, not a sum of these rows. For 'who owes me money', filter to overdue plus sent/read/partialPaid and read `amountDue`.\nReturns one row per invoice with exactly these fields: id, invoiceNumber, customerId, customerName, customerEmail, date, dueDate, total, amountDue, status, computedStatus, paymentStatus, repeats (null for a one-off) \u2014 plus pageInfo. `computedStatus` is the one to trust for overdue; `status` can still read 'sent' past the due date. Line items and payments come only with `include`, in this one call instead of one get_invoice per row; tax breakdown and notes are on get_invoice. No currency field: it belongs to the company, see whoami.",
     readOnly: true,
     inputSchema: external_exports.object({
       ...companyScope,
       status: external_exports.array(external_exports.enum(INVOICE_STATUSES)).optional().describe("Filter by one or more statuses (default: all active)."),
       search: external_exports.string().optional().describe("Free-text match on invoice number or customer name."),
+      ...listFilters,
+      include: external_exports.array(external_exports.enum(INVOICE_LIST_EXTRAS)).optional().describe("`items` and/or `payments` on every row. Larger pages: ask only when needed."),
       ...documentTypeParam,
       ...paging
     }),
     run: async (args) => {
       const a = args;
-      return projectInvoiceList(
-        await listInvoices(
-          compact({
-            status: a.status,
-            search: a.search,
-            docType: documentTypeCode(a.document_type),
-            page: a.page,
-            perPage: a.per_page,
-            companyId: a.company_id
-          })
-        )
+      return withPagingHint(
+        projectInvoiceList(
+          await listInvoices(
+            compact({
+              status: a.status,
+              search: a.search,
+              ...listFilterOptions(a),
+              docType: documentTypeCode(a.document_type),
+              page: a.page,
+              perPage: a.per_page,
+              companyId: a.company_id,
+              summary: true
+            })
+          ),
+          a.include
+        ),
+        a.page,
+        Boolean(a.status || a.search || a.customer_id || a.created_from || a.created_to),
+        "`search`, `customer_id`, `status` or `created_from`/`created_to`"
       );
     }
   },
@@ -88263,7 +88518,7 @@ var customerReads = [
     name: "list_customers",
     group: "customers",
     title: "List and search customers",
-    description: "List the active company's customers, newest first, with free-text search and paging. Use it to find a customer's id or email before acting on them.\nReturns one row per customer with exactly these fields: id, name, email, phone, amountDue, total, documentCount, projectCount \u2014 plus pageInfo. `name` is the company name where there is one, otherwise the person's name.\nIMPORTANT: `amountDue`, `total` and `documentCount` were null for every customer in the account this was measured against \u2014 the backend does not reliably populate them here. Do NOT answer 'who owes me the most' or 'who is my biggest customer' from this operation; use list_invoices and group by customerName, which carries a real per-invoice amountDue. Addresses, tags, notes and custom fields are NOT returned. No currency field: it belongs to the company, see whoami.",
+    description: "List the active company's customers, newest first, with free-text search and paging. Use it to find a customer's id or email before acting on them.\nReturns one row per customer with exactly these fields: id, name, email, phone, amountDue, total, documentCount, projectCount \u2014 plus pageInfo. `name` is the company name where there is one, otherwise the person's name.\nIMPORTANT: `amountDue`, `total` and `documentCount` were null for every customer in the account this was measured against \u2014 the backend does not reliably populate them here. Do NOT answer 'who owes me the most' or 'who is my biggest customer' from this operation: the biggest customer is report_customers, and who owes the most is list_invoices filtered to unpaid statuses, grouped by customerName on amountDue. Addresses, tags, notes and custom fields are NOT returned. No currency field: it belongs to the company, see whoami.",
     readOnly: true,
     inputSchema: external_exports.object({
       ...companyScope,
@@ -88272,15 +88527,20 @@ var customerReads = [
     }),
     run: async (args) => {
       const a = args;
-      return projectCustomerList(
-        await listCustomers(
-          compact({
-            search: a.search,
-            page: a.page,
-            perPage: a.per_page,
-            companyId: a.company_id
-          })
-        )
+      return withPagingHint(
+        projectCustomerList(
+          await listCustomers(
+            compact({
+              search: a.search,
+              page: a.page,
+              perPage: a.per_page,
+              companyId: a.company_id
+            })
+          )
+        ),
+        a.page,
+        Boolean(a.search),
+        "`search`"
       );
     }
   },
@@ -88376,11 +88636,13 @@ var salesReads = [
     name: "list_proposals",
     group: "proposals",
     title: "List proposals and whether they are signed",
-    description: "List the active company's proposals, newest first, filterable by status. `clientSignedDate` is the field to read for 'has X signed?' \u2014 null means unsigned.\nReturns one row per proposal with exactly these fields: id, proposalNumber, title, status, customerId, customerName, startDate, endDate, expirationDate, clientSignedDate, viewedDate \u2014 plus pageInfo. Service line items, tax, discount and shipping are NOT returned here. No currency field: it belongs to the company, see whoami.",
+    description: "List the active company's proposals, newest first. Filter by status, customer, entry date and free-text search rather than paging through everything. `clientSignedDate` is the field to read for 'has X signed?' \u2014 null means unsigned.\nReturns one row per proposal with exactly these fields: id, proposalNumber, title, status, customerId, customerName, startDate, endDate, expirationDate, clientSignedDate, viewedDate \u2014 plus pageInfo. Service line items, tax, discount and shipping are NOT returned here. No currency field: it belongs to the company, see whoami.",
     readOnly: true,
     inputSchema: external_exports.object({
       ...companyScope,
       status: external_exports.array(external_exports.enum(PROPOSAL_STATUSES)).optional().describe("Filter by one or more statuses (default: all)."),
+      search: external_exports.string().optional().describe("Free-text match on proposal title or customer name."),
+      ...listFilters,
       ...paging
     }),
     run: async (args) => {
@@ -88389,6 +88651,8 @@ var salesReads = [
         await listProposals(
           compact({
             status: a.status,
+            search: a.search,
+            ...listFilterOptions(a),
             page: a.page,
             perPage: a.per_page,
             companyId: a.company_id
@@ -88482,15 +88746,20 @@ var catalogReads = [
     }),
     run: async (args) => {
       const a = args;
-      return projectItemList(
-        await listItems(
-          compact({
-            search: a.search,
-            page: a.page,
-            perPage: a.per_page,
-            companyId: a.company_id
-          })
-        )
+      return withPagingHint(
+        projectItemList(
+          await listItems(
+            compact({
+              search: a.search,
+              page: a.page,
+              perPage: a.per_page,
+              companyId: a.company_id
+            })
+          )
+        ),
+        a.page,
+        Boolean(a.search),
+        "`search`"
       );
     }
   },
@@ -88933,9 +89202,6 @@ function responseBytes(result) {
   if (!Array.isArray(content)) return 0;
   return content.reduce((total, part) => total + (part?.text?.length ?? 0), 0);
 }
-function estTokens(bytes) {
-  return Math.round(bytes / 4);
-}
 function fail(err2) {
   const message = err2 instanceof Error ? err2.message : String(err2);
   return {
@@ -88969,11 +89235,7 @@ function registerReadTools(server) {
         }
       },
       async (args) => {
-        try {
-          return ok(await entry.run(args));
-        } catch (err2) {
-          return fail(err2);
-        }
+        return ok(await entry.run(args));
       }
     );
   }
@@ -89751,10 +90013,10 @@ If this is genuinely a second invoice, pass an explicit \`number\` to say so \u2
           ...args.company_id ? { companyId: args.company_id } : {}
         });
       } catch (err2) {
-        if (!(err2 instanceof RecordsNotFound)) throw err2;
-        return fail(
-          `${err2.message} Check list_customers for the same person under another name. If they are new, ask the user, create them with create_customer, and call again with the new id.`
-        );
+        if (err2 instanceof RecordsNotFound) {
+          err2.message += " Check list_customers for the same person under another name. If they are new, ask the user, create them with create_customer, and call again with the new id.";
+        }
+        throw err2;
       }
       const { record: record2, converted, crossCompany } = copied;
       return ok({
@@ -91179,15 +91441,7 @@ function registerWriteTools(mcp, options = {}) {
     registerTool: ((name, config3, handler) => {
       const c = config3;
       const strict = c.inputSchema && !(c.inputSchema instanceof external_exports.ZodType) ? { ...c, inputSchema: external_exports.strictObject(c.inputSchema) } : c;
-      const run = handler;
-      const guarded = async (...args) => {
-        try {
-          return await run(...args);
-        } catch (err2) {
-          return fail(err2);
-        }
-      };
-      return register(name, strict, guarded);
+      return register(name, strict, handler);
     })
   };
   registerInvoiceWrites(server);
@@ -91225,7 +91479,7 @@ Never deliver a document for signature by email_customer or any other email: tha
 
 // src/mcp/server.ts
 var LOCAL_FILE_TOOLS = ["scan_receipt", "attach_photo"];
-function logToolFailure(tool, reason, detail) {
+function logToolFailure(tool, reason, detail, call) {
   let message;
   if (detail instanceof Error) {
     message = detail.message;
@@ -91234,8 +91488,36 @@ function logToolFailure(tool, reason, detail) {
     message = content?.[0]?.text ?? String(detail);
   }
   const oneLine = message.replace(/\s+/g, " ").trim().slice(0, 300);
-  process.stderr.write(`[mcp] ${tool} FAILED (${reason}): ${oneLine}
+  process.stderr.write(
+    `[mcp] ${tool} FAILED (${reason}) ${callDetails(call)}: ${oneLine}
+`
+  );
+}
+function callerDetails() {
+  const auth = currentRequestAuth();
+  if (!auth) return [];
+  return [
+    `user=${auth.analyticsUserId ?? "-"}`,
+    `auth=${auth.authMode ?? "-"}`,
+    `ip=${auth.clientIp ?? "-"}`
+  ];
+}
+function logToolCall(tool, call) {
+  process.stderr.write(`[mcp] ${tool} ok ${callDetails(call)}
 `);
+}
+function callDetails(call) {
+  const { duration_ms, output_bytes, session_id, client_platform, args, ...values } = call;
+  return [
+    `${duration_ms}ms`,
+    ...output_bytes === void 0 ? [] : [`${output_bytes}B`],
+    `client=${client_platform ?? "unknown"}`,
+    // Enough of the id to follow one session down the log.
+    `session=${session_id.slice(0, 8)}`,
+    ...args ? [`args=${args.slice(0, 80)}`] : [],
+    ...Object.entries(values).map(([key2, value]) => `${key2}=${value}`),
+    ...callerDetails()
+  ].join(" ");
 }
 function buildMcpServer(options = {}) {
   markMcpSurface();
@@ -91263,39 +91545,45 @@ function buildMcpServer(options = {}) {
   server.registerTool = ((name, meta3, handler) => {
     if (!localFiles && LOCAL_FILE_TOOLS.includes(name)) return void 0;
     return register(name, meta3, (async (...args) => {
-      const report = (event, props) => {
-        void track(event, { ...clientProps(), ...props });
-      };
       const session_id = sessionIdFrom(args);
+      const shape = toolCallShape(args[0]);
+      const startedAt = Date.now();
+      const call = (output_bytes) => ({
+        ...shape,
+        duration_ms: Date.now() - startedAt,
+        ...output_bytes === void 0 ? {} : { output_bytes },
+        session_id,
+        client_platform: clientProps().client_platform
+      });
+      const report = (event, details, reason) => {
+        const { client_platform: _client, ...props } = details;
+        void track(event, {
+          ...clientProps(),
+          tool: name,
+          ...props,
+          ...props.output_bytes === void 0 ? {} : { est_tokens: estTokens(props.output_bytes) },
+          ...reason ? { reason } : {}
+        });
+      };
       try {
         const result = await handler(...args);
-        const bytes = responseBytes(result);
+        const details = call(responseBytes(result));
         const handled = result ?? {};
         if (handled.isError === true) {
-          report("MCP Tool Failed", {
-            tool: name,
-            session_id,
-            reason: "refused",
-            output_bytes: bytes
-          });
-          logToolFailure(name, "refused", result);
+          report("MCP Tool Failed", details, "refused");
+          logToolFailure(name, "refused", result, details);
           return result;
         }
-        report("MCP Tool Completed", {
-          tool: name,
-          session_id,
-          output_bytes: bytes,
-          est_tokens: estTokens(bytes)
-        });
+        report("MCP Tool Completed", details);
+        if (options.logCalls) logToolCall(name, details);
         return result;
       } catch (err2) {
-        report("MCP Tool Failed", {
-          tool: name,
-          session_id,
-          reason: "threw"
-        });
-        logToolFailure(name, "threw", err2);
-        throw err2;
+        const result = fail(err2);
+        const details = call(responseBytes(result));
+        const reason = formatError(err2).json.code;
+        report("MCP Tool Failed", details, reason);
+        logToolFailure(name, reason, result, details);
+        return result;
       }
     }));
   });
@@ -94228,9 +94516,9 @@ async function handleHttp(req, res) {
   }
   sendJsonRpcError(res, 404, -32601, "Not found.");
 }
-var serverOptions = { localFiles: false };
+var serverOptions = { localFiles: false, logCalls: true };
 async function runMcpHttp(port, host = "127.0.0.1", options = {}) {
-  serverOptions = { ...options, localFiles: false };
+  serverOptions = { ...options, localFiles: false, logCalls: true };
   markMcpSurface("http");
   const debug = process.env["MCP_DEBUG"] === "1";
   const server = http.createServer((req, res) => {

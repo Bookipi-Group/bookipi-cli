@@ -9,6 +9,41 @@ under a version you already have will not reach you. `claude plugin update`
 reports "already at the latest version" and keeps serving the cached copy —
 refresh the marketplace first (`/plugin marketplace update bookipi-cli`).
 
+## 0.56.0 — 2026-11-26
+
+### Added
+- Connector: `list_invoices` filters by customer (`customer_id`) and by date
+  range (`created_from`, `created_to`), and can return each invoice's line items and payments
+  in the same call (`include`). Questions about one customer, one period or
+  what was sold no longer need a call per invoice.
+- Connector: `list_proposals` takes the same customer and date filters, and a
+  text `search`.
+
+### Changed
+- Paging to page 3 or beyond of invoices, customers or items with no filter now
+  prints a one-line note on how to search instead, on the CLI (stderr, so
+  `--json` output is unchanged) and as a `hint` on the connector's result.
+- When Bookipi rate-limits a call and says how long to wait, the error now
+  gives that time in place of a fixed "about 30 seconds".
+- Connector: `list_invoices` asks Bookipi only for the fields it returns, not
+  the whole invoice for every row, so a page loads with far less data.
+- Usage analytics for a CLI command or a connector tool call now include the
+  page number and page size asked for, the document type, status, sort and
+  period chosen, how long it took and how much it returned. Search text,
+  customer names, ids, dates, amounts and every other value are still not sent.
+- Usage analytics and the connector's failure log now say what kind of
+  failure a tool call was: the tool declining the request, a sign-in problem,
+  the Bookipi API being unreachable, slow or throttled, a record that does not
+  exist, or a rejected value. Every failure used to be reported as "refused".
+- The hosted connector logs one line for every tool call, with the same
+  details plus the caller's hashed user id, sign-in type and forwarded
+  address. A failed call's line now carries them too.
+
+### Fixed
+- Duplicating a repeating invoice on a free plan no longer starts a second
+  repeating series. The copy is a one-off, the same as a duplicate made in the
+  web app. On a paid plan the copy keeps repeating, as before.
+
 ## 0.55.1 — 2026-11-25
 
 ### Fixed

@@ -17658,8 +17658,8 @@ var {
 
 // src/config.ts
 var BUILD_ENV = "prod";
-var CLI_VERSION = "0.55.1";
-var BUILD_STAMP = "ef0086c 2026-11-25";
+var CLI_VERSION = "0.56.0";
+var BUILD_STAMP = "b94442e 2026-11-26";
 var config = {
   AUTH_SERVER: process.env["AUTH_SERVER"] ?? "https://auth.bookipi.com",
   APP_ID: process.env["APP_ID"] ?? "1dd166d9569f4f7eb0f08a22c8f0d54a",
@@ -18297,8 +18297,10 @@ async function graphqlRequest({
       log("err");
       const body = err.response.data;
       const detail = Array.isArray(body?.errors) ? formatGraphqlErrors(body.errors) : typeof body === "string" ? body.slice(0, 300) : JSON.stringify(body).slice(0, 300);
+      const retryAfter = Number(err.response.headers?.["retry-after"]);
+      const wait = err.response.status === 429 && Number.isFinite(retryAfter) && retryAfter > 0 ? ` Retry after ${Math.ceil(retryAfter)}s.` : "";
       throw new Error(
-        `GraphQL request to ${gqlUrl} failed (${err.response.status}): ${detail}`
+        `GraphQL request to ${gqlUrl} failed (${err.response.status}): ${detail}${wait}`
       );
     }
     log("err");
