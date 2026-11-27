@@ -9,6 +9,43 @@ under a version you already have will not reach you. `claude plugin update`
 reports "already at the latest version" and keeps serving the cached copy —
 refresh the marketplace first (`/plugin marketplace update bookipi-cli`).
 
+## 0.57.0 — 2026-11-27
+
+### Added
+- `bookipi report invoices` and the connector's `report_invoices` rank single
+  invoices by total over a date range, highest first: "what is my biggest
+  invoice" in one call. Until now the only way was to page the whole invoice
+  list and compare totals. Sent invoices only, by invoice date, like the
+  customer and item rankings. `--type` (connector: `document_type`) ranks
+  estimates, credit notes, delivery notes or purchase orders the same way.
+- `bookipi report proposals` and the connector's `report_proposals` rank
+  proposals by value over a date range: sent proposals only, by the day they
+  were created.
+- `report invoices` also answers "my smallest invoice" (`--smallest`),
+  "invoices between 1,000 and 5,000" (`--min`, `--max`) and "which invoices
+  include X" (`--item`). Connector: `order`, `min_total`, `max_total`, `item`.
+- `bookipi report owed` and the connector's `report_owed`: who owes the most
+  right now, ranked by customer, or unpaid invoices soonest due first with a
+  due-date window ("what is due next week").
+- `bookipi report payments` and the connector's `report_payments`: payments
+  received across every customer over a date range, with the split by method
+  and a `--method` filter ("which invoices were paid by card").
+- `item list --sort` takes `price-high`, `price-low`, `name`, `newest` and
+  `oldest`, and the connector's `list_items` has the same `sort`. "My most
+  expensive item" and "items with no price" are the first page.
+
+### Changed
+- `item list --sort price_desc` and `--sort name_asc` were accepted and sorted
+  nothing: the backend sorts on its stored field names. They now sort, and the
+  named orders above are the documented way.
+- Reports name each customer as stored on the invoice. They used to look the
+  customer up again for every invoice read, which was slow on large accounts;
+  a customer renamed since shows under the name they were invoiced as.
+
+### Fixed
+- `bookipi report customers` and `report items` numbered their rows from 1 on
+  every page; page 2 now carries on from where page 1 stopped.
+
 ## 0.56.0 — 2026-11-26
 
 ### Added

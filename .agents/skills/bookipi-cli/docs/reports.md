@@ -31,6 +31,49 @@ bookipi report items --start 2026-01-01 --end 2026-03-31 --limit 20
 bookipi report items --page 2
 ```
 
+## Largest Invoices
+
+Single invoices ranked by total, highest first. Sent invoices only, by the date on the invoice, in the company's currency.
+
+```bash
+bookipi report invoices
+bookipi report invoices --start 2026-01-01 --end 2026-03-31 --limit 5
+bookipi report invoices --page 2
+bookipi report invoices --type estimate      # or credit-note, delivery-note, purchase-order
+bookipi report invoices --smallest           # lowest total first
+bookipi report invoices --min 1000 --max 5000
+bookipi report invoices --item "hosting"     # only invoices with a line naming that item
+```
+
+## Who Owes You
+
+What is owed right now, as of today (not for a period): invoices the customer was sent that still have a balance.
+
+```bash
+bookipi report owed                          # customers ranked by what they owe
+bookipi report owed --by invoice             # unpaid invoices, soonest due first
+bookipi report owed --by invoice --due-from 2026-12-01 --due-to 2026-12-07
+```
+
+## Payments Received
+
+Payments across every customer, newest first, with the split by payment method. By the day the payment was recorded.
+
+```bash
+bookipi report payments
+bookipi report payments --start 2026-11-01 --end 2026-11-30
+bookipi report payments --method card
+```
+
+## Largest Proposals
+
+Proposals ranked by value, highest first. Proposals the customer was sent only (no drafts), by the day they were created. Value is the service lines added up, before tax, discount and shipping.
+
+```bash
+bookipi report proposals
+bookipi report proposals --start 2026-01-01 --end 2026-03-31 --limit 5
+```
+
 ## Visual Dashboard
 
 Generates an interactive HTML dashboard with charts, filters, and tabs (Overview, Customers, Items).
@@ -127,6 +170,26 @@ Use `report summary` for an overview with monthly breakdown. Add `--start` and `
 ### "Who are my top customers?" / "Who owes me the most?"
 
 Use `report customers` to see customers ranked by revenue.
+
+### "What is my biggest invoice?" / "My largest sale" / "Top 5 invoices this year"
+
+Use `report invoices`: one command. Never page `invoice list` to compare totals; it cannot sort by amount. It covers the last 12 months unless you pass `--start`: for "ever" or an older period, pass an early `--start`, and tell the user which period the answer covers. Invoices in another currency are listed as "Not included"; mention them. For the biggest estimate or other document, add `--type`. For the biggest proposal, use `report proposals`, which has the same 12-month default.
+
+### "Which invoices include X?" / "Who bought X?" / "My smallest invoice" / "Invoices over 5,000"
+
+Use `report invoices` with `--item`, `--smallest`, `--min` or `--max`. One command; never page `invoice list` with line items to look for them.
+
+### "Who owes me the most?" / "What is due next week?" / "What fell due last month?"
+
+Use `report owed` (ranked by customer), or `report owed --by invoice` with `--due-from` / `--due-to` for a due-date window. `invoice list` has no due-date filter.
+
+### "Which invoices were paid by card?" / "How much came in as cash?" / "What was I paid last week?"
+
+Use `report payments`, with `--method` for one method. For one customer's payment history, use `customer payments`.
+
+### "What is my most expensive item?" / "Which items have no price?"
+
+Use `item list --sort price-high` (or `price-low`, which puts items with no price first) and read the first rows. Other orders: `name`, `newest`, `oldest`.
 
 ### "What items sell the most?" / "Top products by revenue"
 

@@ -54,7 +54,7 @@ import {
   useConfigDir,
   wasBookipiTokenRejected,
   whereSignedIn
-} from "./chunks/chunk-6L6RSFU6.js";
+} from "./chunks/chunk-SMO2JI32.js";
 import {
   __commonJS,
   __export,
@@ -41536,6 +41536,24 @@ async function draftInvoice(input2) {
 }
 
 // src/usecases/item/listItems.ts
+var ITEM_SORTS = {
+  newest: "createdAt_desc",
+  oldest: "createdAt_asc",
+  name: "n_asc",
+  price_high: "p_desc",
+  price_low: "p_asc"
+};
+var ITEM_SORT_NAMES = Object.keys(ITEM_SORTS);
+var API_NAME_SORTS = {
+  price_desc: "p_desc",
+  price_asc: "p_asc",
+  name_asc: "n_asc",
+  name_desc: "n_desc"
+};
+function itemSort(input2) {
+  const name = input2.trim().toLowerCase().replace(/-/g, "_");
+  return ITEM_SORTS[name] ?? API_NAME_SORTS[name] ?? input2;
+}
 var SEARCH_ITEMS_QUERY = `
   query SearchItems($filter: SearchFilterInput!, $paginate: SearchPaginateInput, $sort: String, $autoComplete: Boolean, $searchBy: [SearchByEnum!]) {
     searchItems(
@@ -41588,7 +41606,7 @@ async function listItems(options = {}) {
       perPage
     },
     searchBy: ["name", "productCode"],
-    sort
+    sort: itemSort(sort)
   };
   return bookipiGraphql({
     query: SEARCH_ITEMS_QUERY,
@@ -43636,24 +43654,25 @@ var REPORT_INVOICES_QUERY = `
         dueDate
         payments { amount date }
         customer { _id firstName lastName companyName individualCompanyName }
-        customerReference { _id firstName lastName companyName individualCompanyName }
       }
       pageInfo { hasNextPage }
     }
   }
 `;
 var DATED_INVOICES_QUERY = `
-  query DatedInvoices($filter: SearchFilterInput!, $paginate: SearchPaginateInput) {
-    searchInvoices(docType: 1, filter: $filter, paginate: $paginate, sort: "createdAt_desc") {
+  query DatedInvoices($filter: SearchFilterInput!, $paginate: SearchPaginateInput, $docType: Int) {
+    searchInvoices(docType: $docType, filter: $filter, paginate: $paginate, sort: "createdAt_desc") {
       items {
         _id
+        no
         date
         total
+        amountDue
         status
+        computedStatus
         sent
         currency
         customer { _id firstName lastName companyName individualCompanyName email }
-        customerReference { _id firstName lastName companyName individualCompanyName email }
         items { _id name description price productCode quantity total }
       }
       pageInfo { hasNextPage }
@@ -43671,19 +43690,26 @@ var UNPAID_STATUSES = [
 var OUTSTANDING_PAGE_SIZE = 1e3;
 var OUTSTANDING_MAX_PAGES = 3;
 async function scanInvoices(status, perPage, maxPages, companyId, query = REPORT_INVOICES_QUERY, entered) {
+  return scanPages(
+    query,
+    "searchInvoices",
+    { filter: { search: null, status, ...entered ? { start: entered } : {} } },
+    perPage,
+    maxPages,
+    companyId
+  );
+}
+async function scanPages(query, root, variables, perPage, maxPages, companyId) {
   const byId = /* @__PURE__ */ new Map();
   const items = () => [...byId.values()];
   for (let page = 1; page <= maxPages; page++) {
     const data = await bookipiGraphql({
       query,
-      variables: {
-        filter: { search: null, status, ...entered ? { start: entered } : {} },
-        paginate: { fetchAll: false, page, perPage }
-      },
+      variables: { ...variables, paginate: { fetchAll: false, page, perPage } },
       ...companyId ? { companyId } : {}
     });
-    for (const inv of data?.searchInvoices?.items ?? []) byId.set(inv._id, inv);
-    if (!data?.searchInvoices?.pageInfo?.hasNextPage) {
+    for (const row of data?.[root]?.items ?? []) byId.set(row._id, row);
+    if (!data?.[root]?.pageInfo?.hasNextPage) {
       return { items: items(), truncated: false };
     }
   }
@@ -43735,23 +43761,23 @@ function enteredSince(startDay) {
   ).toISOString();
 }
 var invoicedReads = /* @__PURE__ */ new Map();
-function readInvoicedBetween(startDay, endDay, companyId) {
-  const key2 = [getToken() ?? "", companyId ?? getDefaultCompany() ?? "", startDay, endDay].join("|");
+function readInvoicedBetween(startDay, endDay, companyId, docType = 1) {
+  const key2 = [getToken() ?? "", companyId ?? getDefaultCompany() ?? "", startDay, endDay, docType].join("|");
   const inFlight = invoicedReads.get(key2);
   if (inFlight) return inFlight;
-  const read = readInvoiced(startDay, endDay, companyId).finally(() => invoicedReads.delete(key2));
+  const read = readInvoiced(startDay, endDay, companyId, docType).finally(() => invoicedReads.delete(key2));
   invoicedReads.set(key2, read);
   return read;
 }
-async function readInvoiced(startDay, endDay, companyId) {
+async function readInvoiced(startDay, endDay, companyId, docType) {
   const [{ items, truncated }, home] = await Promise.all([
-    scanInvoices(
-      ALL_STATUSES,
+    scanPages(
+      DATED_INVOICES_QUERY,
+      "searchInvoices",
+      { filter: { search: null, status: ALL_STATUSES, start: enteredSince(startDay) }, docType },
       OUTSTANDING_PAGE_SIZE,
       DATED_MAX_PAGES,
-      companyId,
-      DATED_INVOICES_QUERY,
-      enteredSince(startDay)
+      companyId
     ),
     companyCurrency(companyId)
   ]);
@@ -43798,19 +43824,39 @@ var PAID_INVOICES_QUERY = `
     }
   }
 `;
+var PAID_INVOICES_DETAIL_QUERY = `
+  query PaidInvoicesDetail($filter: SearchFilterInput!, $paginate: SearchPaginateInput) {
+    searchInvoices(docType: 1, filter: $filter, paginate: $paginate, sort: "createdAt_desc") {
+      items {
+        _id
+        no
+        currency
+        payments { amount date method }
+        customer { _id firstName lastName companyName individualCompanyName }
+      }
+      pageInfo { hasNextPage }
+    }
+  }
+`;
 var paidReads = /* @__PURE__ */ new Map();
 var PAID_STATUSES = ["paid", "partialPaid", "overdue"];
-function readPaidBetween(startDay, endDay, companyId) {
-  const key2 = [getToken() ?? "", companyId ?? getDefaultCompany() ?? "", startDay, endDay].join("|");
+function readPaidBetween(startDay, endDay, companyId, detail = false) {
+  const key2 = [getToken() ?? "", companyId ?? getDefaultCompany() ?? "", startDay, endDay, detail].join("|");
   const inFlight = paidReads.get(key2);
   if (inFlight) return inFlight;
-  const read = readPaid(startDay, endDay, companyId).finally(() => paidReads.delete(key2));
+  const read = readPaid(startDay, endDay, companyId, detail).finally(() => paidReads.delete(key2));
   paidReads.set(key2, read);
   return read;
 }
-async function readPaid(startDay, endDay, companyId) {
+async function readPaid(startDay, endDay, companyId, detail) {
   const [{ items, truncated }, home] = await Promise.all([
-    scanInvoices(PAID_STATUSES, OUTSTANDING_PAGE_SIZE, DATED_MAX_PAGES, companyId, PAID_INVOICES_QUERY),
+    scanInvoices(
+      PAID_STATUSES,
+      OUTSTANDING_PAGE_SIZE,
+      DATED_MAX_PAGES,
+      companyId,
+      detail ? PAID_INVOICES_DETAIL_QUERY : PAID_INVOICES_QUERY
+    ),
     companyCurrency(companyId)
   ]);
   const payments = [];
@@ -43821,7 +43867,14 @@ async function readPaid(startDay, endDay, companyId) {
       if (!day || day < startDay || day > endDay) continue;
       const amount = Number(p.amount) || 0;
       if (inHomeCurrency(inv, home)) {
-        payments.push({ day, amount });
+        payments.push({
+          day,
+          amount,
+          ...detail ? {
+            method: p.method ?? null,
+            invoice: { _id: inv._id, no: inv.no ?? null, customer: inv.customer ?? null }
+          } : {}
+        });
         continue;
       }
       const currency = String(inv.currency).toUpperCase();
@@ -45776,7 +45829,11 @@ Page ${meta3.currentPage} of ${meta3.pageCount} (${meta3.itemCount} total)
 };
 
 // src/commands/item/list.ts
-var listCommand3 = new Command("list").description("List items/products").option("--search <query>", "Search items by name or product code").option("-p, --page <number>", "Page number", "1").option("-l, --limit <number>", "Items per page", "50").option("--sort <field>", "Sort order", "createdAt_asc").option("--json", "Output raw JSON instead of formatted").action(
+var listCommand3 = new Command("list").description("List items/products").option("--search <query>", "Search items by name or product code").option("-p, --page <number>", "Page number", "1").option("-l, --limit <number>", "Items per page", "50").option(
+  "--sort <order>",
+  `Order: ${ITEM_SORT_NAMES.join(", ").replace(/_/g, "-")}`,
+  "oldest"
+).option("--json", "Output raw JSON instead of formatted").action(
   withErrors(async (opts) => {
     const { page, perPage } = parsePaging(opts);
     const data = await listItems({
@@ -45868,7 +45925,7 @@ var createCommand4 = new Command("create").description("Create a new item/produc
     if (opts.photo) {
       process.stderr.write(`  \u2022 Uploading ${opts.photo}...
 `);
-      const { uploadItemImage: uploadItemImage2 } = await import("./chunks/uploadItemImage-62ENROXE.js");
+      const { uploadItemImage: uploadItemImage2 } = await import("./chunks/uploadItemImage-AZPGYBSW.js");
       const { filename } = await uploadItemImage2(opts.photo);
       record2.photos = [{ filename }];
     }
@@ -47366,11 +47423,250 @@ async function getRevenueSummary(options) {
   };
 }
 
+// src/usecases/report/invoicedRank.ts
+async function rankInvoiced(options, rowsOf, amountOf, totalOf = invoicedTotal, countOf = (invoices) => invoices.length) {
+  const days3 = periodDays(options.start, options.end);
+  if (!days3) throw new ValidationError("Use YYYY-MM-DD for the start and end dates.");
+  const { startDay, endDay } = days3;
+  const read = await readInvoicedBetween(startDay, endDay, options.companyId, options.docType);
+  const { otherCurrencies, truncated } = read;
+  const invoices = options.where ? read.invoices.filter(options.where) : read.invoices;
+  const direction = options.ascending ? -1 : 1;
+  const rows = [...rowsOf(invoices)].sort((a, b) => direction * (amountOf(b) - amountOf(a)));
+  return {
+    totalDocs: { count: countOf(invoices), amount: round2(totalOf(invoices)) },
+    ...rankPage(rows, options),
+    ...otherCurrencies.length ? { otherCurrencies: otherCurrencies.map((c) => c.currency) } : {},
+    ...truncated ? { partial: true } : {}
+  };
+}
+function rankPage(rows, options) {
+  const page = Math.max(1, options.page ?? 1);
+  const perPage = Math.max(1, options.perPage ?? 10);
+  const pageCount = Math.max(1, Math.ceil(rows.length / perPage));
+  return {
+    pageInfo: {
+      currentPage: page,
+      perPage,
+      pageCount,
+      itemCount: rows.length,
+      hasNextPage: page < pageCount,
+      hasPreviousPage: page > 1
+    },
+    items: rows.slice((page - 1) * perPage, page * perPage)
+  };
+}
+var invoiceAmount = (inv) => Number(inv.total) || 0;
+var invoicedTotal = (invoices) => invoices.reduce((s, inv) => s + invoiceAmount(inv), 0);
+function tally(map2, key2, init, add) {
+  let v = map2.get(key2);
+  if (!v) map2.set(key2, v = init());
+  add(v);
+}
+
+// src/usecases/proposal/listProposals.ts
+var PROPOSAL_STATUSES = [
+  "draft",
+  "saved",
+  "sent",
+  "read",
+  "accepted",
+  "declined",
+  "completed",
+  "terminated",
+  "unsuccessful"
+];
+var SEARCH_PROPOSALS_QUERY = `
+  query SearchProposals(
+    $filter: SearchFilterInput!
+    $paginate: SearchPaginateInput
+    $sort: String
+    $isProposalAi: Boolean = false
+  ) {
+    searchProposals(
+      filter: $filter
+      paginate: $paginate
+      sort: $sort
+      isProposalAi: $isProposalAi
+    ) {
+      pageInfo {${PAGE_INFO_FIELDS}      }
+      items {
+        _id
+        no
+        title
+        status
+        isDraft
+        archived
+        creationMethod
+        startDate
+        endDate
+        effectiveDate
+        expirationDate
+        viewedDate
+        clientSignedDate
+        paymentEnabled
+        hasUnsuccessfulPayment
+        taxInclusive
+        taxName
+        taxPercentage
+        taxName2
+        taxPercentage2
+        discount
+        discountPercentage
+        shippingCost
+        shippingNonTax
+        updatedAt
+        createdAt
+        serviceItems {
+          _id
+          name
+          price
+          quantity
+          totalAmount
+          billingType
+          recurringPeriodType
+          recurringPeriodFrequency
+        }
+        customer {
+          firstName
+          lastName
+          companyName
+          individualCompanyName
+        }
+        customerReference {
+          _id
+          email
+          companyName
+          individualCompanyName
+        }
+      }
+    }
+  }
+`;
+async function listProposals(options = {}) {
+  const {
+    status = [...PROPOSAL_STATUSES],
+    search,
+    isProposalAi = false,
+    page = 1,
+    perPage = 15,
+    sort = "createdAt_desc"
+  } = options;
+  const variables = {
+    filter: {
+      search: search ?? null,
+      status,
+      ...options.customerId ? { customerId: options.customerId } : {},
+      ...options.start ? { start: options.start } : {},
+      ...options.end ? { end: options.end } : {}
+    },
+    paginate: { fetchAll: false, page, perPage },
+    sort,
+    isProposalAi
+  };
+  return bookipiGraphql({
+    query: SEARCH_PROPOSALS_QUERY,
+    variables,
+    // Per-call company scope — see getInvoice for why the MCP server needs it.
+    ...options.companyId ? { companyId: options.companyId } : {}
+  });
+}
+
+// src/usecases/report/getProposalsRank.ts
+var SENT_STATUSES = PROPOSAL_STATUSES.filter((s) => s !== "draft" && s !== "saved");
+var PAGE_SIZE = 1e3;
+var MAX_PAGES = 10;
+var RANKED_PROPOSALS_QUERY = `
+  query RankedProposals($filter: SearchFilterInput!, $paginate: SearchPaginateInput) {
+    searchProposals(filter: $filter, paginate: $paginate, sort: "createdAt_desc") {
+      items {
+        _id
+        no
+        title
+        status
+        createdAt
+        clientSignedDate
+        itemsAmount
+        customer { _id firstName lastName companyName individualCompanyName }
+      }
+      pageInfo { hasNextPage }
+    }
+  }
+`;
+var proposalAmount = (p) => Number(p.itemsAmount) || 0;
+async function getProposalsRank(options) {
+  const days3 = periodDays(options.start, options.end);
+  if (!days3) throw new ValidationError("Use YYYY-MM-DD for the start and end dates.");
+  const { items, truncated } = await scanPages(
+    RANKED_PROPOSALS_QUERY,
+    "searchProposals",
+    {
+      filter: {
+        search: null,
+        status: SENT_STATUSES,
+        start: dayBound(days3.startDay, false),
+        end: dayBound(days3.endDay, true)
+      }
+    },
+    PAGE_SIZE,
+    MAX_PAGES,
+    options.companyId
+  );
+  const rows = items.sort(
+    (a, b) => proposalAmount(b) - proposalAmount(a)
+  );
+  return {
+    GetProposalsRank: {
+      totalDocs: {
+        count: rows.length,
+        amount: round2(rows.reduce((s, p) => s + proposalAmount(p), 0))
+      },
+      ...rankPage(rows, options),
+      ...truncated ? { partial: true } : {}
+    }
+  };
+}
+
+// src/usecases/report/getPaymentsReport.ts
+var NO_METHOD = "unspecified";
+var methodOf = (p) => p.method?.trim() || NO_METHOD;
+async function getPaymentsReport(options) {
+  const days3 = periodDays(options.start, options.end);
+  if (!days3) throw new ValidationError("Use YYYY-MM-DD for the start and end dates.");
+  const { payments, otherCurrencies, truncated } = await readPaidBetween(
+    days3.startDay,
+    days3.endDay,
+    options.companyId,
+    true
+  );
+  const byMethod = /* @__PURE__ */ new Map();
+  for (const p of payments) {
+    const method = methodOf(p);
+    tally(byMethod, method.toLowerCase(), () => ({ method, count: 0, amount: 0 }), (row) => {
+      row.count++;
+      row.amount = round2(row.amount + p.amount);
+    });
+  }
+  const want = options.method?.trim().toLowerCase();
+  const rows = payments.filter((p) => !want || methodOf(p).toLowerCase() === want).sort((a, b) => b.day.localeCompare(a.day) || b.amount - a.amount);
+  return {
+    GetPayments: {
+      totalDocs: { count: rows.length, amount: round2(rows.reduce((s, p) => s + p.amount, 0)) },
+      // Every method in the range, whatever `method` narrowed the rows to.
+      byMethod: [...byMethod.values()].sort((a, b) => b.amount - a.amount),
+      ...rankPage(rows, options),
+      ...otherCurrencies.length ? { otherCurrencies: otherCurrencies.map((c) => c.currency) } : {},
+      ...truncated ? { partial: true } : {}
+    }
+  };
+}
+
 // src/core/formatters/ReportFormatter.ts
 var DRAFTS_NOTE = "(drafts there show as Draft and are not counted here)";
 var OVERDUE_LIST_HINT = `\`bookipi invoice list --status overdue\` ${DRAFTS_NOTE}`;
 var UNPAID_LIST_HINT = `\`bookipi invoice list --status sent,read,partialPaid,overdue,undelivered\` ${DRAFTS_NOTE}`;
 var otherAmount = (currency, amount) => `${currency} ${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+var rankOffset = (pageInfo) => ((pageInfo?.currentPage ?? 1) - 1) * (pageInfo?.perPage ?? 0);
 var MONTH_NAMES = [
   "",
   "Jan",
@@ -47404,6 +47700,14 @@ var ReportFormatter = class extends BaseFormatter {
         return this.formatCustomersRank(data, options);
       case "items":
         return this.formatItemsRank(data, options);
+      case "invoices":
+        return this.formatInvoicesRank(data, options);
+      case "proposals":
+        return this.formatProposalsRank(data, options);
+      case "owed":
+        return this.formatOwedRank(data, options);
+      case "payments":
+        return this.formatPayments(data, options);
       default:
         return JSON.stringify(data, null, 2);
     }
@@ -47522,13 +47826,14 @@ var ReportFormatter = class extends BaseFormatter {
     output2 += this.section("Rankings");
     const headers = ["#", "Customer", "Invoices", "Amount"];
     const rows = [];
+    const first = rankOffset(rank.pageInfo);
     items.forEach((item, index) => {
       const customer = item.customer || {};
       const handle = customer._id ? this.registry.register("c", customer._id) : "";
       let name = customer.firstName && customer.lastName ? `${customer.firstName} ${customer.lastName}` : customer.companyName || customer.individualCompanyName || "Unknown";
       if (handle) name += ` [${handle}]`;
       rows.push([
-        `${index + 1}`,
+        `${first + index + 1}`,
         name,
         `${item.total?.count || 0}`,
         this.formatCurrency(item.total?.amount || 0)
@@ -47572,6 +47877,7 @@ Page ${pi.currentPage} of ${pi.pageCount} (${pi.itemCount} total)
     output2 += this.section("Rankings");
     const headers = ["#", "Item", "Qty Sold", "Revenue"];
     const rows = [];
+    const first = rankOffset(rank.pageInfo);
     items.forEach((entry, index) => {
       const item = entry.item || {};
       const handle = item._id ? this.registry.register("t", item._id) : "";
@@ -47579,7 +47885,7 @@ Page ${pi.currentPage} of ${pi.pageCount} (${pi.itemCount} total)
       if (item.productCode) name += ` (${item.productCode})`;
       if (handle) name += ` [${handle}]`;
       rows.push([
-        `${index + 1}`,
+        `${first + index + 1}`,
         name,
         `${entry.total?.count || 0}`,
         this.formatCurrency(entry.total?.amount || 0)
@@ -47597,6 +47903,222 @@ Page ${pi.currentPage} of ${pi.pageCount} (${pi.itemCount} total)
       "Report summary: `bookipi report summary`",
       "Top customers: `bookipi report customers`",
       "Next page: `bookipi report items --page 2`"
+    ]);
+    return output2;
+  }
+  formatInvoicesRank(data, options) {
+    const rank = data.GetInvoicesRank;
+    if (!rank) return "No invoice ranking data available.\n";
+    const type = options?.docType ?? documentTypeByCode(1);
+    const noun = type.label.toLowerCase();
+    const typeFlag = type.code === 1 ? "" : ` --type ${type.name}`;
+    let output2 = `# ${options?.smallest ? "Smallest" : "Largest"} ${type.label}s
+`;
+    output2 += this.listItem("Period", `${options?.start || "N/A"} to ${options?.end || "N/A"}`);
+    if (options?.filters?.length) output2 += this.listItem("Only", options.filters.join(", "));
+    if (rank.totalDocs) {
+      output2 += this.listItem(
+        "Total",
+        `${rank.partial ? "at least " : ""}${this.formatCurrency(rank.totalDocs.amount)} across ${rank.totalDocs.count} sent ${noun}${rank.totalDocs.count === 1 ? "" : "s"}`
+      );
+    }
+    if (rank.otherCurrencies?.length) {
+      output2 += this.listItem("Not included", `${noun}s in ${rank.otherCurrencies.join(", ")} (another currency, not converted)`);
+    }
+    const items = rank.items || [];
+    if (items.length === 0) {
+      output2 += `
+No sent ${noun}s found for this period.
+`;
+      return output2;
+    }
+    output2 += this.section("Rankings");
+    const headers = ["#", type.label, "Customer", "Date", "Status", "Amount"];
+    const pi = rank.pageInfo;
+    const first = rankOffset(pi);
+    const rows = items.map((inv, index) => {
+      const handle = inv._id ? this.registry.register("i", inv._id) : "";
+      return [
+        `${first + index + 1}`,
+        `${inv.no || "Unknown"}${handle ? ` [${handle}]` : ""}`,
+        customerName(inv.customer ?? inv.customerReference, { preferCompany: true }),
+        calendarDate(inv.date) ?? "N/A",
+        invoiceLifecycleLabel(inv) ?? "",
+        this.formatCurrency(invoiceAmount(inv))
+      ];
+    });
+    output2 += this.createTable(headers, rows, [5]);
+    if (pi) {
+      output2 += `
+Page ${pi.currentPage} of ${pi.pageCount} (${pi.itemCount} total)
+`;
+    }
+    output2 += this.separator();
+    output2 += this.nextActions("Next actions", [
+      "Open one: `bookipi invoice get <handle>`",
+      "Top customers: `bookipi report customers`",
+      `Next page: \`bookipi report invoices${typeFlag} --page 2\``
+    ]);
+    return output2;
+  }
+  formatProposalsRank(data, options) {
+    const rank = data.GetProposalsRank;
+    if (!rank) return "No proposal ranking data available.\n";
+    let output2 = `# Largest Proposals
+`;
+    output2 += this.listItem("Period", `${options?.start || "N/A"} to ${options?.end || "N/A"}`);
+    if (rank.totalDocs) {
+      output2 += this.listItem(
+        "Total",
+        `${rank.partial ? "at least " : ""}${this.formatCurrency(rank.totalDocs.amount)} across ${rank.totalDocs.count} sent proposal${rank.totalDocs.count !== 1 ? "s" : ""} (service lines, before tax and discount)`
+      );
+    }
+    const items = rank.items || [];
+    if (items.length === 0) {
+      output2 += "\nNo sent proposals found for this period.\n";
+      return output2;
+    }
+    output2 += this.section("Rankings");
+    const headers = ["#", "Proposal", "Customer", "Created", "Status", "Value"];
+    const first = rankOffset(rank.pageInfo);
+    const rows = items.map((p, index) => {
+      const handle = p._id ? this.registry.register("p", p._id) : "";
+      return [
+        `${first + index + 1}`,
+        `${p.title || p.no || "Untitled"}${handle ? ` [${handle}]` : ""}`,
+        customerName(p.customer ?? p.customerReference, { preferCompany: true }),
+        calendarDate(p.createdAt) ?? "N/A",
+        p.status || "",
+        this.formatCurrency(proposalAmount(p))
+      ];
+    });
+    output2 += this.createTable(headers, rows, [5]);
+    const pi = rank.pageInfo;
+    if (pi) {
+      output2 += `
+Page ${pi.currentPage} of ${pi.pageCount} (${pi.itemCount} total)
+`;
+    }
+    output2 += this.separator();
+    output2 += this.nextActions("Next actions", [
+      "All proposals: `bookipi proposal list`",
+      "Largest invoices: `bookipi report invoices`",
+      "Next page: `bookipi report proposals --page 2`"
+    ]);
+    return output2;
+  }
+  formatOwedRank(data, options) {
+    const rank = data.GetOwedRank;
+    if (!rank) return "No data on what is owed.\n";
+    const byInvoice2 = rank.by === "invoice";
+    let output2 = byInvoice2 ? `# Unpaid Invoices by Due Date
+` : `# Who Owes You
+`;
+    if (options?.dueFrom || options?.dueTo) {
+      output2 += this.listItem("Due", `${options.dueFrom || "any time"} to ${options.dueTo || "any time"}`);
+    }
+    output2 += this.listItem(
+      "Owed",
+      `${rank.partial ? "at least " : ""}${this.formatCurrency(rank.totalDocs.amount)} across ${rank.totalDocs.count} unpaid invoice${rank.totalDocs.count !== 1 ? "s" : ""} (as of today, drafts never sent left out)`
+    );
+    if (rank.otherCurrencies?.length) {
+      output2 += this.listItem("Not included", `invoices in ${rank.otherCurrencies.join(", ")} (another currency, not converted)`);
+    }
+    const items = rank.items || [];
+    if (items.length === 0) {
+      output2 += "\nNothing is owed for this selection.\n";
+      return output2;
+    }
+    output2 += this.section(byInvoice2 ? "Soonest due first" : "Rankings");
+    const first = rankOffset(rank.pageInfo);
+    if (byInvoice2) {
+      const rows = items.map((inv, index) => {
+        const handle = inv._id ? this.registry.register("i", inv._id) : "";
+        return [
+          `${first + index + 1}`,
+          `${inv.no || "Unknown"}${handle ? ` [${handle}]` : ""}`,
+          customerName(inv.customer ?? inv.customerReference, { preferCompany: true }),
+          calendarDate(inv.dueDate) ?? "no due date",
+          this.formatCurrency(Number(inv.amountDue) || 0)
+        ];
+      });
+      output2 += this.createTable(["#", "Invoice", "Customer", "Due", "Owed"], rows, [4]);
+    } else {
+      const rows = items.map((row, index) => {
+        const handle = row.customer?._id ? this.registry.register("c", row.customer._id) : "";
+        return [
+          `${first + index + 1}`,
+          `${customerName(row.customer, { preferCompany: true })}${handle ? ` [${handle}]` : ""}`,
+          `${row.owed.count}`,
+          this.formatCurrency(row.owed.amount),
+          this.formatCurrency(row.overdue.amount),
+          row.oldestDue ?? "\u2014"
+        ];
+      });
+      output2 += this.createTable(
+        ["#", "Customer", "Invoices", "Owed", "Of which overdue", "Oldest due"],
+        rows,
+        [2, 3, 4]
+      );
+    }
+    const pi = rank.pageInfo;
+    if (pi) output2 += `
+Page ${pi.currentPage} of ${pi.pageCount} (${pi.itemCount} total)
+`;
+    output2 += this.separator();
+    output2 += this.nextActions("Next actions", [
+      byInvoice2 ? "By customer: `bookipi report owed`" : "By due date: `bookipi report owed --by invoice`",
+      "Send reminders: `bookipi invoice remind`"
+    ]);
+    return output2;
+  }
+  formatPayments(data, options) {
+    const report = data.GetPayments;
+    if (!report) return "No payment data available.\n";
+    let output2 = `# Payments Received
+`;
+    output2 += this.listItem("Period", `${options?.start || "N/A"} to ${options?.end || "N/A"}`);
+    if (options?.method) output2 += this.listItem("Only", `paid by ${options.method}`);
+    output2 += this.listItem(
+      "Total",
+      `${report.partial ? "at least " : ""}${this.formatCurrency(report.totalDocs.amount)} across ${report.totalDocs.count} payment${report.totalDocs.count !== 1 ? "s" : ""} (by payment date)`
+    );
+    if (report.otherCurrencies?.length) {
+      output2 += this.listItem("Not included", `payments in ${report.otherCurrencies.join(", ")} (another currency, not converted)`);
+    }
+    if (report.byMethod?.length) {
+      output2 += this.section("By method");
+      output2 += this.createTable(
+        ["Method", "Payments", "Amount"],
+        report.byMethod.map((m) => [m.method, `${m.count}`, this.formatCurrency(m.amount)]),
+        [1, 2]
+      );
+    }
+    const items = report.items || [];
+    if (items.length === 0) {
+      output2 += "\nNo payments found for this selection.\n";
+      return output2;
+    }
+    output2 += this.section("Newest first");
+    const rows = items.map((p) => {
+      const handle = p.invoice?._id ? this.registry.register("i", p.invoice._id) : "";
+      return [
+        p.day,
+        `${p.invoice?.no || "Unknown"}${handle ? ` [${handle}]` : ""}`,
+        customerName(p.invoice?.customer, { preferCompany: true }),
+        p.method || NO_METHOD,
+        this.formatCurrency(p.amount)
+      ];
+    });
+    output2 += this.createTable(["Date", "Invoice", "Customer", "Method", "Amount"], rows, [4]);
+    const pi = report.pageInfo;
+    if (pi) output2 += `
+Page ${pi.currentPage} of ${pi.pageCount} (${pi.itemCount} total)
+`;
+    output2 += this.separator();
+    output2 += this.nextActions("Next actions", [
+      "One customer's payments: `bookipi customer payments <customer>`",
+      "Report summary: `bookipi report summary`"
     ]);
     return output2;
   }
@@ -47651,41 +48173,6 @@ var summaryCommand = new Command("summary").description(
   })
 );
 
-// src/usecases/report/invoicedRank.ts
-async function rankInvoiced(options, rowsOf, amountOf, totalOf, countOf = (invoices) => invoices.length) {
-  const days3 = periodDays(options.start, options.end);
-  if (!days3) throw new ValidationError("Use YYYY-MM-DD for the start and end dates.");
-  const { startDay, endDay } = days3;
-  const { invoices, otherCurrencies, truncated } = await readInvoicedBetween(
-    startDay,
-    endDay,
-    options.companyId
-  );
-  const rows = rowsOf(invoices).sort((a, b) => amountOf(b) - amountOf(a));
-  const page = Math.max(1, options.page ?? 1);
-  const perPage = Math.max(1, options.perPage ?? 10);
-  const pageCount = Math.max(1, Math.ceil(rows.length / perPage));
-  return {
-    totalDocs: { count: countOf(invoices), amount: round2(totalOf(invoices)) },
-    pageInfo: {
-      currentPage: page,
-      perPage,
-      pageCount,
-      itemCount: rows.length,
-      hasNextPage: page < pageCount,
-      hasPreviousPage: page > 1
-    },
-    items: rows.slice((page - 1) * perPage, page * perPage),
-    ...otherCurrencies.length ? { otherCurrencies: otherCurrencies.map((c) => c.currency) } : {},
-    ...truncated ? { partial: true } : {}
-  };
-}
-function tally(map2, key2, init, add) {
-  let v = map2.get(key2);
-  if (!v) map2.set(key2, v = init());
-  add(v);
-}
-
 // src/usecases/report/getCustomersRank.ts
 async function getCustomersRank(options) {
   const rank = await rankInvoiced(
@@ -47695,7 +48182,7 @@ async function getCustomersRank(options) {
       for (const inv of invoices) {
         const customer = inv.customer ?? inv.customerReference ?? {};
         const key2 = String(customer["_id"] ?? customerName(customer, { fallback: "" }));
-        const amount = Number(inv.total) || 0;
+        const amount = invoiceAmount(inv);
         tally(byCustomer, key2, () => ({ customer, total: { count: 0, amount: 0 } }), (row) => {
           row.total.count++;
           row.total.amount = round2(row.total.amount + amount);
@@ -47703,8 +48190,7 @@ async function getCustomersRank(options) {
       }
       return [...byCustomer.values()];
     },
-    (row) => row.total.amount,
-    (invoices) => invoices.reduce((s, inv) => s + (Number(inv.total) || 0), 0)
+    (row) => row.total.amount
   );
   return { GetInvoiceCustomersRank: rank };
 }
@@ -47795,6 +48281,201 @@ var itemsCommand = new Command("items").description("Top items/products ranked b
       end: end.split("T")[0]
     });
     console.log(output2);
+  })
+);
+
+// src/usecases/report/getInvoicesRank.ts
+async function getInvoicesRank(options) {
+  const { minTotal, maxTotal } = options;
+  const item = options.item?.trim().toLowerCase();
+  const rank = await rankInvoiced(
+    {
+      ...options,
+      ascending: options.smallest === true,
+      where: (inv) => {
+        const total = invoiceAmount(inv);
+        if (minTotal !== void 0 && total < minTotal) return false;
+        if (maxTotal !== void 0 && total > maxTotal) return false;
+        return !item || (inv.items ?? []).some(
+          (line) => [line?.name, line?.productCode].some((v) => String(v ?? "").toLowerCase().includes(item))
+        );
+      }
+    },
+    (invoices) => invoices,
+    invoiceAmount
+  );
+  return { GetInvoicesRank: rank };
+}
+
+// src/commands/report/invoices.ts
+function amountOption(value, flag) {
+  if (value === void 0) return void 0;
+  const n = Number(value);
+  if (!Number.isFinite(n)) throw new ValidationError(`${flag} takes a number, e.g. ${flag} 500.`);
+  return n;
+}
+var invoicesCommand = new Command("invoices").description("Largest invoices ranked by total").option(
+  "--type <type>",
+  `Document type to rank: ${DOCUMENT_TYPE_NAMES.join(", ")}`,
+  "invoice"
+).option("--smallest", "Lowest total first instead of highest").option("--min <amount>", "Only those with a total of at least this").option("--max <amount>", "Only those with a total of at most this").option("--item <text>", "Only those with a line whose name or code contains this").option("--start <date>", "Start date (YYYY-MM-DD). Defaults to 12 months ago").option("--end <date>", "End date (YYYY-MM-DD). Defaults to today").option("-p, --page <number>", "Page number", "1").option("-l, --limit <number>", "Items per page", "10").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (opts) => {
+    const { start, end } = getDefaultDateRange(opts.start, opts.end);
+    const { page, perPage } = parsePaging(opts);
+    const docType = resolveDocumentType(opts.type);
+    const minTotal = amountOption(opts.min, "--min");
+    const maxTotal = amountOption(opts.max, "--max");
+    const data = await getInvoicesRank({
+      start,
+      end,
+      page,
+      perPage,
+      docType: docType.code,
+      ...opts.smallest ? { smallest: true } : {},
+      ...minTotal === void 0 ? {} : { minTotal },
+      ...maxTotal === void 0 ? {} : { maxTotal },
+      ...opts.item ? { item: opts.item } : {}
+    });
+    const formatter = new ReportFormatter();
+    const output2 = formatter.format(data, {
+      type: "invoices",
+      docType,
+      smallest: Boolean(opts.smallest),
+      filters: [
+        ...opts.item ? [`includes "${opts.item}"`] : [],
+        ...minTotal === void 0 ? [] : [`total at least ${minTotal}`],
+        ...maxTotal === void 0 ? [] : [`total at most ${maxTotal}`]
+      ],
+      json: opts.json,
+      start: start.split("T")[0],
+      end: end.split("T")[0]
+    });
+    console.log(output2);
+  })
+);
+
+// src/commands/report/proposals.ts
+var proposalsCommand = new Command("proposals").description("Largest proposals ranked by value").option("--start <date>", "Start date (YYYY-MM-DD). Defaults to 12 months ago").option("--end <date>", "End date (YYYY-MM-DD). Defaults to today").option("-p, --page <number>", "Page number", "1").option("-l, --limit <number>", "Items per page", "10").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (opts) => {
+    const { start, end } = getDefaultDateRange(opts.start, opts.end);
+    const { page, perPage } = parsePaging(opts);
+    const data = await getProposalsRank({ start, end, page, perPage });
+    const formatter = new ReportFormatter();
+    const output2 = formatter.format(data, {
+      type: "proposals",
+      json: opts.json,
+      start: start.split("T")[0],
+      end: end.split("T")[0]
+    });
+    console.log(output2);
+  })
+);
+
+// src/usecases/report/getOwedRank.ts
+var balance = (inv) => Number(inv.amountDue) || 0;
+async function getOwedRank(options = {}) {
+  const by = options.by ?? "customer";
+  const { owed: all, otherCurrencies, truncated } = await readOutstandingInvoices(options.companyId);
+  const { dueFrom, dueTo } = options;
+  const owed = dueFrom || dueTo ? all.filter((inv) => {
+    const due = calendarDate(inv.dueDate);
+    return due !== null && (!dueFrom || due >= dueFrom) && (!dueTo || due <= dueTo);
+  }) : all;
+  const totalDocs = { count: owed.length, amount: balanceOf(owed) };
+  const caveats = {
+    ...otherCurrencies.length ? { otherCurrencies: otherCurrencies.map((c) => c.currency) } : {},
+    ...truncated ? { partial: true } : {}
+  };
+  if (by === "invoice") {
+    const due = (inv) => calendarDate(inv.dueDate) ?? "9999-12-31";
+    const rows2 = [...owed].sort(
+      (a, b) => due(a).localeCompare(due(b)) || balance(b) - balance(a)
+    );
+    return { GetOwedRank: { by, totalDocs, ...rankPage(rows2, options), ...caveats } };
+  }
+  const byCustomer = /* @__PURE__ */ new Map();
+  for (const inv of owed) {
+    const customer = inv.customer ?? inv.customerReference ?? {};
+    const key2 = String(customer["_id"] ?? customerName(customer, { fallback: "" }));
+    tally(
+      byCustomer,
+      key2,
+      () => ({
+        customer,
+        owed: { count: 0, amount: 0 },
+        overdue: { count: 0, amount: 0 },
+        oldestDue: null
+      }),
+      (row) => {
+        row.owed.count++;
+        row.owed.amount = round2(row.owed.amount + balance(inv));
+        if (isPastDue(inv)) {
+          row.overdue.count++;
+          row.overdue.amount = round2(row.overdue.amount + balance(inv));
+        }
+        const due = calendarDate(inv.dueDate);
+        if (due && (!row.oldestDue || due < row.oldestDue)) row.oldestDue = due;
+      }
+    );
+  }
+  const rows = [...byCustomer.values()].sort((a, b) => b.owed.amount - a.owed.amount);
+  return { GetOwedRank: { by, totalDocs, ...rankPage(rows, options), ...caveats } };
+}
+
+// src/commands/report/owed.ts
+var DAY = /^\d{4}-\d{2}-\d{2}$/;
+var owedCommand = new Command("owed").description("Who owes you money right now, ranked, or what is due when").option("--by <group>", "customer (who owes the most) or invoice (soonest due first)", "customer").option("--due-from <date>", "Only invoices due on or after this day (YYYY-MM-DD)").option("--due-to <date>", "Only invoices due on or before this day (YYYY-MM-DD)").option("-p, --page <number>", "Page number", "1").option("-l, --limit <number>", "Items per page", "10").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (opts) => {
+    const { page, perPage } = parsePaging(opts);
+    if (opts.by !== "customer" && opts.by !== "invoice") {
+      throw new ValidationError("--by takes customer or invoice.");
+    }
+    for (const flag of ["dueFrom", "dueTo"]) {
+      if (opts[flag] && !DAY.test(opts[flag])) {
+        throw new ValidationError("Use YYYY-MM-DD for --due-from and --due-to.");
+      }
+    }
+    const data = await getOwedRank({
+      by: opts.by,
+      page,
+      perPage,
+      ...opts.dueFrom ? { dueFrom: opts.dueFrom } : {},
+      ...opts.dueTo ? { dueTo: opts.dueTo } : {}
+    });
+    const formatter = new ReportFormatter();
+    console.log(
+      formatter.format(data, {
+        type: "owed",
+        json: opts.json,
+        dueFrom: opts.dueFrom,
+        dueTo: opts.dueTo
+      })
+    );
+  })
+);
+
+// src/commands/report/payments.ts
+var paymentsCommand2 = new Command("payments").description("Payments received, newest first, with the split by payment method").option("--method <method>", "Only payments made this way, e.g. card, cash, bank").option("--start <date>", "Start date (YYYY-MM-DD). Defaults to 12 months ago").option("--end <date>", "End date (YYYY-MM-DD). Defaults to today").option("-p, --page <number>", "Page number", "1").option("-l, --limit <number>", "Items per page", "10").option("--json", "Output raw JSON instead of formatted").action(
+  withErrors(async (opts) => {
+    const { start, end } = getDefaultDateRange(opts.start, opts.end);
+    const { page, perPage } = parsePaging(opts);
+    const data = await getPaymentsReport({
+      start,
+      end,
+      page,
+      perPage,
+      ...opts.method ? { method: opts.method } : {}
+    });
+    const formatter = new ReportFormatter();
+    console.log(
+      formatter.format(data, {
+        type: "payments",
+        json: opts.json,
+        method: opts.method,
+        start: start.split("T")[0],
+        end: end.split("T")[0]
+      })
+    );
   })
 );
 
@@ -48863,14 +49544,14 @@ function analyzeGrowthCycles(months, now2 = /* @__PURE__ */ new Date()) {
   return insights;
 }
 function analyzePaymentReliability(invoices, _now = /* @__PURE__ */ new Date()) {
-  const DAY = 864e5;
+  const DAY2 = 864e5;
   const byCustomer = /* @__PURE__ */ new Map();
   for (const inv of invoices) {
     if (!Number.isFinite(inv.invoiceDateMs) || inv.total <= 0) continue;
     const paid = inv.payments.reduce((s, p) => s + p.amount, 0);
     if (paid < inv.total) continue;
     const paidDate = Math.max(...inv.payments.map((p) => p.dateMs));
-    const dtp = (paidDate - inv.invoiceDateMs) / DAY;
+    const dtp = (paidDate - inv.invoiceDateMs) / DAY2;
     if (dtp < 0) continue;
     const key2 = inv.customer.toLowerCase();
     if (!byCustomer.has(key2)) {
@@ -48878,7 +49559,7 @@ function analyzePaymentReliability(invoices, _now = /* @__PURE__ */ new Date()) 
     }
     const e = byCustomer.get(key2);
     e.dtp.push(dtp);
-    if (inv.dueDateMs != null) e.late.push((paidDate - inv.dueDateMs) / DAY);
+    if (inv.dueDateMs != null) e.late.push((paidDate - inv.dueDateMs) / DAY2);
   }
   const mean = (a) => a.reduce((s, x) => s + x, 0) / a.length;
   const latePayers = [];
@@ -48917,16 +49598,16 @@ function analyzePaymentReliability(invoices, _now = /* @__PURE__ */ new Date()) 
   return out;
 }
 function computeAtRisk(customers, now2 = /* @__PURE__ */ new Date()) {
-  const DAY = 864e5;
+  const DAY2 = 864e5;
   const flagged = [];
   for (const c of customers) {
     const ds = [...c.orderDatesMs].filter((n) => Number.isFinite(n)).sort((a, b) => a - b);
     if (ds.length < 3) continue;
     let gapSum = 0;
-    for (let i = 1; i < ds.length; i++) gapSum += (ds[i] - ds[i - 1]) / DAY;
+    for (let i = 1; i < ds.length; i++) gapSum += (ds[i] - ds[i - 1]) / DAY2;
     const avgGap = gapSum / (ds.length - 1);
     if (avgGap <= 0) continue;
-    const daysSince2 = (now2.getTime() - ds[ds.length - 1]) / DAY;
+    const daysSince2 = (now2.getTime() - ds[ds.length - 1]) / DAY2;
     if (daysSince2 > avgGap * 1.5) {
       flagged.push({ name: c.name, daysSince: daysSince2, avgGap, orders: ds.length });
     }
@@ -49067,7 +49748,7 @@ async function fetchInvoiceAnalysisData(start, end, company) {
   const custRev = /* @__PURE__ */ new Map();
   const itemRev = /* @__PURE__ */ new Map();
   const paymentRecords = [];
-  const MAX_PAGES = 20;
+  const MAX_PAGES2 = 20;
   const home = await companyCurrency(company.companyId);
   let page = 1;
   let pageCount = 1;
@@ -49142,7 +49823,7 @@ async function fetchInvoiceAnalysisData(start, end, company) {
     }
     pageCount = resp?.searchInvoices?.pageInfo?.pageCount ?? 1;
     page++;
-  } while (page <= pageCount && page <= MAX_PAGES);
+  } while (page <= pageCount && page <= MAX_PAGES2);
   return {
     orders: [...byCustomer.values()].map((v) => ({
       name: v.name,
@@ -49267,7 +49948,7 @@ async function fetchExpenses(start, end, company) {
     const startMs = new Date(start).getTime();
     const endMs = new Date(end).getTime();
     const out = [];
-    const MAX_PAGES = 20;
+    const MAX_PAGES2 = 20;
     let page = 1;
     let pageCount = 1;
     do {
@@ -49280,7 +49961,7 @@ async function fetchExpenses(start, end, company) {
       }
       pageCount = resp.pageInfo?.pageCount ?? 1;
       page++;
-    } while (page <= pageCount && page <= MAX_PAGES);
+    } while (page <= pageCount && page <= MAX_PAGES2);
     return out;
   } catch {
     return [];
@@ -49416,7 +50097,7 @@ function analyzeSeasonalOutlook(months, now2 = /* @__PURE__ */ new Date()) {
 async function fetchCustomerTags(company) {
   try {
     const out = {};
-    const MAX_PAGES = 20;
+    const MAX_PAGES2 = 20;
     let page = 1;
     let pageCount = 1;
     do {
@@ -49428,7 +50109,7 @@ async function fetchCustomerTags(company) {
       }
       pageCount = resp?.searchCustomers?.pageInfo?.pageCount ?? 1;
       page++;
-    } while (page <= pageCount && page <= MAX_PAGES);
+    } while (page <= pageCount && page <= MAX_PAGES2);
     return out;
   } catch {
     return {};
@@ -50531,7 +51212,7 @@ var openCommand2 = new Command("open").description(
 );
 
 // src/commands/report/index.ts
-var reportCommand = new Command("report").description("Invoice reports and analytics").addCommand(summaryCommand).addCommand(customersCommand).addCommand(itemsCommand).addCommand(dashboardCommand).addCommand(insightsCommand).addCommand(digestCommand).addCommand(suggestCommand).addCommand(openCommand2);
+var reportCommand = new Command("report").description("Invoice reports and analytics").addCommand(summaryCommand).addCommand(customersCommand).addCommand(itemsCommand).addCommand(invoicesCommand).addCommand(proposalsCommand).addCommand(owedCommand).addCommand(paymentsCommand2).addCommand(dashboardCommand).addCommand(insightsCommand).addCommand(digestCommand).addCommand(suggestCommand).addCommand(openCommand2);
 
 // src/core/auth/meetAppToken.ts
 var REFRESH_LEEWAY_MS = 6e4;
@@ -50944,7 +51625,7 @@ var listCommand6 = new Command("list").description(
     };
     let filteredData;
     if (isSearch) {
-      const MAX_PAGES = 50;
+      const MAX_PAGES2 = 50;
       let pageCursor = page;
       const matched = [];
       let lastResponse = null;
@@ -50967,7 +51648,7 @@ var listCommand6 = new Command("list").description(
         }
         totalPages = Number(resp?.getBookings?.pagination?.totalPages ?? 1);
         pageCursor++;
-      } while (pageCursor <= totalPages && pageCursor <= MAX_PAGES);
+      } while (pageCursor <= totalPages && pageCursor <= MAX_PAGES2);
       filteredData = {
         ...lastResponse,
         getBookings: {
@@ -50981,7 +51662,7 @@ var listCommand6 = new Command("list").description(
             // Diagnostic: how many meetings we scanned to find these.
             // Useful for the agent to know if we hit the safety cap.
             scannedTotal: scanned,
-            hitMaxPages: pageCursor > MAX_PAGES && pageCursor <= totalPages
+            hitMaxPages: pageCursor > MAX_PAGES2 && pageCursor <= totalPages
           }
         }
       };
@@ -53087,114 +53768,6 @@ var summaryCommand2 = new Command("summary").description("The AI summary of the 
 
 // src/commands/receptionist/index.ts
 var receptionistCommand = new Command("receptionist").description("AI receptionist: its setup, calls, transcripts, call stats, draft, voice samples, test questions and publishing").addCommand(getCommand4).addCommand(statsCommand).addCommand(callCommand).addCommand(draftCommand).addCommand(publishCommand).addCommand(openCommand3).addCommand(voiceCommand).addCommand(testQuestionsCommand).addCommand(summaryCommand2);
-
-// src/usecases/proposal/listProposals.ts
-var PROPOSAL_STATUSES = [
-  "draft",
-  "saved",
-  "sent",
-  "read",
-  "accepted",
-  "declined",
-  "completed",
-  "terminated",
-  "unsuccessful"
-];
-var SEARCH_PROPOSALS_QUERY = `
-  query SearchProposals(
-    $filter: SearchFilterInput!
-    $paginate: SearchPaginateInput
-    $sort: String
-    $isProposalAi: Boolean = false
-  ) {
-    searchProposals(
-      filter: $filter
-      paginate: $paginate
-      sort: $sort
-      isProposalAi: $isProposalAi
-    ) {
-      pageInfo {${PAGE_INFO_FIELDS}      }
-      items {
-        _id
-        no
-        title
-        status
-        isDraft
-        archived
-        creationMethod
-        startDate
-        endDate
-        effectiveDate
-        expirationDate
-        viewedDate
-        clientSignedDate
-        paymentEnabled
-        hasUnsuccessfulPayment
-        taxInclusive
-        taxName
-        taxPercentage
-        taxName2
-        taxPercentage2
-        discount
-        discountPercentage
-        shippingCost
-        shippingNonTax
-        updatedAt
-        createdAt
-        serviceItems {
-          _id
-          name
-          price
-          quantity
-          totalAmount
-          billingType
-          recurringPeriodType
-          recurringPeriodFrequency
-        }
-        customer {
-          firstName
-          lastName
-          companyName
-          individualCompanyName
-        }
-        customerReference {
-          _id
-          email
-          companyName
-          individualCompanyName
-        }
-      }
-    }
-  }
-`;
-async function listProposals(options = {}) {
-  const {
-    status = [...PROPOSAL_STATUSES],
-    search,
-    isProposalAi = false,
-    page = 1,
-    perPage = 15,
-    sort = "createdAt_desc"
-  } = options;
-  const variables = {
-    filter: {
-      search: search ?? null,
-      status,
-      ...options.customerId ? { customerId: options.customerId } : {},
-      ...options.start ? { start: options.start } : {},
-      ...options.end ? { end: options.end } : {}
-    },
-    paginate: { fetchAll: false, page, perPage },
-    sort,
-    isProposalAi
-  };
-  return bookipiGraphql({
-    query: SEARCH_PROPOSALS_QUERY,
-    variables,
-    // Per-call company scope — see getInvoice for why the MCP server needs it.
-    ...options.companyId ? { companyId: options.companyId } : {}
-  });
-}
 
 // src/core/formatters/ProposalFormatter.ts
 var ProposalFormatter = class extends BaseFormatter {
@@ -87571,12 +88144,15 @@ var companyScope = {
     "Company id to read from, as returned by whoami. Omit for the active default company."
   )
 };
+var dayParam = (description) => external_exports.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD.").optional().describe(description);
 var listFilters = {
   customer_id: external_exports.string().regex(/^[a-f0-9]{24}$/i, "Use the customer's id, not a name.").optional().describe("Only this customer's. The id from list_customers or an earlier result."),
-  created_from: external_exports.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD.").optional().describe(
+  created_from: dayParam(
     "Only those entered in Bookipi on or after this day (YYYY-MM-DD). The entry day, not the date printed on the document: they differ on a backdated one."
   ),
-  created_to: external_exports.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD.").optional().describe("Only those entered on or before this day (YYYY-MM-DD). Days are cut at UTC midnight.")
+  created_to: dayParam(
+    "Only those entered on or before this day (YYYY-MM-DD). Days are cut at UTC midnight."
+  )
 };
 function listFilterOptions(a) {
   return {
@@ -88001,20 +88577,25 @@ function projectDealList(raw) {
     pageInfo: result?.pageInfo ?? null
   };
 }
+function proposalIdentity(p) {
+  const customer = p.customer ?? p.customerReference;
+  return {
+    id: p._id ?? null,
+    proposalNumber: p.no ?? null,
+    title: p.title ?? null,
+    status: p.status ?? null,
+    // The `customer` snapshot carries no _id; the reference does. Reading
+    // the snapshot returned null for every proposal.
+    customerId: p.customerReference?._id ?? customer?._id ?? null,
+    customerName: customerName(customer, { preferCompany: true })
+  };
+}
 function projectProposalList(raw) {
   const result = raw?.searchProposals;
   return {
     proposals: asRows(result?.items).map((p) => {
-      const customer = p.customer ?? p.customerReference;
       return {
-        id: p._id ?? null,
-        proposalNumber: p.no ?? null,
-        title: p.title ?? null,
-        status: p.status ?? null,
-        // The `customer` snapshot carries no _id; the reference does. Reading
-        // the snapshot returned null for every proposal.
-        customerId: p.customerReference?._id ?? customer?._id ?? null,
-        customerName: customerName(customer, { preferCompany: true }),
+        ...proposalIdentity(p),
         startDate: p.startDate ?? null,
         endDate: p.endDate ?? null,
         expirationDate: p.expirationDate ?? null,
@@ -88214,9 +88795,107 @@ function projectCustomersRank(raw) {
     // ₱762,056 invoiced" without a second call.
     totalCustomers: block?.["pageInfo"]?.["itemCount"] ?? null,
     totalInvoiced: totals["amount"] ?? null,
+    ...rankCaveats(block)
+  };
+}
+function rankCaveats(block) {
+  return {
     ...block?.["otherCurrencies"] ? { notIncludedCurrencies: block["otherCurrencies"] } : {},
-    // More invoices than one read covers: the figures are floors.
     ...block?.["partial"] === true ? { partial: true } : {}
+  };
+}
+function reportInvoiceRow(invoice) {
+  const customer = invoice["customer"] ?? invoice["customerReference"];
+  return {
+    id: invoice["_id"] ?? null,
+    invoiceNumber: invoice["no"] ?? null,
+    customerId: customer?.["_id"] ?? null,
+    customerName: customerName(customer, { preferCompany: true }),
+    total: invoice["total"] ?? null,
+    amountDue: invoice["amountDue"] ?? null
+  };
+}
+function projectInvoicesRank(raw) {
+  const block = raw?.["GetInvoicesRank"] ?? raw;
+  const totals = block?.["totalDocs"] ?? {};
+  return {
+    invoices: asRows(block?.["items"]).map((invoice) => ({
+      ...reportInvoiceRow(invoice),
+      date: calendarDate(invoice["date"]),
+      computedStatus: invoice["computedStatus"] ?? null
+    })),
+    totalInvoices: totals["count"] ?? null,
+    totalInvoiced: totals["amount"] ?? null,
+    ...rankCaveats(block)
+  };
+}
+function projectProposalsRank(raw) {
+  const block = raw?.["GetProposalsRank"] ?? raw;
+  const totals = block?.["totalDocs"] ?? {};
+  return {
+    proposals: asRows(block?.["items"]).map((p) => ({
+      ...proposalIdentity(p),
+      createdDate: calendarDate(p["createdAt"]),
+      value: p["itemsAmount"] ?? null,
+      clientSignedDate: p["clientSignedDate"] ?? null
+    })),
+    totalProposals: totals["count"] ?? null,
+    totalValue: totals["amount"] ?? null,
+    ...rankCaveats(block)
+  };
+}
+function projectOwedRank(raw) {
+  const block = raw?.["GetOwedRank"] ?? raw;
+  const totals = block?.["totalDocs"] ?? {};
+  const byInvoice2 = block?.["by"] === "invoice";
+  const rows = asRows(block?.["items"]);
+  return {
+    ...byInvoice2 ? {
+      invoices: rows.map((invoice) => ({
+        ...reportInvoiceRow(invoice),
+        dueDate: calendarDate(invoice["dueDate"])
+      }))
+    } : {
+      customers: rows.map((r) => {
+        const c = r["customer"] ?? {};
+        const owed = r["owed"] ?? {};
+        const overdue = r["overdue"] ?? {};
+        return {
+          customerId: c["_id"] ?? null,
+          name: customerName(c, { preferCompany: true }),
+          owed: owed["amount"] ?? null,
+          unpaidInvoices: owed["count"] ?? null,
+          overdue: overdue["amount"] ?? null,
+          oldestDue: r["oldestDue"] ?? null
+        };
+      })
+    },
+    totalUnpaidInvoices: totals["count"] ?? null,
+    totalOwed: totals["amount"] ?? null,
+    ...rankCaveats(block)
+  };
+}
+function projectPayments(raw) {
+  const block = raw?.["GetPayments"] ?? raw;
+  const totals = block?.["totalDocs"] ?? {};
+  return {
+    payments: asRows(block?.["items"]).map((p) => {
+      const invoice = p["invoice"] ?? {};
+      const customer = invoice["customer"];
+      return {
+        date: p["day"] ?? null,
+        amount: p["amount"] ?? null,
+        method: p["method"] ?? null,
+        invoiceId: invoice["_id"] ?? null,
+        invoiceNumber: invoice["no"] ?? null,
+        customerId: customer?.["_id"] ?? null,
+        customerName: customerName(customer, { preferCompany: true })
+      };
+    }),
+    byMethod: block?.["byMethod"] ?? [],
+    totalPayments: totals["count"] ?? null,
+    totalReceived: totals["amount"] ?? null,
+    ...rankCaveats(block)
   };
 }
 function projectItemsRank(raw) {
@@ -88235,8 +88914,7 @@ function projectItemsRank(raw) {
     }),
     totalItems: block?.["pageInfo"]?.["itemCount"] ?? null,
     totalRevenue: totals["amount"] ?? null,
-    ...block?.["otherCurrencies"] ? { notIncludedCurrencies: block["otherCurrencies"] } : {},
-    ...block?.["partial"] === true ? { partial: true } : {}
+    ...rankCaveats(block)
   };
 }
 function projectWebsiteStatus(raw) {
@@ -88396,7 +89074,7 @@ var invoiceReads = [
     name: "list_invoices",
     group: "invoices",
     title: "List invoices, newest first",
-    description: "List the active company's invoices, most recent first \u2014 or, with `document_type`, its estimates, credit notes, delivery notes or purchase orders. Filter by status, customer, entry date and free-text search rather than paging through everything. Totals and rankings over a period are report_items and report_customers, not a sum of these rows. For 'who owes me money', filter to overdue plus sent/read/partialPaid and read `amountDue`.\nReturns one row per invoice with exactly these fields: id, invoiceNumber, customerId, customerName, customerEmail, date, dueDate, total, amountDue, status, computedStatus, paymentStatus, repeats (null for a one-off) \u2014 plus pageInfo. `computedStatus` is the one to trust for overdue; `status` can still read 'sent' past the due date. Line items and payments come only with `include`, in this one call instead of one get_invoice per row; tax breakdown and notes are on get_invoice. No currency field: it belongs to the company, see whoami.",
+    description: "List the active company's invoices, most recent first \u2014 or, with `document_type`, its estimates, credit notes, delivery notes or purchase orders. Filter by status, customer, entry date and free-text search rather than paging through everything. Totals and rankings over a period are report_items and report_customers, not a sum of these rows, and the largest invoices are report_invoices: this list cannot sort by amount. 'Who owes me money', 'who owes the most' and 'what is due next week' are report_owed; payments by method or date are report_payments.\nReturns one row per invoice with exactly these fields: id, invoiceNumber, customerId, customerName, customerEmail, date, dueDate, total, amountDue, status, computedStatus, paymentStatus, repeats (null for a one-off) \u2014 plus pageInfo. `computedStatus` is the one to trust for overdue; `status` can still read 'sent' past the due date. Line items and payments come only with `include`, in this one call instead of one get_invoice per row; tax breakdown and notes are on get_invoice. No currency field: it belongs to the company, see whoami.",
     readOnly: true,
     inputSchema: external_exports.object({
       ...companyScope,
@@ -88518,7 +89196,7 @@ var customerReads = [
     name: "list_customers",
     group: "customers",
     title: "List and search customers",
-    description: "List the active company's customers, newest first, with free-text search and paging. Use it to find a customer's id or email before acting on them.\nReturns one row per customer with exactly these fields: id, name, email, phone, amountDue, total, documentCount, projectCount \u2014 plus pageInfo. `name` is the company name where there is one, otherwise the person's name.\nIMPORTANT: `amountDue`, `total` and `documentCount` were null for every customer in the account this was measured against \u2014 the backend does not reliably populate them here. Do NOT answer 'who owes me the most' or 'who is my biggest customer' from this operation: the biggest customer is report_customers, and who owes the most is list_invoices filtered to unpaid statuses, grouped by customerName on amountDue. Addresses, tags, notes and custom fields are NOT returned. No currency field: it belongs to the company, see whoami.",
+    description: "List the active company's customers, newest first, with free-text search and paging. Use it to find a customer's id or email before acting on them.\nReturns one row per customer with exactly these fields: id, name, email, phone, amountDue, total, documentCount, projectCount \u2014 plus pageInfo. `name` is the company name where there is one, otherwise the person's name.\nIMPORTANT: `amountDue`, `total` and `documentCount` were null for every customer in the account this was measured against \u2014 the backend does not reliably populate them here. Do NOT answer 'who owes me the most' or 'who is my biggest customer' from this operation: the biggest customer is report_customers, and who owes the most is report_owed. Addresses, tags, notes and custom fields are NOT returned. No currency field: it belongs to the company, see whoami.",
     readOnly: true,
     inputSchema: external_exports.object({
       ...companyScope,
@@ -88636,7 +89314,7 @@ var salesReads = [
     name: "list_proposals",
     group: "proposals",
     title: "List proposals and whether they are signed",
-    description: "List the active company's proposals, newest first. Filter by status, customer, entry date and free-text search rather than paging through everything. `clientSignedDate` is the field to read for 'has X signed?' \u2014 null means unsigned.\nReturns one row per proposal with exactly these fields: id, proposalNumber, title, status, customerId, customerName, startDate, endDate, expirationDate, clientSignedDate, viewedDate \u2014 plus pageInfo. Service line items, tax, discount and shipping are NOT returned here. No currency field: it belongs to the company, see whoami.",
+    description: "List the active company's proposals, newest first. Filter by status, customer, entry date and free-text search rather than paging through everything. `clientSignedDate` is the field to read for 'has X signed?' \u2014 null means unsigned. The largest proposals are report_proposals.\nReturns one row per proposal with exactly these fields: id, proposalNumber, title, status, customerId, customerName, startDate, endDate, expirationDate, clientSignedDate, viewedDate \u2014 plus pageInfo. Service line items, tax, discount and shipping are NOT returned here. No currency field: it belongs to the company, see whoami.",
     readOnly: true,
     inputSchema: external_exports.object({
       ...companyScope,
@@ -88737,11 +89415,12 @@ var catalogReads = [
     name: "list_items",
     group: "items",
     title: "List products and services with prices",
-    description: "List the active company's saved products and services \u2014 the catalogue invoice line items are drawn from. Use it to answer 'what do I sell', 'what do I charge for X', or to look up a price before quoting.\nReturns one row per item with exactly these fields: id, name, description, price, taxRate, unitType, productCode \u2014 plus pageInfo. Photos and accounting identifiers are NOT returned. `taxRate` is a percentage; there is no tax-inclusive price field. No currency field: it belongs to the company, see whoami.",
+    description: "List the active company's saved products and services \u2014 the catalogue invoice line items are drawn from. Use it to answer 'what do I sell', 'what do I charge for X', or to look up a price before quoting. For 'my most expensive item' or 'items with no price', set `sort` and read the first page; do not page the catalogue. What SOLD the most is report_items.\nReturns one row per item with exactly these fields: id, name, description, price, taxRate, unitType, productCode \u2014 plus pageInfo. Photos and accounting identifiers are NOT returned. `taxRate` is a percentage; there is no tax-inclusive price field. No currency field: it belongs to the company, see whoami.",
     readOnly: true,
     inputSchema: external_exports.object({
       ...companyScope,
       search: external_exports.string().optional().describe("Free-text match on item name, description or code."),
+      sort: external_exports.enum(ITEM_SORT_NAMES).optional().describe("Default oldest. price_low puts items with no price first."),
       ...paging
     }),
     run: async (args) => {
@@ -88751,6 +89430,7 @@ var catalogReads = [
           await listItems(
             compact({
               search: a.search,
+              sort: a.sort,
               page: a.page,
               perPage: a.per_page,
               companyId: a.company_id
@@ -88931,6 +89611,116 @@ var reportReads = [
           end: a.end,
           page: 1,
           perPage: a.limit ?? 10
+        })
+      );
+    }
+  },
+  {
+    name: "report_invoices",
+    group: "reports",
+    title: "Largest invoices or other documents by total",
+    description: "Rank single invoices by their total over a date window \u2014 or, with `document_type`, estimates, credit notes, delivery notes or purchase orders. This is the operation for 'what is my biggest invoice', 'my largest sale', 'top 5 invoices this year', 'my biggest estimate', and with its filters for 'my smallest invoice' (`order`), 'invoices over 5,000' (`min_total`, `max_total`) and 'which invoices include X' or 'who bought X' (`item`). Proposals are report_proposals.\nReturns one row per invoice with id, invoiceNumber, customerId, customerName, date, total, amountDue and computedStatus, highest total first, plus totalInvoices and totalInvoiced for what matched. Counts invoices that were SENT, by the date printed on them: a draft never sent is not ranked, and invoices in another currency are left out and named in `notIncludedCurrencies` \u2014 say so. `partial: true` means the account has more invoices than were read, so a larger one may exist.\nScoped to the signed-in account's default company; it does not take a company_id.",
+    readOnly: true,
+    inputSchema: external_exports.object({
+      start: external_exports.string().describe("ISO start date, inclusive."),
+      end: external_exports.string().describe("ISO end date, inclusive."),
+      limit: external_exports.number().int().positive().max(100).optional().describe("How many invoices to return. Defaults to 10."),
+      order: external_exports.enum(["largest", "smallest"]).optional().describe("Default largest."),
+      min_total: external_exports.number().optional().describe("Only those with a total of at least this."),
+      max_total: external_exports.number().optional().describe("Only those with a total of at most this."),
+      item: external_exports.string().optional().describe("Only those with a line whose item name or product code contains this text."),
+      ...documentTypeParam
+    }),
+    run: async (args) => {
+      const a = args;
+      return projectInvoicesRank(
+        await getInvoicesRank({
+          start: a.start,
+          end: a.end,
+          page: 1,
+          perPage: a.limit ?? 10,
+          ...compact({
+            docType: documentTypeCode(a.document_type),
+            smallest: a.order === "smallest" ? true : void 0,
+            minTotal: a.min_total,
+            maxTotal: a.max_total,
+            item: a.item
+          })
+        })
+      );
+    }
+  },
+  {
+    name: "report_proposals",
+    group: "reports",
+    title: "Largest proposals by value",
+    description: "Rank proposals by their value over a date window. This is the operation for 'what is my biggest proposal', 'top proposals this quarter', 'my largest deal on paper'.\nReturns one row per proposal with id, proposalNumber, title, customerId, customerName, createdDate, status, value and clientSignedDate (null means unsigned), highest value first, plus totalProposals and totalValue for the window. `value` is the service lines added up, before tax, discount and shipping. Counts proposals the customer was SENT, by the day they were created: drafts are not ranked. `partial: true` means the account has more proposals than were read, so a larger one may exist.\nScoped to the signed-in account's default company; it does not take a company_id.",
+    readOnly: true,
+    inputSchema: external_exports.object({
+      start: external_exports.string().describe("ISO start date, inclusive."),
+      end: external_exports.string().describe("ISO end date, inclusive."),
+      limit: external_exports.number().int().positive().max(100).optional().describe("How many proposals to return. Defaults to 10.")
+    }),
+    run: async (args) => {
+      const a = args;
+      return projectProposalsRank(
+        await getProposalsRank({
+          start: a.start,
+          end: a.end,
+          page: 1,
+          perPage: a.limit ?? 10
+        })
+      );
+    }
+  },
+  {
+    name: "report_owed",
+    group: "reports",
+    title: "Who owes money now, and what is due when",
+    description: "What customers owe right now, in one call. By customer (the default) it ranks who owes the most: 'who owes me money', 'who owes me the most', 'my worst payers'. With `by: invoice` it lists the unpaid invoices soonest due first, and `due_from` / `due_to` narrow either view to a due-date window: 'what is due next week', 'what fell due last month'.\nBy customer, each row has customerId, name, owed, unpaidInvoices, overdue (the part past due) and oldestDue. By invoice, each row has id, invoiceNumber, customerId, customerName, dueDate, total and amountDue. Both carry totalOwed and totalUnpaidInvoices for what matched. As of today, not for a period: invoices the customer was sent that still have a balance. Invoices in another currency are left out and named in `notIncludedCurrencies` \u2014 say so. `partial: true` means more unpaid invoices exist than were read.\nScoped to the signed-in account's default company; it does not take a company_id.",
+    readOnly: true,
+    inputSchema: external_exports.object({
+      by: external_exports.enum(["customer", "invoice"]).optional().describe("Default customer."),
+      due_from: dayParam("Only invoices due on or after this day (YYYY-MM-DD)."),
+      due_to: dayParam("Only invoices due on or before this day (YYYY-MM-DD)."),
+      limit: external_exports.number().int().positive().max(100).optional().describe("How many rows to return. Defaults to 10.")
+    }),
+    run: async (args) => {
+      const a = args;
+      return projectOwedRank(
+        await getOwedRank(
+          compact({
+            by: a.by,
+            dueFrom: a.due_from,
+            dueTo: a.due_to,
+            page: 1,
+            perPage: a.limit ?? 10
+          })
+        )
+      );
+    }
+  },
+  {
+    name: "report_payments",
+    group: "reports",
+    title: "Payments received, with the split by method",
+    description: "Payments received over a date window, newest first, across every customer: 'what was I paid last week', 'which invoices were paid by card', 'how much came in as cash'. One customer's payment history is customer_payments.\nReturns one row per payment with date, amount, method, invoiceId, invoiceNumber, customerId and customerName, plus `byMethod` (count and amount for every method in the window, whatever `method` narrowed the rows to), totalPayments and totalReceived. By the day the payment was recorded. A payment with no method recorded reads 'unspecified'. Payments in another currency are left out and named in `notIncludedCurrencies` \u2014 say so. `partial: true` means more invoices exist than were read.\nScoped to the signed-in account's default company; it does not take a company_id.",
+    readOnly: true,
+    inputSchema: external_exports.object({
+      start: external_exports.string().describe("ISO start date, inclusive."),
+      end: external_exports.string().describe("ISO end date, inclusive."),
+      method: external_exports.string().optional().describe("Only payments made this way, as it reads in `byMethod` (e.g. card, cash)."),
+      limit: external_exports.number().int().positive().max(100).optional().describe("How many payments to return. Defaults to 10.")
+    }),
+    run: async (args) => {
+      const a = args;
+      return projectPayments(
+        await getPaymentsReport({
+          start: a.start,
+          end: a.end,
+          page: 1,
+          perPage: a.limit ?? 10,
+          ...compact({ method: a.method })
         })
       );
     }
